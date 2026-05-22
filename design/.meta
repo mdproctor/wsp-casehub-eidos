@@ -1,0 +1,8 @@
+branch: issue-1-phase-1-registry-vocab
+project-sha: 136e4382b0aef20d43f163b76698b1c4ffad1c41
+date: 2026-05-22
+issue: 1
+issue-repo: casehubio/eidos
+flyway-next-v: 1
+design-repo: workspace
+design-section-hashes:
