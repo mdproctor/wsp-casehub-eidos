@@ -254,10 +254,8 @@ context:
 You are generating a system prompt for an LLM agent.
 Below is the agent's structured definition in YAML.
 Generate a system prompt optimised for LLM consumption — use whatever
-structure is clearest and most concise: lists, tables, headers, or short
-declarative statements. Do not optimise for human readability or prefer
-paragraphs over structure. Every token should carry information the agent
-needs to act on.
+structure is clearest and most concise. Do not optimise for human
+readability. Every token should carry information the agent needs to act on.
 
 {yaml}
 ```
