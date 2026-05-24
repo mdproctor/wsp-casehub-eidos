@@ -1,0 +1,8 @@
+branch: issue-5-system-prompt-renderer
+project-sha: 9ff6185d3a0052e3305128be0642e52bb7e646db
+date: 2026-05-24
+issue: 5
+issue-repo: casehubio/eidos
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
