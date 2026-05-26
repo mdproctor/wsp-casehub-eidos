@@ -1,0 +1,8 @@
+branch: issue-10-inmemory-registry-tenancyid-null-guard
+project-sha: 4931679
+date: 2026-05-26
+issue: 10
+issue-repo: casehubio/eidos
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
