@@ -8,3 +8,4 @@
 | [2026-05-25-mdp02-wrong-side-of-null.md](2026-05-25-mdp02-wrong-side-of-null.md) | 2026-05-25 | Minor fixes: the NPE was on the wrong filter; code review catches missing test assertion |
 | [2026-05-26-mdp01-interceptors-eat-exceptions.md](2026-05-26-mdp01-interceptors-eat-exceptions.md) | 2026-05-26 | @WithSession swallows synchronous throws — reactive null tests need UniAsserter.assertFailedWith |
 | [2026-05-26-mdp02-crash-or-silence.md](2026-05-26-mdp02-crash-or-silence.md) | 2026-05-26 | Four-backend registry: ConcurrentHashMap crashes, JPA is silent — both wrong; symmetric null guards fix both |
+| [2026-05-29-mdp01-two-architectural-errors.md](2026-05-29-mdp01-two-architectural-errors.md) | 2026-05-29 | Three-stage rendering pipeline: Option A/B/C analysis; LangChain4j API surprise; cache hash covers all output fields |
