@@ -3,39 +3,32 @@
 
 ## Current State
 
-Phases 1–3 + issues #6, #7, #13, #14 complete and shipped to upstream. Branch
-`issue-007-reactive-parity-rendering` closed. Both repos on `main`.
+Both issues closed and delivered to upstream (`casehubio/eidos` main):
 
-This session: reactive parity SPIs (`ReactiveAgentStateStore`, `ReactiveSystemPromptRenderer`),
-bridge impls with `runSubscriptionOn(workerPool)`, JPA blocking + Hibernate Reactive impls,
-`DefaultReactiveCapabilityHealth` fixed (removed incorrect `@IfBuildProperty` gate),
-`ClaudeMarkdownRenderer` → `EidosSystemPromptRenderer` rename, proper GEMINI format
-assembly, `A2ASemanticEnrichmentStep` (separate schema + descriptor-only payload — caught
-during code review, not implementation). 7→3 commits squashed, delivered to upstream.
-Garden: 3 entries. Protocols: PP-20260529-5745c1, PP-20260529-368527. ADR-0002.
+- **eidos#18** (one-liner): `DefaultReactiveCapabilityHealth.probe()` missing `runSubscriptionOn` — fixed.
+- **eidos#17** (architectural): `DefaultReactiveSystemPromptRenderer` rewritten with true non-blocking streaming. `EidosRenderPipeline` extracted as shared `@ApplicationScoped` CDI bean. `ReactiveSemanticEnrichmentStep` + `ReactiveA2ASemanticEnrichmentStep` bridge `StreamingChatModel` callbacks via `CompletableFuture` + `Uni.createFrom().completionStage()`. Three-stage threading: Stage 1 on workerPool, Stage 2 async streaming, Stage 3 `emitOn(workerPool)`. 135 tests, BUILD SUCCESS.
+
+Branch `issue-018-17-reactive-streaming` closed. Both repos on main.
 
 ## Immediate Next Step
 
-Run `work-start` and pick the next issue — Phase 4 knowledge graph is the natural
-next milestone.
+Run `work-start` for the next issue — Phase 4 knowledge graph is the natural next milestone. Or pick up eidos#19 (ReactiveRenderedPromptCache SPI).
 
 ## What's Left
 
-- eidos#17 — truly async `ReactiveSystemPromptRenderer` via `StreamingChatModel` (deferred; needs LangChain4j streaming + ResponseFormat compatibility investigation) · S · Med
-- eidos#18 — `DefaultReactiveCapabilityHealth` missing `runSubscriptionOn` (pre-existing, filed this session; one-liner fix) · XS · Low
+- eidos#19 — ReactiveRenderedPromptCache SPI (filed this session; deferred correctness risk — safe to leave until a real cache backend appears) · S · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
 | — | Phase 4: knowledge graph (descriptor, task, outcome, attestation nodes) | L | High | Next major milestone |
-| #17 | Truly async ReactiveSystemPromptRenderer via StreamingChatModel | S | Med | Deferred — LangChain4j streaming investigation needed |
-| #18 | DefaultReactiveCapabilityHealth — add runSubscriptionOn | XS | Low | Pre-existing; filed this session |
+| #19 | ReactiveRenderedPromptCache SPI | S | Low | Deferred — no external cache impl yet |
 
 ## References
 
 | What | Path |
 |------|------|
-| Latest blog | `blog/2026-05-29-mdp02-reactive-parity-a2a-enrichment.md` |
-| ADR 0002 | `adr/0002-separate-a2a-enrichment-from-narrative-enrichment.md` |
-| Design journal | `design/JOURNAL.md` |
+| Latest blog | `blog/2026-05-29-mdp03-hold-no-threads.md` |
+| Spec (promoted) | `docs/superpowers/specs/2026-05-29-reactive-streaming-renderer-design.md` (project repo) |
+| Design journal | `design/JOURNAL.md` (empty — no journal entries this branch) |
