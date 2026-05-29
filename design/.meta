@@ -1,0 +1,8 @@
+branch: issue-007-reactive-parity-rendering
+project-sha: 522349cd008ccfbe740bc2bd0355aa9c1fb560c9
+date: 2026-05-29
+issue: 7
+issue-repo: casehubio/eidos
+flyway-next-v: 2
+design-repo: workspace
+design-section-hashes:
