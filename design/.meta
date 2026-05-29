@@ -1,0 +1,8 @@
+branch: issue-016-quality-eval-security
+project-sha: 8f83300a0cb77a50ca2ab5d17999a3d59b02389b
+date: 2026-05-29
+issue: 16
+issue-repo: casehubio/eidos
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
