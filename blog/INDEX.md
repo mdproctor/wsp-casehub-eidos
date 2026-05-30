@@ -11,3 +11,4 @@
 | [2026-05-29-mdp01-two-architectural-errors.md](2026-05-29-mdp01-two-architectural-errors.md) | 2026-05-29 | Three-stage rendering pipeline: Option A/B/C analysis; LangChain4j API surprise; cache hash covers all output fields |
 | [2026-05-29-mdp02-reactive-parity-a2a-enrichment.md](2026-05-29-mdp02-reactive-parity-a2a-enrichment.md) | 2026-05-29 | Schema flaw caught in review: A2A enrichment needs its own step; runSubscriptionOn not emitOn; ClaudeMarkdownRenderer renamed |
 | [2026-05-29-mdp03-hold-no-threads.md](2026-05-29-mdp03-hold-no-threads.md) | 2026-05-29 | Hold no threads — streaming renderer, three-stage threading, CompletableFuture bridge |
+| [2026-05-30-mdp01-deadlock-in-the-adapter.md](2026-05-30-mdp01-deadlock-in-the-adapter.md) | 2026-05-30 | Three issues, one pipeline — reactive cache coherence, runSubscriptionOn deadlock, compact constructor validation, eval harness |
