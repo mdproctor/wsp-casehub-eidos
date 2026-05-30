@@ -146,12 +146,15 @@ class BlockingToReactiveRenderedPromptCacheAdapter implements ReactiveRenderedPr
 
     // get: Uni.createFrom().item(() -> blocking.get(key))
     //          .onFailure().recoverWith(e -> Uni.createFrom().item(Optional.empty()))
-    //          .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+    // NO runSubscriptionOn — both callers (blocking renderer, reactive renderer Stage 1)
+    // are already on the worker pool. Adding runSubscriptionOn(workerPool) here would
+    // schedule the supplier onto the same pool the calling thread already occupies —
+    // deadlock under saturation.
 
     // put: Uni.createFrom().item(() -> { blocking.put(key, result); return null; })
     //          .onFailure().recoverWithNull()
     //          .replaceWithVoid()
-    //          .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+    // NO runSubscriptionOn — same reasoning as get().
 }
 ```
 
@@ -169,7 +172,16 @@ No `@IfBuildProperty` gate — per PP-20260529-5745c1. No Hibernate Reactive dep
 
 **`EidosSystemPromptRenderer`:**
 - Injects `ReactiveRenderedPromptCache` directly
-- Cache check: `reactiveCache.get(s1.cacheKey()).await().atMost(Duration.ofSeconds(5))`
+- Cache check:
+  ```java
+  Optional<RenderedPrompt> cached;
+  try {
+      cached = reactiveCache.get(s1.cacheKey()).await().atMost(Duration.ofSeconds(5));
+  } catch (Exception e) {
+      cached = Optional.empty(); // cache miss on any failure — render continues
+  }
+  ```
+- For the default adapter, `await()` resolves synchronously (no thread switch) — `atMost` cannot fire. The try-catch defends against future async implementations that violate the error contract or genuinely time out.
 - Safe: blocking renderer runs on request thread / worker pool, not event loop
 
 **`DefaultReactiveSystemPromptRenderer`:**
@@ -188,9 +200,13 @@ Uni.createFrom()
 
 Stage 3 ends with `reactiveCache.put(s1.cacheKey(), result).replaceWith(result)`.
 
-### Worker pool hops (known tradeoff)
+### Threading note
 
-After refactor, Stage 1 makes two sequential worker pool hops: one for payload building (`buildStage1`), one for cache lookup (inside the adapter's `runSubscriptionOn`). For the NoOp default this is negligible. For a future blocking cache (LRU), both hops are on the same pool — no event loop risk, minor scheduling overhead. Documented here; not optimised preemptively.
+The adapter has no `runSubscriptionOn`. Both callers are already on the worker pool when they call `reactiveCache.get()`:
+- Reactive renderer: Stage 1 is scheduled via `runSubscriptionOn(workerPool)` before chaining into `reactiveCache.get()` — one hop total for Stage 1.
+- Blocking renderer: the request thread is already a worker pool thread; `await()` resolves the `Uni` synchronously with no scheduling.
+
+For a future native async `ReactiveRenderedPromptCache` (`@Alternative @Priority(1)`), the `Uni` returned by `get()` is inherently non-blocking and needs no `runSubscriptionOn` either.
 
 ### Test restructuring for cache-hit invariant
 
@@ -245,14 +261,14 @@ record EvalResult(
     boolean completenessPass,         // structural check — see below
     List<String> missingCapabilities, // capabilities not found in rendered.content()
     Map<EvalDimension, EvalScore> scores,
-    double overall,                   // mean of EvalDimension scores only
+    double overall,                   // 0.0–5.0; mean of EvalDimension scores (COMPLETENESS excluded)
     List<String> issues
 )
 
 record EvalSummary(
     boolean allCasesComplete,
     Map<EvalDimension, Double> meanByDimension,
-    EvalDimension lowestScoringDimension,
+    EvalDimension lowestScoringDimension, // if tied, first in EvalDimension declaration order
     double meanOverall
 )
 
@@ -285,8 +301,19 @@ Removed from `EvalDimension` — LLM judges answer it inconsistently across runs
 `PromptJudge` — `@ApplicationScoped` bean in `eval/`:
 
 - One LLM call per case (after completeness check)
-- **Temperature: must be 0.0** — set in `%eval` profile: `quarkus.langchain4j.<provider>.temperature=0.0`. Without this, scores differ across runs and the threshold assertion is non-deterministic.
-- Judge model configured independently of rendering model via `%eval` profile
+- Injects `@ModelName("judge") ChatModel judgeModel` — **must be a separate named model** from the renderer's default `ChatModel`. Using the same model instance means the judge evaluates output it produced, defeating independence.
+- **Temperature: must be 0.0** on the judge model — otherwise scores differ across runs and the threshold assertion is non-deterministic.
+
+**`%eval` profile configuration** (`application-eval.properties`):
+```properties
+# Renderer model — default ChatModel used by EidosSystemPromptRenderer
+quarkus.langchain4j.openai.chat-model.model-name=gpt-4o
+
+# Judge model — named "judge", temperature 0 for determinism
+quarkus.langchain4j.judge.openai.chat-model.model-name=gpt-4o-mini
+quarkus.langchain4j.judge.openai.chat-model.temperature=0.0
+```
+(Provider names are examples; real values are caller-supplied secrets in `application-eval.properties`, git-ignored.)
 
 **Judge request:**
 ```
@@ -306,7 +333,7 @@ User: { "descriptor": {...}, "context": {...}, "rendered": "<rendered content>" 
 }
 ```
 
-Top-level keys are `EvalDimension` enum names. Parse: `mapper.readTree(json)`, iterate dimensions. Throws (does not swallow) on parse failure — judge misconfiguration is not a graceful degradation scenario.
+**Parsing:** `mapper.readTree(json)`, then iterate `EvalDimension.values()` only — use each enum name as the key. Extract `issues` separately via `node.get("issues")`. Do not attempt to deserialize unknown keys as `EvalScore`. Throws (does not swallow) on parse failure — judge misconfiguration is not a graceful degradation scenario.
 
 **Error contract:** if judge LLM not configured → CDI startup failure → clear error.
 
