@@ -278,12 +278,32 @@ record EvalReport(
     // No top-level format field — format is per-case via evalCase.context().format()
     List<EvalResult> results,
     EvalSummary summary
-)
+) {
+    static EvalReport build(List<EvalResult> results, String judgeModel) {
+        // Computes EvalSummary from results:
+        //   allCasesComplete = results.stream().allMatch(EvalResult::completenessPass)
+        //   meanByDimension  = per-dimension mean across all EvalResult.scores()
+        //   lowestScoring    = min by mean score; ties broken by EvalDimension declaration order
+        //   meanOverall      = mean of all EvalResult.overall() values
+        // timestamp = Instant.now()
+    }
+}
 ```
+
+### What the eval harness actually tests (v1 scope decision)
+
+**Eval harness v1 tests structural rendering quality.** `EvalProfile` configures only the judge `ChatModel` — no renderer `ChatModel`. `EidosSystemPromptRenderer` falls back to structural output when no `ChatModel` is resolvable. The judge evaluates structural renders against the LLM rubric.
+
+This is the correct scope for v1:
+- `completenessPass` works reliably on structural output (capability names appear literally)
+- One LLM call per case (judge only) — cheaper and more interpretable
+- The quality question is "is structural rendering good enough for agents?" not "does LLM enrichment work?"
+
+Enriched-path eval (where capability names appear only in prose) is eidos#21 scope.
 
 ### COMPLETENESS: programmatic structural check, not LLM judgment
 
-Completeness is deterministic and cheap:
+Completeness is deterministic and cheap — works correctly because structural rendering emits capability names literally:
 
 ```java
 boolean complete = descriptor.capabilities().stream()
@@ -300,14 +320,13 @@ Removed from `EvalDimension` — LLM judges answer it inconsistently across runs
 
 `PromptJudge` — `@ApplicationScoped` bean in `eval/`:
 
-- One LLM call per case (after completeness check)
-- Injects `@ModelName("judge") ChatModel judgeModel` — **must be a separate named model** from the renderer's default `ChatModel`. Using the same model instance means the judge evaluates output it produced, defeating independence.
+- One LLM call per case — the judge call is **always made**, regardless of `completenessPass` result. The eval measures quality; it is not a gate. A failing completeness check is surfaced in the report alongside the judge scores.
+- Injects `@ModelName("judge") ChatModel judgeModel` — no default `ChatModel` is configured in `EvalProfile` (renderer uses structural fallback). The judge is the only LLM in the eval run.
 - **Temperature: must be 0.0** on the judge model — otherwise scores differ across runs and the threshold assertion is non-deterministic.
 
 **`%eval` profile configuration** (`application-eval.properties`):
 ```properties
-# Renderer model — default ChatModel used by EidosSystemPromptRenderer
-quarkus.langchain4j.openai.chat-model.model-name=gpt-4o
+# No renderer ChatModel — EidosSystemPromptRenderer uses structural fallback (v1 scope)
 
 # Judge model — named "judge", temperature 0 for determinism
 quarkus.langchain4j.judge.openai.chat-model.model-name=gpt-4o-mini
@@ -364,7 +383,7 @@ class PromptEvalTest {
             .map(c -> judge.evaluate(c, renderer.render(c.descriptor(), c.context())))
             .toList();
 
-        EvalReport report = EvalReport.build(results);
+        EvalReport report = EvalReport.build(results, judgeModelName);
         EvalReportWriter.writeJson(report, Path.of("target/eval-report.json"));
         System.out.println(EvalReportWriter.summaryTable(report)); // returns String
 
@@ -381,7 +400,7 @@ class PromptEvalTest {
 }
 ```
 
-`EvalProfile` sets real `ChatModel` (renderer) + judge at temperature 0.0. CI Surefire excludes `@Tag("eval")`.
+`EvalProfile` sets only the named "judge" `ChatModel` at temperature 0.0. No renderer `ChatModel` — structural fallback path. CI Surefire excludes `@Tag("eval")`.
 
 `EvalReportWriter.summaryTable(report)` returns `String` — caller decides output stream.
 
