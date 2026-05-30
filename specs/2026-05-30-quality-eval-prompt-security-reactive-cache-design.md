@@ -3,7 +3,7 @@
 **Date:** 2026-05-30  
 **Branch:** issue-016-quality-eval-security  
 **Issues:** eidos#16 (offline quality eval), eidos#15 (prompt injection), eidos#19 (ReactiveRenderedPromptCache)  
-**Deferred:** eidos#20 (optional field validation), eidos#21 (multi-format eval coverage)
+**Deferred:** eidos#20 (optional + capability name field validation), eidos#21 (multi-format eval coverage)
 
 ---
 
@@ -18,7 +18,9 @@ All three issues benefit from first making `EidosRenderPipeline` stateless.
 - `RenderedPromptCache` injection removed from `EidosRenderPipeline`
 - `cacheGet()` and `assembleAndCache()` removed
 - `buildStage1(AgentDescriptor, AgentPromptContext) → StageOneResult` added as a shared pipeline method
-- `StageOneResult` promoted to package-private record in `renderer/`:
+- `assemble(...)` signature extended to accept `StageOneResult` and returns `RenderedPrompt` directly — eliminates boilerplate `RenderedPrompt` construction in callers
+
+`StageOneResult` — promoted to package-private record in `renderer/`:
 
 ```java
 record StageOneResult(
@@ -30,21 +32,22 @@ record StageOneResult(
 )
 ```
 
-- `assemble(...)` unchanged — returns `String`
-- Pipeline now depends only on `VocabularyRegistry` (pure lookup) and `ObjectMapper` (stateless) — trivially unit-testable, thread-safe by construction, no observable side effects
+`assemble(...)` new signature:
 
-**`EidosSystemPromptRenderer` after:**
-1. Injects `RenderedPromptCache` directly
-2. Calls `pipeline.buildStage1(descriptor, context)`
-3. Checks `cache.get(s1.cacheKey())`; returns hit if present
-4. Runs enrichment steps (unchanged)
-5. Calls `pipeline.assemble(...)`; wraps in `RenderedPrompt`; calls `cache.put(...)`
+```java
+RenderedPrompt assemble(
+    StageOneResult s1,
+    Optional<SemanticEnrichment> enrichment,
+    Optional<A2AEnrichment> a2aEnrichment,
+    AgentDescriptor descriptor,
+    AgentPromptContext context
+)
+// Returns: new RenderedPrompt(content, context.format(), s1.descriptorHash(), s1.contextHash())
+```
 
-**`DefaultReactiveSystemPromptRenderer` after:**
-1. Injects `RenderedPromptCache` directly (blocking; Stage 1 runs on worker pool — correct by design)
-2. Stage 1: `Uni.item(() -> pipeline.buildStage1(...)).runSubscriptionOn(workerPool)`, then inline cache check
-3. Stage 2+3: unchanged threading model
-4. Stage 3: `pipeline.assemble(...)` → `new RenderedPrompt(...)` → `cache.put(...)`
+Pipeline now depends only on `VocabularyRegistry` (pure lookup) and `ObjectMapper` (stateless) — trivially unit-testable, thread-safe by construction, no observable side effects.
+
+**`EidosRenderPipelineTest` constructor update:** `new EidosRenderPipeline(vocab, mapper)` — no `RenderedPromptCache` arg.
 
 ---
 
@@ -52,13 +55,15 @@ record StageOneResult(
 
 ### Field Audit
 
-| Field | Status | Reason |
-|-------|--------|--------|
-| `agentId` | **Required** | `node.put("agentId", ...)` — no null guard in pipeline |
-| `name` | **Required** | `node.put("name", ...)` — no null guard in pipeline |
-| `slot` | **Required** | `node.put("slot", ...)` — no null guard in pipeline |
-| `tenancyId` | **Required** | All registry queries are tenancy-scoped; null breaks them |
-| All others | Optional | Guarded with `addIfPresent` or null checks throughout pipeline |
+| Field | Status | Evidence |
+|-------|--------|----------|
+| `agentId` | **Required** | `node.put("agentId", ...)` — no null guard, pipeline:143 |
+| `name` | **Required** | `node.put("name", ...)` — no null guard, pipeline:144 |
+| `slot` | **Required** | `node.put("slot", ...)` — no null guard, pipeline:154 |
+| `tenancyId` | **Required** | All registry queries tenancy-scoped; null breaks them |
+| `capabilities[*].name()` | **Injection surface** | Appended raw: `sb.append("- **").append(cap.name()).append("**")` at pipeline:362. A name containing `\n## Injected Section\n` injects Markdown structure. Scoped to eidos#20. |
+| `jurisdiction`, `dataHandlingPolicy` | **Unescaped** | Appended raw in `assembleClaudeMarkdownStructural`. Injection surface pending eidos#20. Do not describe as "guarded." |
+| Other optional fields | Optional | Guarded by `addIfPresent` / null checks in payload builder, but appended raw in structural assembly in some cases — pending eidos#20. |
 
 ### Design
 
@@ -70,68 +75,106 @@ public AgentDescriptor {
 }
 ```
 
-**`AgentDescriptorValidator`** — package-private static utility in `io.casehub.eidos.api`:
+**`AgentDescriptorValidator`** — package-private static utility in `io.casehub.eidos.api`. Single static `validate()` method keeps the compact constructor to one line and makes validation rules independently readable and testable.
 
-- `static void validate(String agentId, String name, String slot, String tenancyId)`
-- Throws `AgentDescriptorValidationException` (field name + violation message)
+**`AgentDescriptorValidationException`** — **public** `extends IllegalArgumentException` in `api/`. Callers in `api/` consumers need to catch it specifically. Constructor takes field name + violation description.
 
-Rules per required field:
+Validation rules per required field:
 
 | Rule | Detail |
 |------|--------|
 | Non-null, non-blank | `null` or whitespace-only → rejected |
-| Length limit | `agentId`/`tenancyId` ≤ 255; `name` ≤ 200; `slot` ≤ 100 |
+| Length limit | `agentId`/`tenancyId` ≤ 255; `name` ≤ 200; `slot` ≤ 100. Bounds chosen to cap cache key length and LLM payload size. |
 | No C0/C1 control chars | Codepoints 0–31 and 127–159 rejected |
 | No Unicode direction overrides | U+200E, U+200F, U+202A–202E, U+2066–2069 rejected |
-| No zero-width characters | U+200B, U+FEFF, U+200C, U+200D rejected |
+| No zero-width / line-separator chars | U+200B, U+FEFF, U+200C, U+200D, U+2028 (LINE SEPARATOR), U+2029 (PARAGRAPH SEPARATOR) rejected. U+2028/U+2029 sit above U+009F (not C1) but function as line breaks in many LLM tokenizers. |
 
 No keyword blocklist — length + character set is the correct defence for open-string fields. Domain-defined slot values cannot be whitelisted at the platform level.
 
-**`AgentDescriptorValidationException extends IllegalArgumentException`** — new in `api/`. Constructor takes field name + violation description.
+### Capability name and optional field injection (eidos#20 scope clarification)
 
-### Why compact constructor (not registry boundary)
+Capability names are **not** optional — they are a concrete injection surface appended raw into structural renders. `jurisdiction` and `dataHandlingPolicy` are also appended raw. eidos#20 must cover:
+- `AgentCapability.name()` — apply same character-set + length rules
+- All optional `AgentDescriptor` string fields sent to rendered output unescaped
 
-Every `AgentDescriptor` in the system is guaranteed valid at construction time. No registry implementation needs to call a separate validator. Callers catching `IllegalArgumentException` catch `AgentDescriptorValidationException` automatically.
+### Testing
 
-### Optional field validation
-
-Deferred to eidos#20. The four required fields are the active injection surface (sent to LLM unconditionally). Optional fields are included in the payload only when present, but character-set validation on them is worth adding in a follow-up.
+Parameterized test `AgentDescriptorValidatorTest` — `@ParameterizedTest` over cases:
+- Each required field: null, blank, over length limit, each banned character class
+- Each case asserts `AgentDescriptorValidationException` with correct field name
+- Happy path: valid descriptor constructs without exception
 
 ---
 
 ## 2. eidos#19 — `ReactiveRenderedPromptCache` SPI
 
+### Canonical SPI Decision
+
+`ReactiveRenderedPromptCache` is the canonical cache SPI. Both renderers inject it. This eliminates the coherence problem that arises when two independent SPIs (`RenderedPromptCache` and `ReactiveRenderedPromptCache`) could be backed by different stores simultaneously.
+
+`RenderedPromptCache` remains in `api/` as a **convenience blocking SPI** for implementations that don't want Mutiny. A single adapter (`BlockingToReactiveRenderedPromptCacheAdapter`) wraps whichever `RenderedPromptCache` is active, satisfying the `ReactiveRenderedPromptCache` injection point. Both renderers always see the same backing store.
+
 ### New in `casehub-eidos-api`
 
 ```java
 public interface ReactiveRenderedPromptCache {
+
+    /**
+     * Returns the cached prompt for the given key.
+     * On failure, implementations must recover and return Uni<Optional.empty()> —
+     * a cache miss must never abort a render.
+     */
     Uni<Optional<RenderedPrompt>> get(String cacheKey);
 
-    /** Must not throw — implementations handle errors internally. */
+    /**
+     * Stores a rendered prompt. Must not emit a failure — implementations recover
+     * internally so a cache write failure never aborts a render.
+     */
     Uni<Void> put(String cacheKey, RenderedPrompt result);
 }
 ```
 
-### New in `runtime/renderer/` — `ReactiveRenderedPromptCacheBridge`
+### New in `runtime/cache/` — `BlockingToReactiveRenderedPromptCacheAdapter`
+
+Location: `runtime/cache/` — not `runtime/renderer/`. This is general infrastructure, not renderer-specific.
 
 ```java
 @DefaultBean
 @ApplicationScoped
-class ReactiveRenderedPromptCacheBridge implements ReactiveRenderedPromptCache {
-    // Injects RenderedPromptCache (blocking)
+class BlockingToReactiveRenderedPromptCacheAdapter implements ReactiveRenderedPromptCache {
+    // Injects RenderedPromptCache (blocking — NoOp by default, or @Alternative @Priority(1))
+
     // get: Uni.createFrom().item(() -> blocking.get(key))
+    //          .onFailure().recoverWith(e -> Uni.createFrom().item(Optional.empty()))
     //          .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
-    // put: Uni.createFrom().item(() -> { blocking.put(key,r); return null; })
+
+    // put: Uni.createFrom().item(() -> { blocking.put(key, result); return null; })
+    //          .onFailure().recoverWithNull()
     //          .replaceWithVoid()
     //          .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
 }
 ```
 
-No `@IfBuildProperty` gate — per PP-20260529-5745c1. No Hibernate Reactive dependency; safe to activate unconditionally.
+No `@IfBuildProperty` gate — per PP-20260529-5745c1. No Hibernate Reactive dependency; safe unconditionally.
 
-### `DefaultReactiveSystemPromptRenderer` updated
+### CDI Resolution
 
-Stage 1 becomes a reactive chain using `ReactiveRenderedPromptCache`:
+| Scenario | `RenderedPromptCache` | `ReactiveRenderedPromptCache` | Backing store |
+|----------|-----------------------|-------------------------------|---------------|
+| Default | `NoOpRenderedPromptCache @DefaultBean` | `BlockingToReactiveRenderedPromptCacheAdapter @DefaultBean` (wraps NoOp) | NoOp — coherent |
+| Custom blocking (e.g. LRU) | `MyLruCache @Alternative @Priority(1)` | Adapter `@DefaultBean` (wraps MyLruCache) | MyLruCache — coherent |
+| Custom native reactive (e.g. Redis) | `NoOpRenderedPromptCache @DefaultBean` | `MyRedisCache @Alternative @Priority(1)` | Redis — coherent |
+
+### Renderer Updates
+
+**`EidosSystemPromptRenderer`:**
+- Injects `ReactiveRenderedPromptCache` directly
+- Cache check: `reactiveCache.get(s1.cacheKey()).await().atMost(Duration.ofSeconds(5))`
+- Safe: blocking renderer runs on request thread / worker pool, not event loop
+
+**`DefaultReactiveSystemPromptRenderer`:**
+- Injects `ReactiveRenderedPromptCache` directly
+- Stage 1 reactive chain:
 
 ```java
 Uni.createFrom()
@@ -143,17 +186,25 @@ Uni.createFrom()
                                   : executeStagesTwoAndThree(s1, descriptor, context)))
 ```
 
-Stage 3 ends with `reactiveCache.put(cacheKey, result).replaceWith(result)`.
+Stage 3 ends with `reactiveCache.put(s1.cacheKey(), result).replaceWith(result)`.
 
-### CDI resolution
+### Worker pool hops (known tradeoff)
 
-| Type | Bean | Activation |
-|------|------|-----------|
-| `RenderedPromptCache` | `NoOpRenderedPromptCache @DefaultBean` | Always (unchanged) |
-| `ReactiveRenderedPromptCache` | `ReactiveRenderedPromptCacheBridge @DefaultBean` | Always |
-| Future reactive impl (Redis) | `@Alternative @Priority(1)` | Classpath presence |
+After refactor, Stage 1 makes two sequential worker pool hops: one for payload building (`buildStage1`), one for cache lookup (inside the adapter's `runSubscriptionOn`). For the NoOp default this is negligible. For a future blocking cache (LRU), both hops are on the same pool — no event loop risk, minor scheduling overhead. Documented here; not optimised preemptively.
 
-`EidosSystemPromptRenderer` continues to inject `RenderedPromptCache` (blocking) — unaffected.
+### Test restructuring for cache-hit invariant
+
+`DefaultReactiveSystemPromptRendererStreamingTest.cache_hit_returns_without_any_llm_call()` currently wires `TestRenderedPromptCache` through the pipeline. After refactor:
+
+1. Add `ReactiveRenderedPromptCache cache` param to the package-private test constructor of `DefaultReactiveSystemPromptRenderer`
+2. Test pre-computes the cache key: call `pipeline.buildStage1(descriptor, context)` to get `s1.cacheKey()`
+3. Pre-populate a `TestReactiveRenderedPromptCache` (simple `ConcurrentHashMap`-backed impl in `src/test/`) with that key
+4. Inject the pre-populated cache into the renderer via the test constructor
+5. Call `render()` — assert the `StreamingChatModel` is never called
+
+`EidosRenderPipelineTest.setUp()`: change from `new EidosRenderPipeline(vocab, cache, mapper)` to `new EidosRenderPipeline(vocab, mapper)`.
+
+`EidosSystemPromptRendererTest`: add `ReactiveRenderedPromptCache` param to package-private test constructor.
 
 ---
 
@@ -161,23 +212,29 @@ Stage 3 ends with `reactiveCache.put(cacheKey, result).replaceWith(result)`.
 
 ### Module
 
-New top-level Maven module: `eval/` (`casehub-eidos-eval`).
+New top-level Maven module: `eval/` (`casehub-eidos-eval`), sibling to `api/`, `runtime/`, `deployment/`.
 
 - Depends on `casehub-eidos` (runtime) + LangChain4j `ChatModel` for judge
 - `maven-deploy-plugin` configured with `<skip>true</skip>` — not released, not in consumer transitive graph
-- Activated with `-Peval` Maven profile; excluded from CI
+- CI exclusion: parent POM or `eval/` module POM sets `<excludedGroups>eval</excludedGroups>` in Surefire — prevents CI from attempting to run `@Tag("eval")` tests that require a real LLM
+- Activated manually: `mvn test -Peval -pl eval`
+- `Instant` serialization: Quarkus Jackson extension registers `JavaTimeModule` automatically — no additional dep needed in a `@QuarkusTest` context
+
+### EvalDataset — module dependency resolution
+
+`eval/` cannot import from `examples/agent-scenarios/` without a declared Maven dependency. **Chosen approach: define descriptors inline in `EvalDataset`** — keeps `eval/` self-contained with no cross-module test dependency. The fixture descriptors are small; duplication is acceptable. `EvalDataset` is the canonical eval fixture; `examples/agent-scenarios/` remains the CDI demo fixture.
 
 ### Core Types (`io.casehub.eidos.eval`)
 
 ```java
 record EvalCase(String name, AgentDescriptor descriptor, AgentPromptContext context)
 
+// COMPLETENESS removed from LLM dimensions — see below
 enum EvalDimension {
-    COMPLETENESS,     // all declared capabilities and non-null fields represented
-    SECOND_PERSON,    // "you"/"your" throughout; no third person
-    CONCISENESS,      // no redundancy, no filler, dense information
-    FACTUAL_FIDELITY, // nothing claimed that isn't in descriptor + context
-    TONE              // reads as instructions to an AI, not documentation about one
+    SECOND_PERSON,    // "you"/"your" throughout; no "the agent", "it", third person
+    CONCISENESS,      // no redundancy, no filler, dense information per sentence
+    FACTUAL_FIDELITY, // nothing claimed that is absent from descriptor + context
+    TONE              // reads as instructions to an agent, not documentation about one
 }
 
 record EvalScore(int score, String reasoning)  // 0–5
@@ -185,12 +242,15 @@ record EvalScore(int score, String reasoning)  // 0–5
 record EvalResult(
     EvalCase evalCase,
     RenderedPrompt rendered,
+    boolean completenessPass,         // structural check — see below
+    List<String> missingCapabilities, // capabilities not found in rendered.content()
     Map<EvalDimension, EvalScore> scores,
-    double overall,
+    double overall,                   // mean of EvalDimension scores only
     List<String> issues
 )
 
 record EvalSummary(
+    boolean allCasesComplete,
     Map<EvalDimension, Double> meanByDimension,
     EvalDimension lowestScoringDimension,
     double meanOverall
@@ -199,31 +259,65 @@ record EvalSummary(
 record EvalReport(
     Instant timestamp,
     String judgeModel,
-    RenderFormat format,
+    // No top-level format field — format is per-case via evalCase.context().format()
     List<EvalResult> results,
     EvalSummary summary
 )
 ```
 
+### COMPLETENESS: programmatic structural check, not LLM judgment
+
+Completeness is deterministic and cheap:
+
+```java
+boolean complete = descriptor.capabilities().stream()
+    .allMatch(cap -> rendered.content().contains(cap.name()));
+List<String> missing = descriptor.capabilities().stream()
+    .map(AgentCapability::name)
+    .filter(name -> !rendered.content().contains(name))
+    .toList();
+```
+
+Removed from `EvalDimension` — LLM judges answer it inconsistently across runs. Reported separately as `completenessPass` / `missingCapabilities` in `EvalResult`. The test asserts `allCasesComplete == true` independently of the LLM score floor.
+
 ### Judge Design
 
 `PromptJudge` — `@ApplicationScoped` bean in `eval/`:
 
-- Single LLM call per case
-- System message: rubric definition (each `EvalDimension`, 0–5 scale, scoring guidance)
-- User message: `{ "descriptor": {...}, "context": {...}, "rendered": "..." }`
-- Response format: LangChain4j `ResponseFormat` with JSON schema — one `{score, reasoning}` per dimension + `issues` array
-- Throws (does not swallow) on parse failure — judge failure is a configuration problem, not a graceful degradation
+- One LLM call per case (after completeness check)
+- **Temperature: must be 0.0** — set in `%eval` profile: `quarkus.langchain4j.<provider>.temperature=0.0`. Without this, scores differ across runs and the threshold assertion is non-deterministic.
+- Judge model configured independently of rendering model via `%eval` profile
 
-The judge model is configured independently of the rendering model via `%eval` profile. Misconfigured judge → CDI startup failure → clear error, not silent fallback.
+**Judge request:**
+```
+System: <rubric definition — each EvalDimension, scale 0-5, scoring guidance>
+User: { "descriptor": {...}, "context": {...}, "rendered": "<rendered content>" }
+```
 
-### Eval Dataset
+**Judge response schema** (LangChain4j `ResponseFormat` with JSON schema):
 
-`EvalDataset` provides the initial set of `EvalCase` instances:
+```json
+{
+  "SECOND_PERSON":    { "score": 5, "reasoning": "..." },
+  "CONCISENESS":      { "score": 4, "reasoning": "..." },
+  "FACTUAL_FIDELITY": { "score": 5, "reasoning": "..." },
+  "TONE":             { "score": 4, "reasoning": "..." },
+  "issues": ["..."]
+}
+```
 
-- Reuses descriptors from `examples/agent-scenarios/` (devtown team, cross-vocab, epistemic, tenancy, disposition)
-- Adds a minimal case (only required fields: `agentId`, `name`, `slot`, `tenancyId`)
-- Adds a maximal case (all fields populated including all capability fields and full disposition)
+Top-level keys are `EvalDimension` enum names. Parse: `mapper.readTree(json)`, iterate dimensions. Throws (does not swallow) on parse failure — judge misconfiguration is not a graceful degradation scenario.
+
+**Error contract:** if judge LLM not configured → CDI startup failure → clear error.
+
+### EvalDataset
+
+Inline fixture descriptors (not imported from `examples/`):
+- Devtown planner (multi-capability, epistemic domains, disposition)
+- Cross-vocabulary agent (two vocabulary URIs)
+- Minimal (only required fields: `agentId`, `name`, `slot`, `tenancyId`)
+- Maximal (all fields: all capabilities, full disposition, goal, resources, situational context)
+- Epistemic weak (capability with low domain confidence)
 
 Initial scope: `CLAUDE_MD` format only. Multi-format coverage deferred to eidos#21.
 
@@ -245,20 +339,24 @@ class PromptEvalTest {
 
         EvalReport report = EvalReport.build(results);
         EvalReportWriter.writeJson(report, Path.of("target/eval-report.json"));
-        EvalReportWriter.printSummary(report, System.out);
+        System.out.println(EvalReportWriter.summaryTable(report)); // returns String
 
-        assertThat(report.summary().meanOverall()).isGreaterThanOrEqualTo(3.5);
+        // Structural check: all capabilities must appear in every rendered prompt
+        assertThat(report.summary().allCasesComplete()).isTrue();
+
+        // Score floor: set after first baseline run
+        // Initial value TBD — run eval once, observe scores, set to max(3.0, baseline − 0.5)
+        // Commit target/eval-report.json alongside the threshold decision
+        assertThat(report.summary().meanOverall()).isGreaterThanOrEqualTo(SCORE_FLOOR);
     }
+
+    private static final double SCORE_FLOOR = 3.5; // update after first run
 }
 ```
 
-`EvalProfile` configures a real `ChatModel` (judge). CI never runs `@Tag("eval")` tests.
+`EvalProfile` sets real `ChatModel` (renderer) + judge at temperature 0.0. CI Surefire excludes `@Tag("eval")`.
 
-`EvalReportWriter` writes `target/eval-report.json`. The file is committed manually when checkpointing scores.
-
-### Threading
-
-`PromptJudge.evaluate()` is blocking — it uses a `ChatModel`, not `StreamingChatModel`. Called from a `@QuarkusTest` on the test thread. No reactive concerns.
+`EvalReportWriter.summaryTable(report)` returns `String` — caller decides output stream.
 
 ---
 
@@ -266,34 +364,36 @@ class PromptEvalTest {
 
 ### #15 — `AgentDescriptorValidator`
 
-- Unit tests in `api/` (pure Java, no CDI): happy path, each required field failing each rule independently
-- Null `agentId`, blank `name`, control char in `slot`, direction override in `tenancyId`
-- `AgentDescriptorValidationException` carries correct field name in each case
-- Existing `AgentDescriptorTest` extended (or new `AgentDescriptorValidatorTest`)
-
-### #19 — `ReactiveRenderedPromptCache`
-
-- `ReactiveRenderedPromptCacheBridge` unit test: verify `get()` delegates to blocking cache on worker pool; verify `put()` delegates; verify errors are swallowed in `put()` (per `RenderedPromptCache` contract)
-- `DefaultReactiveSystemPromptRenderer` test: existing tests verify cache hit path; add test for reactive cache miss → enrichment → cache put
-- Parity test: blocking and reactive renderers produce identical output for same input (extends `BlockingReactiveParityTest`)
+`AgentDescriptorValidatorTest` (pure Java, no CDI):
+- `@ParameterizedTest` over ~20 cases: each required field × each rule (null, blank, over-length, each banned codepoint class: C0, C1, BiDi override, zero-width, U+2028, U+2029)
+- Each case: asserts `AgentDescriptorValidationException` with correct field name in message
+- Happy path: valid descriptor constructs without exception
 
 ### Pipeline refactor
 
-- `EidosRenderPipelineTest` extended: `buildStage1()` returns correct hashes and key; verifies `StageOneResult` fields
-- Existing rendering tests remain green — refactor is transparent to callers
+- `EidosRenderPipelineTest` constructor: `new EidosRenderPipeline(vocab, mapper)` — no cache arg
+- `buildStage1()` unit test: correct hashes, correct key derivation, `StageOneResult` fields
+- All existing rendering tests must remain green — refactor is transparent to rendered output
 
-### #16 — Eval harness
+### #19 — `ReactiveRenderedPromptCache`
 
-- `PromptJudge` unit test with a stub `ChatModel` — verifies JSON schema parsing and `EvalResult` construction
-- `EvalDataset` unit test — verifies all cases have non-null required fields
-- `EvalReportWriter` unit test — round-trip JSON serialisation
-- The `@Tag("eval")` integration test is the acceptance test: run manually with a real LLM configured
+- `BlockingToReactiveRenderedPromptCacheAdapterTest`: `get()` delegates to blocking; `get()` returns `Optional.empty()` on failure (does not propagate); `put()` delegates; `put()` recovers on failure (Uni completes, does not fail)
+- `DefaultReactiveSystemPromptRendererStreamingTest` — cache-hit test restructured per §2 above: pre-populate `TestReactiveRenderedPromptCache` via test constructor; assert `StreamingChatModel` never called
+- `EidosSystemPromptRendererTest`: add `ReactiveRenderedPromptCache` to test constructor; existing cache-hit test updated
+- Parity test: blocking and reactive renderers produce identical output for same input (extends `BlockingReactiveParityTest`)
+
+### #16 — Eval harness unit tests
+
+- `PromptJudgeTest` with stub `ChatModel` returning valid judge JSON — verifies `EvalResult` construction, dimension scores, `overall` calculation
+- `EvalDatasetTest` — all cases have valid descriptors (non-null required fields)
+- `EvalReportWriterTest` — JSON round-trip; `summaryTable()` returns non-empty String
+- `EvalResult` completeness check: unit test with known descriptor + rendered content with one missing capability name
 
 ---
 
 ## 5. Deferred Issues
 
-| Issue | Title | Why deferred |
-|-------|-------|--------------|
-| eidos#20 | Optional field validation in `AgentDescriptorValidator` | Required fields cover the active LLM injection surface; optional fields are guarded in the pipeline |
-| eidos#21 | Multi-format eval coverage | A2A_CARD needs a different rubric; OPENAI_SYSTEM/GEMINI need format-specific criteria; scope kept tight for initial harness |
+| Issue | Title | Scope clarification |
+|-------|-------|---------------------|
+| eidos#20 | Optional + capability name field validation | `AgentCapability.name()` is an active injection surface (appended raw in structural render). `jurisdiction`, `dataHandlingPolicy` are also appended raw. Scope eidos#20 to cover these explicitly, not just "optional fields." |
+| eidos#21 | Multi-format eval coverage | A2A_CARD needs structural rubric (JSON, not prose); OPENAI_SYSTEM and GEMINI need format-specific dimensions. `EvalReport` has no top-level `format` field — safe to extend. |
