@@ -48,3 +48,41 @@ Plain record constructor allows `new GoalContext("review", null, null)` — both
 ### YAML values must be single-quoted
 
 Raw value concatenation produces invalid YAML for values containing `:`, `#`, `|`, `>`. Single-quote scalar style handles all special characters; single quotes in values are doubled (`''`).
+
+---
+
+## §eidos21-20-22 — RenderFormat rename, validation surface, multi-format eval
+
+**Date:** 2026-05-31 | **Branch:** issue-021-020-eval-coverage-validation
+
+### RenderFormat: structure-named over provider-named
+
+`RenderFormat` renamed from provider-named (`CLAUDE_MD`, `OPENAI_SYSTEM`, `GEMINI`) to structure-named (`MARKDOWN`, `PROSE`, `A2A_CARD`). `OPENAI_SYSTEM` and `GEMINI` collapsed into `PROSE` — they were structurally identical except for one space in a resource citation, which does not justify a separate format.
+
+Provider-named values force a new enum member per LLM provider even when providers produce identical output. The real distinction is output structure: markdown-capable vs. dense prose vs. JSON. Sub-labels (e.g. `PROSE_OPENAI`) can be added later only if concrete structural differences emerge. Protocol: PP-20260531-60dc12.
+
+### AgentValidationException: generic name for all agent records
+
+`AgentDescriptorValidationException` → `AgentValidationException`. The exception is now thrown from `AgentDescriptor`, `AgentCapability`, and `AgentDisposition` compact constructors. The old name was misleading when thrown from a capability.
+
+### Validation at compact constructor: AgentCapability and AgentDisposition
+
+`AgentCapability` validates all string fields at construction time: `name` (required, ≤100), `costHint` (optional, ≤200), `inputTypes`/`outputTypes`/`tags` items (≤200 each), `epistemicDomains` keys (≤200). Same character-set rules as `AgentDescriptor` (PP-20260530-2d6dbd).
+
+`AgentDisposition` validates its 4 open-string axes: null-permissive, blank-rejecting, ≤200 chars, no banned characters. Each value object validates its own invariants at construction.
+
+`AgentDescriptor` compact constructor extended to validate 10 optional String fields: version/provider/modelFamily/modelVersion (≤200), weightsFingerprint (≤255), vocabulary URIs (≤500), jurisdiction/dataHandlingPolicy (≤1000). `AgentDescriptorValidator` extended with `validateOptional`, `validateItems`, `validateMapKeys`.
+
+All string fields flowing into the LLM payload or the A2A card are now injection surfaces protected at construction — no invalid record can exist anywhere in the system.
+
+### EvalReport: format-grouped, no cross-format summary
+
+`EvalReport` redesigned from flat shape (`List<EvalResult>` + single `EvalSummary`) to format-grouped shape (`Map<RenderFormat, List<EvalResult>> resultsByFormat` + `Map<RenderFormat, EvalSummary> summaryByFormat`). A single cross-format summary is meaningless — `CONCISENESS` scored on markdown cannot be averaged with dense prose, and `COMPLETENESS` (A2A only) has no meaning for prose formats. `LinkedHashMap` for deterministic iteration order.
+
+### EvalDimension: COMPLETENESS for A2A + applicableFor
+
+`COMPLETENESS` added as 5th `EvalDimension` (A2A_CARD only: all capabilities have non-empty quality descriptions). `applicableFor(RenderFormat)` static method returns the applicable dimension set per format: `{SECOND_PERSON, CONCISENESS, FACTUAL_FIDELITY, TONE}` for MARKDOWN/PROSE; `{COMPLETENESS, FACTUAL_FIDELITY}` for A2A_CARD. Placing the mapping on the enum means both `PromptJudge` and `EvalReport.build()` share the same source of truth without coupling.
+
+### A2A completeness check: JSON-aware, not substring
+
+For A2A_CARD, `completenessPass` is determined by parsing the rendered JSON and checking that each capability has a non-empty `description` field. The old substring-contains check always passes for JSON — capability names are always present in the `name` field of each JSON object regardless of description presence.
