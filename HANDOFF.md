@@ -1,38 +1,39 @@
 # CaseHub Eidos — Session Handover
-**Date:** 2026-05-31
+**Date:** 2026-06-01
 
 ## Current State
 
-Three issues closed and delivered to `casehubio/eidos` main (3 squashed commits):
+eidos#24 closed and delivered to `casehubio/eidos` main (6 squashed commits):
 
-- **eidos#21** (foundational): `RenderFormat` renamed to structure-named (`MARKDOWN`, `PROSE`, `A2A_CARD`). `OPENAI_SYSTEM` + `GEMINI` collapsed into `PROSE` — structurally identical, one space in resource formatting is not a format. Multi-format eval harness: `EvalDimension.COMPLETENESS` + `applicableFor(RenderFormat)`, `EvalReport` format-grouped, `PromptJudge` format-aware with JSON-aware A2A completeness check, 9 `EvalDataset` cases.
-- **eidos#22** (security): `AgentCapability` compact constructor validates all string fields. `AgentDescriptorValidationException` → `AgentValidationException`. `AgentDescriptorValidator` extended with `validateOptional`/`validateItems`/`validateMapKeys`.
-- **eidos#20** (security): `AgentDescriptor` optional field validation (10 fields). `AgentDisposition` compact constructor (4 axes).
+- `validateRequired` comment corrected (misattributed null enforcement) + `validateRequired_null_throws` test
+- `MAX_MODEL_IDENTIFIER` and `MAX_DATA_HANDLING_POLICY` constants replacing wrong-named constants in `AgentDescriptorValidator`; boundary tests for both
+- `EvalReportWriterTest` refactored: `sampleMarkdownResult()` helper + multi-format isolation test
+- `MalformedJudgeResponseException` introduced in eval — parse failures no longer mis-reported as "LLM call failed"
+- `EvalResult.overall` comment fixed ("all four" → "applicable for the result's format")
 
-Branch `issue-021-020-eval-coverage-validation` closed. Both repos on main. 12 commits squashed to 3 for upstream delivery.
+Branch `issue-024-review-followups` closed. Both repos on main.
 
 ## Immediate Next Step
 
-Run `/work` for the next issue — Phase 4 knowledge graph is the natural next milestone. Or pick up eidos#24 (minor code review follow-ups) or eidos#23 (real-world agent profile library — now unblocked).
+Run `/work` for eidos#23 (real-world agent profile library) — unblocked, should complete before Phase 4.
 
 ## What's Left
 
-- eidos#24 — Minor code review follow-ups: `validateRequired` wrapper comment, `MAX_MODEL_IDENTIFIER` constant rename, `dataHandlingPolicy`/`MAX_JURISDICTION` comment, multi-format `EvalReportWriterTest`, `PromptJudge` re-throw comment · XS · Low
+- eidos#25 — `JsonProcessingException` from `PromptJudge.parseResponse()` still falls through to "LLM call failed" — same wrong message as the ISE we just fixed, different cause · XS · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| — | Phase 4: knowledge graph (descriptor, task, outcome, attestation nodes) | L | High | Next major milestone; eidos#23 should precede this |
-| #23 | Real-world agent profile library (internet + Google Scholar research) | M | Med | Now unblocked — #21, #20, #22 closed; should complete before knowledge graph |
-| #24 | Minor code review follow-ups from this branch | XS | Low | Cosmetic; batch into one commit |
+| #23 | Real-world agent profile library (internet + Google Scholar research) | M | Med | Should precede Phase 4 |
+| — | Phase 4: knowledge graph (descriptor, task, outcome, attestation nodes) | L | High | Next major milestone |
 
 ## References
 
 | What | Path |
 |------|------|
-| Latest blog | `blog/2026-05-31-mdp01-format-names-matter.md` |
-| Design spec | `docs/superpowers/specs/2026-05-31-multi-format-eval-validation-design.md` (project repo) |
-| Garden entries | GE-20260531-4354e3 (A2A substring completeness), GE-20260531-686150 (enum dimension set regression), GE-20260531-5e6553 (applicableFor technique), GE-20260531-afc422 (structure-named format enum) |
-| Protocol | PP-20260531-60dc12 (render-format-structure-naming) |
-| Minor follow-ups | eidos#24 |
+| Latest blog | `blog/2026-06-01-mdp01-wrong-name-right-exception.md` |
+| Design spec | `docs/specs/2026-06-01-code-review-followups-design.md` (project repo) |
+| Garden entries | GE-20260601-c1a8f9 (subagent worktree commit isolation), GE-20260601-aa7b04 (TDD characterisation test for constant renames) |
+| Protocol | PP-20260601-347bba (eidos-validator-constant-per-field) |
+| Open issue | eidos#25 (JsonProcessingException misclassification) |
