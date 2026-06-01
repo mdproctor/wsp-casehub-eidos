@@ -1,0 +1,8 @@
+branch: issue-024-review-followups
+project-sha: babf470ea4366da6a5ac860060f66ecd79b4d6c8
+date: 2026-06-01
+issue: 24
+issue-repo: casehubio/eidos
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
