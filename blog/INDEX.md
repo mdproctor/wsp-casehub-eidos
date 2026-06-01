@@ -13,3 +13,4 @@
 | [2026-05-29-mdp03-hold-no-threads.md](2026-05-29-mdp03-hold-no-threads.md) | 2026-05-29 | Hold no threads — streaming renderer, three-stage threading, CompletableFuture bridge |
 | [2026-05-30-mdp01-deadlock-in-the-adapter.md](2026-05-30-mdp01-deadlock-in-the-adapter.md) | 2026-05-30 | Three issues, one pipeline — reactive cache coherence, runSubscriptionOn deadlock, compact constructor validation, eval harness |
 | [2026-05-31-mdp01-format-names-matter.md](2026-05-31-mdp01-format-names-matter.md) | 2026-05-31 | RenderFormat renamed to MARKDOWN/PROSE/A2A_CARD; A2A completeness bug; validation extended to AgentCapability and AgentDisposition |
+| [2026-06-01-mdp01-wrong-name-right-exception.md](2026-06-01-mdp01-wrong-name-right-exception.md) | 2026-06-01 | eidos#24 follow-ups: constant naming fixes, null enforcement comment, multi-format test helper refactor, MalformedJudgeResponseException |
