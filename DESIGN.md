@@ -86,3 +86,39 @@ All string fields flowing into the LLM payload or the A2A card are now injection
 ### A2A completeness check: JSON-aware, not substring
 
 For A2A_CARD, `completenessPass` is determined by parsing the rendered JSON and checking that each capability has a non-empty `description` field. The old substring-contains check always passes for JSON — capability names are always present in the `name` field of each JSON object regardless of description presence.
+
+## §eidos23 — Real-world profile library + personality preservation
+
+### EvalCase sealed interface
+
+`EvalCase` was a record. Changed to a sealed interface permitting `SyntheticEvalCase` (hand-crafted, no source profile) and `ProfiledEvalCase` (wraps `AgentProfile`, backed by a real-world YAML). The motivation: four new judges all require `AgentProfile` and `Optional<AgentProfile>` in a record component is a design smell. The sealed interface provides type safety at call sites without Optional guards.
+
+`EvalDataset.all()` returns `List<EvalCase>` (the abstraction) — callers don't need to know the concrete type. `RealWorldEvalDataset.all()` returns `List<ProfiledEvalCase>` directly because callers need `profile()` access.
+
+### AgentProfileLoader (test scope only)
+
+Placed in `eval/src/test/java/` because it reads from test-classpath YAML resources and has no production use. Stage 0 validation runs at load time: each variant pair must differ on exactly the declared `primaryAxis` and be identical on all other `AgentDisposition` fields (including `delegation`). Throws `IllegalStateException` with descriptive message on violation.
+
+Uses `ObjectMapper(YAMLFactory).findAndRegisterModules()` — required for Java record deserialization on Java 21+.
+
+### Separate ProximityJudge (not a new EvalDimension)
+
+`EvalDimension.applicableFor(format)` takes format only. Semantic proximity — how faithfully does the rendered prompt capture the original prose? — depends on profile availability, not format. Folding it into `EvalDimension` would add a second axis to `applicableFor()` and make `EvalResult.overall` incomparable across synthetic and real-world cases. `ProximityJudge` is a separate `@ApplicationScoped` bean with its own result type and floor.
+
+### Three-stage personality preservation attribution
+
+Stage 1 (`VocabularyExpressivenessJudge`): how precisely can a short phrase capture this personality axis from the prose? Four sequential calls, one per axis. Scores ≤ 2 identify vocabulary gaps that feed eidos#26.
+
+Stage 2 (`TraitExpressionJudge`): blind-scores rendered text. User message is `rendered.content()` only — no descriptor, no profile. Direction match: HIGH ≥ 4, LOW ≤ 2, NEUTRAL always matches.
+
+Stage 3 (`PairContrastJudge`): pairwise effect size measurement. Resolves renders by `evalCase.profile().name()`, not `evalCase.name()` (which carries a format suffix).
+
+Attribution logic (in `PersonalityPreservationReport.build()`): s1 ≤ 2 → VOCABULARY_GAP; s1 ≥ 4 AND matchRate < 0.5 → RENDERER_FLATTENING; s1 ≥ 4 AND matchRate ≥ 0.5 AND s3 in [1,2] → PROFILE_DESIGN_GAP; s1 ≥ 4 AND matchRate ≥ 0.5 AND s3 > 2 → WORKING; else INSUFFICIENT_DATA. All diagnoses beyond VOCABULARY_GAP require `s1 >= 4`.
+
+### Variant pair single-axis isolation
+
+Profiles in a variant pair must differ on exactly one `AgentDisposition` axis (the declared `primaryAxis`); all other axes and `delegation` must be identical between pair members. Enforced by Stage 0 at `AgentProfileLoader.load()` time.
+
+### Deferred
+
+eidos#26 (Belbin/DISC/Big Five vocabulary), #27 (framework grounding in descriptor/renderer), #28 (Belbin phase routing in engine), #29 (personality framework mapping doc — prerequisite for #26), #30 (minor eval cleanup).
