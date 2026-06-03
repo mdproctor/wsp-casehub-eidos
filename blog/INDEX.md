@@ -14,4 +14,5 @@
 | [2026-05-30-mdp01-deadlock-in-the-adapter.md](2026-05-30-mdp01-deadlock-in-the-adapter.md) | 2026-05-30 | Three issues, one pipeline — reactive cache coherence, runSubscriptionOn deadlock, compact constructor validation, eval harness |
 | [2026-05-31-mdp01-format-names-matter.md](2026-05-31-mdp01-format-names-matter.md) | 2026-05-31 | RenderFormat renamed to MARKDOWN/PROSE/A2A_CARD; A2A completeness bug; validation extended to AgentCapability and AgentDisposition |
 | [2026-06-01-mdp01-wrong-name-right-exception.md](2026-06-01-mdp01-wrong-name-right-exception.md) | 2026-06-01 | eidos#24 follow-ups: constant naming fixes, null enforcement comment, multi-format test helper refactor, MalformedJudgeResponseException |
+| [2026-06-03-mdp01-eidos-gets-a-memory.md](2026-06-03-mdp01-eidos-gets-a-memory.md) | 2026-06-03 | Phase 4: knowledge graph — identity to observed behaviour, Wilson routing, H2 ON CONFLICT gotcha |
 | [2026-06-02-mdp01-grounding-agent-identity.md](2026-06-02-mdp01-grounding-agent-identity.md) | 2026-06-02 | eidos#23: 8 real-world profiles, sealed EvalCase, ProximityJudge, three-stage personality preservation with attribution logic |
