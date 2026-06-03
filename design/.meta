@@ -1,0 +1,8 @@
+branch: issue-36-agentoutcome-observedat
+project-sha: 0afd0369a79c750b80ea54cc4b3e86709c29bb17
+date: 2026-06-03
+issue: 36
+issue-repo: casehubio/eidos
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
