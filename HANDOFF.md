@@ -1,49 +1,47 @@
 # CaseHub Eidos — Session Handover
-**Date:** 2026-06-02
+**Date:** 2026-06-03
 
 ## Current State
 
-eidos#23 closed and delivered to `casehubio/eidos` main (13 squashed commits):
+Both eidos#25/#30 (eval cleanup) and the Phase 4 knowledge graph (eidos#32/#33/#34/#35) are complete and delivered to `casehubio/eidos` main (squashed to 6 commits):
 
-- Design spec (v1–v5): sealed EvalCase interface rationale, ProximityJudge separation, three-stage personality preservation
-- Foundation types: enums (SourceType, CoverageLoss, TraitPolarity, Attribution), records (AgentProfile, VariantPair, VariantIndex, ProximityResult, PairContrastResult, etc.)
-- EvalCase → sealed interface (SyntheticEvalCase + ProfiledEvalCase); 20 call sites migrated
-- ProximityReport + PersonalityPreservationReport with attribution logic (s1≥4 guard on all diagnoses beyond VOCABULARY_GAP)
-- AgentProfileLoader (test scope) + RealWorldEvalDataset + Stage 0 variant pair validation
-- Four judges: ProximityJudge, VocabularyExpressivenessJudge (Stage 1), TraitExpressionJudge (Stage 2 blind), PairContrastJudge (Stage 3 effect size)
-- Phase 1: 8 real-world YAML profiles (O*NET + Anthropic + practitioner), Belbin/DISC grounded
-- PromptEvalTest: evaluateRealWorldScenarios() + runReliabilityCheck()
-- 81 tests; all green; **no real LLM results yet** (eval tests are @Tag("eval"), require credentials)
+- `feat(api): add tenancyId to AgentStateStore — SPI, all impls, contract test` (Closes #33)
+- `fix: agent_descriptor surrogate key — BIGSERIAL PK, UNIQUE (agent_id, tenancy_id)` (Closes #34)
+- `feat(examples): Phase 4a PoC — InMemoryAgentGraph + V1/V2 scenarios` (Refs #35)
+- `feat: knowledge graph API types, SPIs, and NoOp runtime defaults` (Refs #35)
+- `feat(graph): casehub-eidos-graph — JPA impl, Wilson ranking, ArchUnit` (Closes #35)
+- `docs: promote knowledge graph design spec from workspace` (Refs #32)
 
-Branch `issue-023-real-world-profile-library` closed. Both repos on main.
+Design spec at `docs/specs/2026-06-02-knowledge-graph-design.md`.
 
 ## Immediate Next Step
 
-Pick up eidos#25 — `JsonProcessingException` from `PromptJudge.parseResponse()` falls through to "LLM call failed". Same misclassification fixed in #24 for ISE, different cause. XS, Low — single-line fix.
+Pick up eidos#36 — `AgentOutcome` is missing `observedAt`. The entity stamps `Instant.now()` at persistence time rather than when the outcome occurred. Needed before ledger backfill produces accurate timestamps. XS, Low — add field to record, update entity mapping.
 
 ## What's Left
 
-- eidos#25 — JsonProcessingException misclassification in PromptJudge · XS · Low
-- eidos#30 — minor eval cleanup: attribution guard clarity, duplicate Stage 0 test, emoji in preservationSummaryTable · XS · Low
-- parent#141 — docs sync: casehub-eidos deep-dive needs eval module row, `delegation` field name fix, current state update · XS · Low
+- eidos#36 — AgentOutcome missing observedAt field · XS · Low
+- eidos#37 — ReactiveAgentGraphQuery missing historyByCapability + attestationsFor · S · Low
+- parent#149 — PLATFORM.md docs sync: Capability Ownership table (AgentGraphStore/Query/Backfill/TaskSemanticEnricher), cross-repo dep map (eidos-api ← engine write path), casehub-eidos deep-dive update · S · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #25 | JsonProcessingException misclassification in PromptJudge.parseResponse() | XS | Low | Same fix pattern as #24 ISE fix |
-| #30 | Minor eval cleanup (post #23 review) | XS | Low | Batch with #25 or standalone |
-| — | Phase 4: knowledge graph (descriptor, task, outcome, attestation nodes) | L | High | Next major milestone; real-world profiles (#23) should inform graph schema |
-| #26 | Belbin/DISC/Big Five vocabulary module | L | High | Awaits #29 (framework mapping doc) |
-| #29 | Docs: Mapping Personality and Role Frameworks to AgentDescriptor | M | Med | Prerequisite for #26; also gates #27/#28 |
+| #36 | AgentOutcome.observedAt — add to record and entity | XS | Low | Batch with #37 |
+| #37 | ReactiveAgentGraphQuery — add historyByCapability + attestationsFor | XS | Low | Batch with #36 |
+| parent#149 | PLATFORM.md docs sync | S | Low | Update Capability Ownership, cross-repo dep map, eidos deep-dive |
+| — | casehub-engine: WorkOrchestrator write-path integration (AgentGraphStore.recordTask/recordOutcome) | M | Med | Requires engine issue; passes descriptor.tenancyId() |
+| #29 | Docs: Mapping Personality and Role Frameworks to AgentDescriptor | M | Med | Gates #26 (Belbin/DISC vocab) |
+| #26 | Belbin/DISC/Big Five vocabulary module | L | High | Gates on #29 |
 
 ## References
 
 | What | Path |
 |------|------|
-| Latest blog | `blog/2026-06-02-mdp01-grounding-agent-identity.md` |
-| Design spec | `docs/specs/2026-06-01-real-world-profile-library-design.md` (project repo, v5) |
-| Plan (archived) | `plans/attic/issue-023-real-world-profile-library/2026-06-01-real-world-profile-library.md` |
-| Garden entries | GE-20260602-2cff5e (Jackson primitive boolean absent YAML key), GE-20260602-a4d290 (findAndRegisterModules required), GE-20260602-f2ca07 (blind judge payload isolation) |
-| Protocols | PP-20260602-64fde8 (eval variant pair single-axis isolation), PP-20260602-3ecfdb (EvalDimension format-only gate) |
-| Open issues | eidos#25, #26, #27, #28, #29, #30; parent#141 |
+| Knowledge graph design spec | `docs/specs/2026-06-02-knowledge-graph-design.md` (project repo) |
+| Implementation plan (archived) | `plans/attic/issue-032-knowledge-graph/2026-06-03-phase4-knowledge-graph.md` |
+| Latest blog | `blog/2026-06-03-mdp01-eidos-gets-a-memory.md` |
+| Garden entries | GE-20260603-86f2a9 (H2 MODE=PostgreSQL: ON CONFLICT not supported) |
+| Protocols | PP-20260603-9918e6 (eidos SPI agent scope → tenancyId), PP-20260603-ba301d (PoC gate before JPA) |
+| Open issues | eidos#36, #37, #29, #26; parent#149; eidos#27, #28 |
