@@ -1,43 +1,34 @@
-# Design Journal — issue-021-020-eval-coverage-validation
+# Design Journal — issue-36-agentoutcome-observedat
 
-## RenderFormat: structure-named over provider-named
+## AgentOutcome.observedAt — semantic and validation design
 
-**Decision:** Rename `RenderFormat` from provider-named (`CLAUDE_MD`, `OPENAI_SYSTEM`, `GEMINI`) to structure-named (`MARKDOWN`, `PROSE`, `A2A_CARD`). Collapse `OPENAI_SYSTEM` + `GEMINI` into `PROSE` — they were structurally identical except for one space in resource citation formatting, which does not justify a separate format.
+**Issue:** eidos#36
 
-**Rationale:** Provider-named formats force a new enum member per LLM provider (Grok, Qwen, Mistral, Llama) even when those providers produce structurally identical output. The real distinction is output structure: markdown-capable vs. dense prose vs. JSON. Any LLM can be targeted with any structural format. Sub-labels for provider-specific specialisation (e.g. `PROSE_OPENAI`) can be added later only if concrete structural differences emerge.
+`observedAt` is defined as the instant the agent produced the result, as known to the caller at the time of `recordOutcome()`. For live recording this is `Instant.now()` at the call site. For future backfill, it will be `AttestationRef.attestedAt()` — the closest ledger proxy for historical task completion time.
 
-**Impact:** `EidosRenderPipeline` loses `assembleGemini()` and `assembleGeminiStructural()` (merged into `assembleProse()`). `EidosSystemPromptRenderer`, `DefaultReactiveSystemPromptRenderer`, and all test files updated.
+Field order decision: required fields before nullable. New order is `taskId, result, confidence, observedAt (required), degradationReason (nullable)`. The reorder costs nothing since it's already a breaking API change.
 
-## AgentValidationException: generic name to cover all agent records
+**Compact constructor validation decisions:**
+- `taskId`, `result`, `observedAt`: `Objects.requireNonNull` with bare field name message (consistent with `AgentQuery` convention, not `AgentDescriptorValidator` verbose form)
+- `confidence` range: `Double.isNaN(confidence) || confidence < 0.0 || confidence > 1.0` — the `isNaN` guard is required because IEEE 754 comparison with NaN always returns false, so the range check alone silently accepts NaN. The DB `CHECK` constraint does catch it at persist time, but the compact constructor contract must hold independently of the persistence layer.
+- `AgentValidationException("confidence", "must be between 0.0 and 1.0")` is the correct exception type — it already exists at `io.casehub.eidos.api.AgentValidationException`.
 
-**Decision:** Rename `AgentDescriptorValidationException` → `AgentValidationException`.
+**Backfill scope:** `JpaAgentGraphBackfill` remains a stub. The `observedAt` field is the transport-layer prerequisite; the backfill wiring (reading `TrustExportService` from casehub-ledger) is deferred to a separate engine integration issue.
 
-**Rationale:** The exception is thrown from `AgentDescriptor`, `AgentCapability`, and `AgentDisposition` compact constructors. `AgentDescriptorValidationException` is misleading when thrown from a capability. Generic name covers all agent domain record validation without implying a specific record type.
+**No schema change:** `observed_at TIMESTAMP WITH TIME ZONE NOT NULL` already existed in V3__agent_graph.sql. Entity `from()` was simply fixed to use `o.observedAt()` instead of `Instant.now()`.
 
-## Validation at compact constructor: AgentCapability and AgentDisposition
+## ReactiveAgentGraphQuery parity — bridge constructor pattern
 
-**Decision (eidos#22):** `AgentCapability` validates all string fields at construction time: `name` (required, ≤100), `costHint` (optional, ≤200), `inputTypes`/`outputTypes`/`tags` items (≤200 each), `epistemicDomains` keys (≤200). Following the same principle as `AgentDescriptor` (PP-20260530-2d6dbd).
+**Issue:** eidos#37
 
-**Decision (eidos#20):** `AgentDisposition` validates its 4 open-string axes at construction time: null-permissive (axes are optional), blank-rejecting, ≤200 chars, no banned characters. Each value object validates its own invariants — it is self-consistent regardless of how it is constructed.
+`ReactiveAgentGraphQuery` is not build-gated (unlike `ReactiveAgentRegistry` / `ReactiveCapabilityHealth`). `BlockingToReactiveGraphBridge` is `@DefaultBean @ApplicationScoped`, always active, wraps blocking JPA via `Uni.createFrom().item(Supplier).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())`.
 
-**Decision (eidos#20):** `AgentDescriptor` compact constructor extended to validate 10 optional String fields: version, provider, modelFamily, modelVersion (≤200), weightsFingerprint (≤255), domainVocabulary/slotVocabulary/dispositionVocabulary (≤500 — URI fields), jurisdiction/dataHandlingPolicy (≤1000 — compliance-text fields). Character-set rules (no C0/C1, BiDi controls, zero-width) apply uniformly. `AgentDescriptorValidator` extended with `validateOptional` (null-permissive, blank-rejecting), `validateItems`, `validateMapKeys` helpers.
+**Constructor pair decision:** Adding any explicit constructor removes the compiler-generated implicit no-arg constructor. CDI (Weld) requires a no-arg constructor to instantiate the bean before `@Inject` field injection. Both constructors are required:
+- `public BlockingToReactiveGraphBridge() {}` — CDI path
+- `BlockingToReactiveGraphBridge(AgentGraphQuery blocking)` (package-private) — test path
 
-**Rationale:** All string fields included in the LLM payload via `EidosRenderPipeline.buildDescriptorPayload()` or the A2A card JSON are injection surfaces. Validation at construction makes the guarantee system-wide — no invalid descriptor can exist in any registry, in any test, in any intermediate context.
+**Mutiny pattern:** `runSubscriptionOn` moves the supplier execution (including the blocking JPA call) onto the worker pool. `emitOn` only moves downstream processing — wrong for offloading blocking calls. `item(Supplier<T>)` is the lazy form; `item(T)` evaluates eagerly before subscription.
 
-## EvalReport: format-grouped, no cross-format summary
+**`Uni<List<AttestationRef>>` vs `Multi<AttestationRef>`:** deliberate. Bridge wraps synchronous JPA; `Multi` would not change behaviour. `Uni<List>` matches the blocking return type for bridge simplicity.
 
-**Decision:** `EvalReport` redesigned from flat shape (`List<EvalResult>` + single `EvalSummary`) to format-grouped shape (`Map<RenderFormat, List<EvalResult>> resultsByFormat` + `Map<RenderFormat, EvalSummary> summaryByFormat`).
-
-**Rationale:** With multiple output formats, a single cross-format `EvalSummary` is meaningless — `CONCISENESS` scored on markdown prose cannot be averaged with `CONCISENESS` scored on dense prose, and `COMPLETENESS` (A2A only) has no meaning for prose formats. Per-format summaries eliminate the category error. `LinkedHashMap` used for deterministic iteration order.
-
-## EvalDimension: COMPLETENESS for A2A + applicableFor
-
-**Decision:** Add `COMPLETENESS` as 5th `EvalDimension` (A2A_CARD only: all capabilities have non-empty quality descriptions). Add `applicableFor(RenderFormat)` static method returning the applicable dimension set per format: `{SECOND_PERSON, CONCISENESS, FACTUAL_FIDELITY, TONE}` for MARKDOWN/PROSE; `{COMPLETENESS, FACTUAL_FIDELITY}` for A2A_CARD.
-
-**Rationale:** SECOND_PERSON and TONE are not meaningful dimensions for JSON output. COMPLETENESS (capability description quality) is the A2A-specific quality signal. Putting the format-to-dimension mapping on the enum means both `PromptJudge` and `EvalReport.build()` share the same source of truth without coupling to each other.
-
-## A2A completeness check: JSON-aware, not substring
-
-**Decision:** For A2A_CARD format, `completenessPass` is determined by parsing the rendered JSON and checking that each capability has a non-empty `description` field — not the existing substring-contains check. The substring check always passes for A2A (capability names always appear in the `name` field of JSON objects).
-
-**Rationale:** The substring check was a regression waiting to happen — it would always report `completenessPass = true` for A2A regardless of whether descriptions were generated. The JSON-parse check is the correct semantic: a capability has been included iff its description is present and non-empty.
+**Bridge architectural note:** This is worker-thread-per-call, not genuine async I/O. Acknowledged as a non-blocking fallback pending a Vert.x reactive PG driver implementation.

@@ -16,3 +16,4 @@
 | [2026-06-01-mdp01-wrong-name-right-exception.md](2026-06-01-mdp01-wrong-name-right-exception.md) | 2026-06-01 | eidos#24 follow-ups: constant naming fixes, null enforcement comment, multi-format test helper refactor, MalformedJudgeResponseException |
 | [2026-06-03-mdp01-eidos-gets-a-memory.md](2026-06-03-mdp01-eidos-gets-a-memory.md) | 2026-06-03 | Phase 4: knowledge graph — identity to observed behaviour, Wilson routing, H2 ON CONFLICT gotcha |
 | [2026-06-02-mdp01-grounding-agent-identity.md](2026-06-02-mdp01-grounding-agent-identity.md) | 2026-06-02 | eidos#23: 8 real-world profiles, sealed EvalCase, ProximityJudge, three-stage personality preservation with attribution logic |
+| [2026-06-04-mdp01-timestamps-and-gaps.md](2026-06-04-mdp01-timestamps-and-gaps.md) | 2026-06-04 | AgentOutcome.observedAt, NaN IEEE 754 guard, CDI no-arg constructor pattern |
