@@ -1,0 +1,9 @@
+branch: issue-29-personality-framework-mapping
+project-sha: 2dd087a2ddb36960a5f6473765eaacfb818a5dc2
+date: 2026-06-04
+issue: 29
+issue-repo: casehubio/eidos
+covers: 29
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
