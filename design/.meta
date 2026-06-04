@@ -1,0 +1,9 @@
+branch: issue-31-arc42stories-foundation
+project-sha: 28cd95de5b1ae005ea30cde8d35be7ecd7b645e2
+date: 2026-06-04
+issue: 31
+issue-repo: casehubio/eidos
+covers: 31
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
