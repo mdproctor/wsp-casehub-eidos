@@ -1,3 +1,4 @@
-# Branch Closed — issue-36-agentoutcome-observedat
+# Branch Closed — issue-31-arc42stories-foundation
 **Date:** 2026-06-04
-**Issues:** casehubio/eidos#36, casehubio/eidos#37
+**Issue:** #31
+**Covers:** 31
