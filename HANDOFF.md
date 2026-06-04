@@ -1,5 +1,6 @@
 # CaseHub Eidos — Session Handover
 **Date:** 2026-06-04
+*Updated: parent#149 closed since last session — removed from backlog.*
 
 ## Current State
 
@@ -16,7 +17,6 @@ Pick up eidos#31 — complete ARC42STORIES.MD Foundation tier. Rich source mater
 
 ## What's Left
 
-- parent#149 — PLATFORM.md docs sync (Capability Ownership, cross-repo dep map, eidos deep-dive) · S · Low
 - parent#167 — eidos deep-dive: ReactiveAgentGraphQuery missing from Reactive Build Gating section; AgentOutcome.observedAt not noted in Current State · XS · Low
 
 ## What's Next
@@ -24,7 +24,6 @@ Pick up eidos#31 — complete ARC42STORIES.MD Foundation tier. Rich source mater
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
 | #31 | Complete ARC42STORIES.MD — Foundation tier §3–§13 | M | Med | Rich source: DESIGN.md + blog/ |
-| parent#149 | PLATFORM.md docs sync | S | Low | Capability Ownership, cross-repo dep map, eidos deep-dive |
 | parent#167 | eidos deep-dive: ReactiveAgentGraphQuery reactive build gating | XS | Low | Field-injected @DefaultBean bridge, not build-gated |
 | #29 | Docs: Mapping Personality and Role Frameworks to AgentDescriptor | M | Med | Gates #26 (Belbin/DISC vocab) |
 | #26 | Belbin/DISC/Big Five vocabulary module | L | High | Gates on #29 |
