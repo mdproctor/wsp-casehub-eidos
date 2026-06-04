@@ -1,47 +1,41 @@
 # CaseHub Eidos — Session Handover
-**Date:** 2026-06-03
+**Date:** 2026-06-04
 
 ## Current State
 
-Both eidos#25/#30 (eval cleanup) and the Phase 4 knowledge graph (eidos#32/#33/#34/#35) are complete and delivered to `casehubio/eidos` main (squashed to 6 commits):
+eidos#36 and #37 are complete and delivered to `casehubio/eidos` main (squashed to 2 commits):
 
-- `feat(api): add tenancyId to AgentStateStore — SPI, all impls, contract test` (Closes #33)
-- `fix: agent_descriptor surrogate key — BIGSERIAL PK, UNIQUE (agent_id, tenancy_id)` (Closes #34)
-- `feat(examples): Phase 4a PoC — InMemoryAgentGraph + V1/V2 scenarios` (Refs #35)
-- `feat: knowledge graph API types, SPIs, and NoOp runtime defaults` (Refs #35)
-- `feat(graph): casehub-eidos-graph — JPA impl, Wilson ranking, ArchUnit` (Closes #35)
-- `docs: promote knowledge graph design spec from workspace` (Refs #32)
+- `feat(graph): add observedAt to AgentOutcome — business time not persistence time (Closes #36)`
+- `feat(graph): ReactiveAgentGraphQuery parity — historyByCapability + attestationsFor (Closes #37)`
 
-Design spec at `docs/specs/2026-06-02-knowledge-graph-design.md`.
+Key design points captured in `design/DESIGN.md`: `observedAt` semantic (business time not persistence time), NaN IEEE 754 guard on confidence, CDI no-arg + test constructor pair for field-injected beans.
 
 ## Immediate Next Step
 
-Pick up eidos#36 — `AgentOutcome` is missing `observedAt`. The entity stamps `Instant.now()` at persistence time rather than when the outcome occurred. Needed before ledger backfill produces accurate timestamps. XS, Low — add field to record, update entity mapping.
+Pick up eidos#31 — complete ARC42STORIES.MD Foundation tier. Rich source material in workspace `DESIGN.md` and `blog/`. §3–§13 are stubs. Run `/work` to start.
 
 ## What's Left
 
-- eidos#36 — AgentOutcome missing observedAt field · XS · Low
-- eidos#37 — ReactiveAgentGraphQuery missing historyByCapability + attestationsFor · S · Low
-- parent#149 — PLATFORM.md docs sync: Capability Ownership table (AgentGraphStore/Query/Backfill/TaskSemanticEnricher), cross-repo dep map (eidos-api ← engine write path), casehub-eidos deep-dive update · S · Low
+- parent#149 — PLATFORM.md docs sync (Capability Ownership, cross-repo dep map, eidos deep-dive) · S · Low
+- parent#167 — eidos deep-dive: ReactiveAgentGraphQuery missing from Reactive Build Gating section; AgentOutcome.observedAt not noted in Current State · XS · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #36 | AgentOutcome.observedAt — add to record and entity | XS | Low | Batch with #37 |
-| #37 | ReactiveAgentGraphQuery — add historyByCapability + attestationsFor | XS | Low | Batch with #36 |
-| parent#149 | PLATFORM.md docs sync | S | Low | Update Capability Ownership, cross-repo dep map, eidos deep-dive |
-| — | casehub-engine: WorkOrchestrator write-path integration (AgentGraphStore.recordTask/recordOutcome) | M | Med | Requires engine issue; passes descriptor.tenancyId() |
+| #31 | Complete ARC42STORIES.MD — Foundation tier §3–§13 | M | Med | Rich source: DESIGN.md + blog/ |
+| parent#149 | PLATFORM.md docs sync | S | Low | Capability Ownership, cross-repo dep map, eidos deep-dive |
+| parent#167 | eidos deep-dive: ReactiveAgentGraphQuery reactive build gating | XS | Low | Field-injected @DefaultBean bridge, not build-gated |
 | #29 | Docs: Mapping Personality and Role Frameworks to AgentDescriptor | M | Med | Gates #26 (Belbin/DISC vocab) |
 | #26 | Belbin/DISC/Big Five vocabulary module | L | High | Gates on #29 |
+| — | casehub-engine: WorkOrchestrator write-path integration (AgentGraphStore.recordTask/recordOutcome) | M | Med | Requires engine issue; passes descriptor.tenancyId() |
 
 ## References
 
 | What | Path |
 |------|------|
 | Knowledge graph design spec | `docs/specs/2026-06-02-knowledge-graph-design.md` (project repo) |
-| Implementation plan (archived) | `plans/attic/issue-032-knowledge-graph/2026-06-03-phase4-knowledge-graph.md` |
-| Latest blog | `blog/2026-06-03-mdp01-eidos-gets-a-memory.md` |
-| Garden entries | GE-20260603-86f2a9 (H2 MODE=PostgreSQL: ON CONFLICT not supported) |
-| Protocols | PP-20260603-9918e6 (eidos SPI agent scope → tenancyId), PP-20260603-ba301d (PoC gate before JPA) |
-| Open issues | eidos#36, #37, #29, #26; parent#149; eidos#27, #28 |
+| observedAt + parity spec | `docs/specs/2026-06-04-agentoutcome-observedat-reactive-parity.md` (project repo) |
+| Latest blog | `blog/2026-06-04-mdp01-timestamps-and-gaps.md` |
+| Garden entries | GE-20260604-043617 (NaN IEEE 754 guard), GE-20260604-4bfd2c (CDI field-injection no-arg loss) |
+| Open issues | eidos#31, #29, #26, #27, #28; parent#149, #167 |
