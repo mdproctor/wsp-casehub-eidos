@@ -18,3 +18,4 @@
 | [2026-06-02-mdp01-grounding-agent-identity.md](2026-06-02-mdp01-grounding-agent-identity.md) | 2026-06-02 | eidos#23: 8 real-world profiles, sealed EvalCase, ProximityJudge, three-stage personality preservation with attribution logic |
 | [2026-06-04-mdp01-timestamps-and-gaps.md](2026-06-04-mdp01-timestamps-and-gaps.md) | 2026-06-04 | AgentOutcome.observedAt, NaN IEEE 754 guard, CDI no-arg constructor pattern |
 | [2026-06-04-mdp02-writing-the-map.md](2026-06-04-mdp02-writing-the-map.md) | 2026-06-04 | Writing the map — ARC42STORIES.MD Foundation tier complete; layer taxonomy, anti-patterns, Pattern to replicate |
+| [2026-06-05-mdp01-two-vocabularies.md](2026-06-05-mdp01-two-vocabularies.md) | 2026-06-05 | Two vocabularies are better than one — DISC as disposition not slot; Belbin+DISC combination; equivalentValues() API gap |
