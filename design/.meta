@@ -1,0 +1,9 @@
+branch: issue-40-equivalentvalues-axis-param
+project-sha: 8d2d43d11339868b183e835631db3da705052d7b
+date: 2026-06-05
+issue: 40
+issue-repo: casehubio/eidos
+covers: 40
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
