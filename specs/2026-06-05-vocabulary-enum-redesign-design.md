@@ -1,7 +1,7 @@
 # Vocabulary System Enum Redesign + DispositionAxis
 **Issue:** eidos#40
 **Date:** 2026-06-05
-**Status:** approved (rev 2)
+**Status:** approved (rev 3)
 
 ---
 
@@ -14,9 +14,8 @@ resolved. There is no axis parameter, so there is no way to distinguish.
 
 The existing `Vocabulary` and `VocabularyTerm` records are stringly-typed throughout: vocabulary
 URIs, term values, and cross-vocabulary references are all plain strings. Vocabulary terms are
-fixed at compile time — even consumer-defined vocabularies (devtown's `"planner"`/`"reviewer"`)
-are defined in code, not discovered from external sources at runtime. Strings give up the
-compile-time safety that enums would provide.
+fixed at compile time — even consumer-defined vocabularies are defined in code, not discovered
+from external sources at runtime. Strings give up the compile-time safety that enums provide.
 
 This issue redesigns the vocabulary system from String-based records to an enum-based interface
 with typed cross-vocabulary methods, adding `DispositionAxis` as a typed axis key, and extends
@@ -30,25 +29,25 @@ runtime descriptor lookups.
 The original problem, traced through the new API:
 
 1. Agent registered with `dispositionVocabulary = "urn:casehub:vocab:disc"` and
-   `AgentDisposition.riskAppetite = "dominance"` (D type declared on risk axis).
+   `AgentDisposition.riskAppetite = "dominance"` (D type declared on the risk axis).
 2. casehub-engine receives a query: "find agents whose riskAppetite is equivalent to
-   `ConscientiousnessTerm.BOLD` in the Conscientiousness vocabulary."
+   `ConscientiousnessTerm.BOLD`."
 3. Engine calls the string-based API (descriptor values are strings at runtime):
    ```java
    registry.equivalentValues(
-       desc.dispositionVocabulary(),       // "urn:casehub:vocab:disc"
+       desc.dispositionVocabulary(),
        desc.disposition().get(DispositionAxis.RISK_APPETITE).orElseThrow(),  // "dominance"
        ConscientiousnessVocab.URI,
-       DispositionAxis.RISK_APPETITE       // typed axis
+       DispositionAxis.RISK_APPETITE
    )
    // → Optional.of("bold")
    ```
 4. Engine finds agents where `riskAppetite = "dominance"` (DISC) OR `riskAppetite = "bold"`
-   (Conscientiousness) — both express the same behavioral profile on that axis.
+   (Conscientiousness) — both express the same profile on that axis.
 
-The `AgentDisposition.get(DispositionAxis)` bridge (see below) is the only place the engine
-needs to know which field maps to which axis. When `CONFLICT_MODE` is added to `DispositionAxis`,
-that switch fails to compile, forcing the engine to handle it.
+`AgentDisposition.get(DispositionAxis)` is the only place the engine needs to know which field
+maps to which axis. When `CONFLICT_MODE` is added to `DispositionAxis`, that switch fails to
+compile, forcing the engine caller to handle it.
 
 ---
 
@@ -64,9 +63,9 @@ that switch fails to compile, forcing the engine to handle it.
 ### `@VocabularyMetadata` annotation
 
 Vocabulary-level metadata belongs on the class, not on instances. A per-constant `vocabUri()`
-would require every constant to return the same value — a constraint that must be validated at
-startup rather than being structurally impossible to violate. An annotation on the enum class
-eliminates the repetition and the validation entirely.
+would require every constant to return the same value — a constraint validated at startup rather
+than being structurally impossible to violate. An annotation on the enum class eliminates the
+repetition and the validation entirely.
 
 ```java
 @Retention(RetentionPolicy.RUNTIME)
@@ -80,18 +79,26 @@ public @interface VocabularyMetadata {
 
 `register(Class<T>)` reads this annotation. Throws `IllegalArgumentException` if absent.
 
+**Convention for `name()` and `version()`:** empty string (`""`) means "not provided" — the
+vocabulary author chose not to supply the metadata. Callers should treat `name().isEmpty()` as
+absent. This follows the standard Java annotation convention of using empty string as the absent
+sentinel (annotations cannot express `null`).
+
 ### `VocabularyTerm` interface (replaces the deleted record of the same name)
 
 Pure term-level data. No vocabulary-level metadata — that lives on the annotation.
 
-Cross-vocabulary methods return `Optional<VocabularyTerm>` rather than exposing a map. This
-enables implementations to use an exhaustive switch on `DispositionAxis` (see `axisExactMatch`
-below), which is the actual compile-time completeness gate. A `Map`-based approach silently
-omits new axis values; a switch with no default fails to compile.
-
 ```java
 package io.casehub.eidos.api;
 
+/**
+ * A term within a vocabulary. Implemented by enum constants.
+ *
+ * <p>{@link #exactMatch} and {@link #axisExactMatch} are independent. A term may implement
+ * either, both, or neither. The registry routes axis-aware and axis-unaware lookups to the
+ * appropriate method independently — calling the axis-unaware overload against a DISC term
+ * returns {@code Optional.empty()} (correct, not an error).
+ */
 public interface VocabularyTerm {
     String value();
     String label();
@@ -100,9 +107,8 @@ public interface VocabularyTerm {
 
     /**
      * Axis-unaware cross-vocabulary equivalence.
-     * Override to return the equivalent constant in {@code targetVocab}, or empty if none.
-     * Implementations should check {@code targetVocab} identity and return the typed constant;
-     * the registry calls {@code targetVocab.cast()} on the result.
+     * Returns the equivalent constant in {@code targetVocab}, or empty if none.
+     * Independent of {@link #axisExactMatch} — implement one, both, or neither.
      */
     default Optional<VocabularyTerm> exactMatch(Class<?> targetVocab) {
         return Optional.empty();
@@ -110,9 +116,25 @@ public interface VocabularyTerm {
 
     /**
      * Axis-aware cross-vocabulary equivalence.
-     * Implementations MUST use an exhaustive switch on {@code axis} (no default branch) so
-     * that adding a new {@link DispositionAxis} value causes a compile error in every
-     * implementation that covers a given target vocabulary.
+     *
+     * <p>Implementations that cover a given {@code targetVocab} MUST use an exhaustive switch
+     * on {@code axis} with no default branch. This ensures that adding a new
+     * {@link DispositionAxis} value causes a compile error in every implementation that covers
+     * that target vocabulary, forcing explicit handling of the new axis.
+     *
+     * <p>{@code Optional.empty()} is a valid switch branch — use it for axes where no
+     * meaningful mapping exists. Do NOT wrap the switch in {@code Optional.of()} as that
+     * forbids gaps.
+     *
+     * <pre>{@code
+     * return switch (axis) {
+     *     case RISK_APPETITE -> Optional.of(ConscientiousnessTerm.BOLD);
+     *     case AUTONOMY      -> Optional.empty();   // no clear mapping for this axis
+     *     // remaining cases...
+     * };
+     * }</pre>
+     *
+     * Independent of {@link #exactMatch} — implement one, both, or neither.
      */
     default Optional<VocabularyTerm> axisExactMatch(Class<?> targetVocab, DispositionAxis axis) {
         return Optional.empty();
@@ -134,8 +156,8 @@ public enum DispositionAxis {
 ```
 
 When eidos#38 adds `conflictMode` as a 5th axis, `CONFLICT_MODE` is added here. Every exhaustive
-switch on `DispositionAxis` in vocabulary implementations — and the `AgentDisposition.get()`
-method — fails to compile until it covers the new value.
+switch on `DispositionAxis` — in vocabulary implementations and in `AgentDisposition.get()` —
+fails to compile until it covers the new value.
 
 ### `VocabularyRegistrar` SPI (`api/spi/`)
 
@@ -157,14 +179,6 @@ returned class.
 
 ## Updated `VocabularyRegistry` SPI
 
-Two parallel APIs on the same interface.
-
-**String-based** — for runtime values from `AgentDescriptor` (vocabulary URI and term value are
-strings in the descriptor; enum class is not statically known at the call site).
-
-**Typed** — for compile-time-known vocabulary classes. Returns typed enum constants;
-`targetVocab.cast()` makes the cast safe and immediate rather than deferred to first use.
-
 ```java
 public interface VocabularyRegistry {
 
@@ -174,7 +188,7 @@ public interface VocabularyRegistry {
 
     // --- String-based resolution (runtime values / unknown vocab class) ---
     Optional<? extends VocabularyTerm> resolve(String vocabUri, String value);
-    Set<? extends VocabularyTerm>      allTerms(String vocabUri);
+    List<? extends VocabularyTerm>     allTerms(String vocabUri);
     Optional<String> equivalentValues(String fromUri, String value, String toUri);
     Optional<String> equivalentValues(String fromUri, String value, String toUri, DispositionAxis axis);
 
@@ -190,14 +204,14 @@ public interface VocabularyRegistry {
 }
 ```
 
-**`allTerms(String vocabUri)`** restores the ability to enumerate a vocabulary's terms by URI
-without knowing the enum class at compile time (the caller who has a URI-only reference has no
-other way to get this information).
+**`allTerms(String vocabUri)`** returns constants in enum declaration order (see internal state
+below). Return type is `List` (not `Set`) to preserve the vocabulary author's ordering, which
+is meaningful for rendering purposes (e.g. `STRICT, PRINCIPLED, FLEXIBLE` expresses a
+progression).
 
 **`Optional<String>` for string-based equivalentValues** — Alias uniqueness is enforced at
-registration (see below). With that constraint, any given string resolves to at most one source
-constant, and each source constant maps to at most one constant per target vocabulary. `Set<String>`
-would always be size 0 or 1 — semantically dishonest.
+registration (see Registration Semantics). With uniqueness enforced, any string resolves to at
+most one source constant, which maps to at most one constant per target vocabulary.
 
 The old `register(Vocabulary vocabulary)` and `find(String uri)` methods are removed.
 
@@ -205,23 +219,39 @@ The old `register(Vocabulary vocabulary)` and `find(String uri)` methods are rem
 
 ## `CdiVocabularyRegistry` Implementation
 
-**Internal state:**
+**Internal state — three maps:**
 
 ```
-Map<String, Class<? extends Enum<?>>>  byUri    // vocabUri → enum class
-Map<Class<?>, Map<String, VocabularyTerm>> byClass  // class → (value + aliases) → constant
+Map<String, Class<? extends Enum<?>>>         byUri          // vocabUri → enum class
+Map<Class<?>, Map<String, VocabularyTerm>>    byClass        // class → (value + aliases) → constant (lookup index)
+Map<Class<?>, List<? extends VocabularyTerm>> byClassOrdered // class → constants in declaration order (for allTerms)
 ```
 
 **`register(Class<T>)`:**
-1. Reads `@VocabularyMetadata` annotation; throws `IllegalArgumentException` if absent.
-2. Calls `vocab.getEnumConstants()`. Throws if array is empty (zero-constant enums are forbidden).
-3. Builds value+alias lookup map. Throws on:
+1. Reads `@VocabularyMetadata`; throws `IllegalArgumentException` if absent.
+2. Calls `vocab.getEnumConstants()`. Throws `IllegalArgumentException` if empty.
+3. Populates `byClassOrdered` with `List.of(constants)` — declaration order preserved by
+   `getEnumConstants()` contract.
+4. Builds `byClass` lookup map. Throws `IllegalArgumentException` on:
    - Duplicate primary value across constants in this vocab.
-   - Any alias that duplicates another alias or any primary value in this vocab.
-4. Throws if `byUri` already contains the URI from a different class (duplicate URI conflict).
-5. Stores both maps.
+   - Any alias duplicating another alias or any primary value within this vocab.
+5. Throws `IllegalArgumentException` if `byUri` already maps the URI to a *different* class
+   (duplicate URI conflict); silently overwrites if same class (idempotent re-registration).
+6. Stores in all three maps.
 
-**Typed equivalentValues** — delegate directly to source constant's interface methods:
+**`allTerms()` implementation:**
+```java
+@Override
+public List<? extends VocabularyTerm> allTerms(String vocabUri) {
+    var clazz = byUri.get(vocabUri);
+    return clazz == null ? List.of() : byClassOrdered.get(clazz);
+}
+```
+
+Returns the pre-built ordered list. No streaming, no deduplication needed — distinct by
+construction (one entry per enum constant at registration time).
+
+**Typed equivalentValues** — delegate to source constant's interface methods:
 ```java
 @Override
 public <S extends Enum<S> & VocabularyTerm, T extends Enum<T> & VocabularyTerm>
@@ -237,11 +267,9 @@ Optional<T> equivalentValues(S from, Class<T> targetVocab, DispositionAxis axis)
 ```
 
 `targetVocab.cast()` provides an immediate, informative `ClassCastException` if a vocabulary
-implementation returns the wrong type — a programming error caught at registration-test time
-rather than deferred to an unrelated call site.
+implementation returns the wrong type — a programming error caught at test time.
 
-**String-based equivalentValues** — resolve source term via internal maps, then delegate to
-typed path:
+**String-based equivalentValues:**
 ```java
 @Override
 public Optional<String> equivalentValues(String fromUri, String value, String toUri) {
@@ -281,11 +309,9 @@ public Optional<String> get(DispositionAxis axis) {
 }
 ```
 
-This exhaustive switch is where the "adding `CONFLICT_MODE` causes compile errors everywhere
-it matters" actually lives. Without this method, callers must manually know which field maps to
-which axis — the correspondence exists only in convention. With it, adding
-`DispositionAxis.CONFLICT_MODE` fails to compile here, forcing the caller (casehub-engine) to
-handle it explicitly alongside adding the field to `AgentDisposition`.
+This exhaustive switch is where compile-time safety is anchored. Adding
+`DispositionAxis.CONFLICT_MODE` fails to compile here, forcing the caller to handle it alongside
+adding the corresponding field to `AgentDisposition`.
 
 ---
 
@@ -293,87 +319,92 @@ handle it explicitly alongside adding the field to `AgentDisposition`.
 
 ### `ConscientiousnessTerm`
 
-12 terms across 4 disposition axes. The axis grouping is informational structure only — the
-type system does not enforce that DISC maps `BOLD` to the correct axis. That constraint is the
-responsibility of tests in the DISC module (eidos#26), not of the Conscientiousness vocabulary
-itself.
+12 terms across 4 disposition axes. `description()` is used by `ClaudeMarkdownRenderer` during
+system prompt rendering and must be preserved. The axis groupings are informational (comments)
+only — the type system does not enforce that DISC maps a term to the correct axis. Correctness
+of axis assignment is the responsibility of tests in the DISC module (eidos#26).
 
 ```java
 @VocabularyMetadata(uri = "urn:casehub:vocab:conscientiousness",
                     name = "Conscientiousness Disposition Axes", version = "1.0")
 public enum ConscientiousnessTerm implements VocabularyTerm {
     // RULE_FOLLOWING axis
-    STRICT      ("strict",       "Strict Rule Following",
-                 "Follows rules rigidly",           List.of("rule-bound", "compliant")),
-    PRINCIPLED  ("principled",   "Principled",
-                 "Follows intent of rules",          List.of("values-based")),
-    FLEXIBLE    ("flexible",     "Flexible",
-                 "Adapts rules to context",          List.of("adaptive", "pragmatic")),
+    STRICT      ("strict",        "Strict Rule Following",
+                 "Follows rules rigidly",              List.of("rule-bound", "compliant")),
+    PRINCIPLED  ("principled",    "Principled",
+                 "Follows intent of rules",             List.of("values-based")),
+    FLEXIBLE    ("flexible",      "Flexible",
+                 "Adapts rules to context",             List.of("adaptive", "pragmatic")),
     // RISK_APPETITE axis
-    CONSERVATIVE("conservative", "Conservative Risk",
-                 "Avoids uncertainty",               List.of("risk-averse", "cautious")),
-    MEASURED    ("measured",     "Measured Risk",
-                 "Balances risk and reward",         List.of("balanced")),
-    BOLD        ("bold",         "Bold Risk",
-                 "Accepts uncertainty for reward",   List.of("risk-tolerant", "adventurous")),
+    CONSERVATIVE("conservative",  "Conservative Risk",
+                 "Avoids uncertainty",                  List.of("risk-averse", "cautious")),
+    MEASURED    ("measured",      "Measured Risk",
+                 "Balances risk and reward",            List.of("balanced")),
+    BOLD        ("bold",          "Bold Risk",
+                 "Accepts uncertainty for reward",      List.of("risk-tolerant", "adventurous")),
     // SOCIAL_ORIENTATION axis
     COLLABORATIVE("collaborative","Collaborative",
-                 "Works with others by default",     List.of("team-oriented", "cooperative")),
-    INDEPENDENT ("independent",  "Independent",
-                 "Works alone by preference",        List.of("autonomous-social", "self-directed")),
-    FACILITATIVE("facilitative", "Facilitative",
-                 "Enables others to work",           List.of("supportive", "enabling")),
+                 "Works with others by default",        List.of("team-oriented", "cooperative")),
+    INDEPENDENT ("independent",   "Independent",
+                 "Works alone by preference",           List.of("autonomous-social", "self-directed")),
+    FACILITATIVE("facilitative",  "Facilitative",
+                 "Enables others to work",              List.of("supportive", "enabling")),
     // AUTONOMY axis
-    DIRECTED    ("directed",     "Directed Autonomy",
-                 "Follows explicit instructions",    List.of("instruction-following")),
+    DIRECTED    ("directed",      "Directed Autonomy",
+                 "Follows explicit instructions",       List.of("instruction-following")),
     SEMI_AUTONOMOUS("semi-autonomous","Semi-Autonomous",
-                 "Acts within defined boundaries",   List.of("bounded-autonomy")),
-    AUTONOMOUS  ("autonomous",   "Autonomous",
-                 "Acts on own judgment",             List.of("self-governing", "agentic"));
+                 "Acts within defined boundaries",      List.of("bounded-autonomy")),
+    AUTONOMOUS  ("autonomous",    "Autonomous",
+                 "Acts on own judgment",                List.of("self-governing", "agentic"));
 
     private final String value, label, description;
     private final List<String> aliases;
 
-    ConscientiousnessTerm(String value, String label, String description, List<String> aliases) {
-        this.value = value; this.label = label;
-        this.description = description; this.aliases = aliases;
+    ConscientiousnessTerm(String v, String l, String d, List<String> a) {
+        value = v; label = l; description = d; aliases = a;
     }
 
-    @Override public String value()       { return value; }
-    @Override public String label()       { return label; }
-    @Override public String description() { return description; }
+    @Override public String value()         { return value; }
+    @Override public String label()         { return label; }
+    @Override public String description()   { return description; }
     @Override public List<String> aliases() { return aliases; }
 }
 ```
 
 ### `SvoTerm`
 
+Descriptions preserved from the original `SvoVocabularyProducer` — used by renderer.
+
 ```java
-@VocabularyMetadata(uri = "urn:casehub:vocab:svo", name = "Subject-Verb-Object Roles", version = "1.0")
+@VocabularyMetadata(uri = "urn:casehub:vocab:svo",
+                    name = "Subject-Verb-Object Roles", version = "1.0")
 public enum SvoTerm implements VocabularyTerm {
-    COORDINATOR("coordinator", "Coordinator", List.of()) {
+    COORDINATOR("coordinator", "Coordinator", "Orchestrates other agents",       List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
             return t == CasehubSlotTerm.class ? Optional.of(CasehubSlotTerm.PLANNER) : Optional.empty();
         }
     },
-    PERFORMER("performer", "Performer", List.of()) {
+    PERFORMER  ("performer",   "Performer",   "Executes the assigned work",      List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
             return t == CasehubSlotTerm.class ? Optional.of(CasehubSlotTerm.EXECUTOR) : Optional.empty();
         }
     },
-    EVALUATOR("evaluator", "Evaluator", List.of("reviewer")) {
+    EVALUATOR  ("evaluator",   "Evaluator",   "Assesses quality of work",        List.of("reviewer")) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
             return t == CasehubSlotTerm.class ? Optional.of(CasehubSlotTerm.REVIEWER) : Optional.empty();
         }
     };
 
-    private final String value, label;
+    private final String value, label, description;
     private final List<String> aliases;
-    SvoTerm(String value, String label, List<String> aliases) {
-        this.value = value; this.label = label; this.aliases = aliases;
+
+    SvoTerm(String v, String l, String d, List<String> a) {
+        value = v; label = l; description = d; aliases = a;
     }
+
     @Override public String value()         { return value; }
     @Override public String label()         { return label; }
+    @Override public String description()   { return description; }
     @Override public List<String> aliases() { return aliases; }
 }
 ```
@@ -381,73 +412,98 @@ public enum SvoTerm implements VocabularyTerm {
 ### `CasehubSlotTerm`
 
 ```java
-@VocabularyMetadata(uri = "urn:casehub:vocab:casehubslot", name = "CaseHub Slot Roles", version = "1.0")
+@VocabularyMetadata(uri = "urn:casehub:vocab:casehubslot",
+                    name = "CaseHub Slot Roles", version = "1.0")
 public enum CasehubSlotTerm implements VocabularyTerm {
-    PLANNER("planner", "Planner", List.of()) {
+    PLANNER   ("planner",    "Planner",    "Plans and coordinates tasks",         List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
             return t == SvoTerm.class ? Optional.of(SvoTerm.COORDINATOR) : Optional.empty();
         }
     },
-    EXECUTOR("executor", "Executor", List.of()) {
+    EXECUTOR  ("executor",   "Executor",   "Executes assigned tasks",             List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
             return t == SvoTerm.class ? Optional.of(SvoTerm.PERFORMER) : Optional.empty();
         }
     },
-    REVIEWER("reviewer", "Reviewer", List.of()) {
+    REVIEWER  ("reviewer",   "Reviewer",   "Reviews and validates outputs",       List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
             return t == SvoTerm.class ? Optional.of(SvoTerm.EVALUATOR) : Optional.empty();
         }
     },
-    SUPERVISOR("supervisor", "Supervisor", List.of());
+    SUPERVISOR("supervisor", "Supervisor", "Oversees team execution",             List.of());
 
-    private final String value, label;
+    private final String value, label, description;
     private final List<String> aliases;
-    CasehubSlotTerm(String value, String label, List<String> aliases) {
-        this.value = value; this.label = label; this.aliases = aliases;
+
+    CasehubSlotTerm(String v, String l, String d, List<String> a) {
+        value = v; label = l; description = d; aliases = a;
     }
+
     @Override public String value()         { return value; }
     @Override public String label()         { return label; }
+    @Override public String description()   { return description; }
     @Override public List<String> aliases() { return aliases; }
 }
 ```
 
-### Partial `DiscTerm` example (eidos#26 will complete this)
+### Partial `DiscTerm` example (eidos#26 will complete all four types)
 
-Shown to validate that the API closes the original gap:
+Demonstrates the correct `axisExactMatch` pattern — exhaustive switch with `Optional.empty()`
+allowed as valid branches:
 
 ```java
-@VocabularyMetadata(uri = "urn:casehub:vocab:disc", name = "DISC Behavioural Types", version = "1.0")
+@VocabularyMetadata(uri = "urn:casehub:vocab:disc",
+                    name = "DISC Behavioural Types", version = "1.0")
 public enum DiscTerm implements VocabularyTerm {
-    DOMINANCE("dominance", "Dominance", List.of("D")) {
+    DOMINANCE("dominance", "Dominance", "High-D: direct, results-oriented", List.of("D")) {
         @Override
         public Optional<VocabularyTerm> axisExactMatch(Class<?> targetVocab, DispositionAxis axis) {
             if (targetVocab != ConscientiousnessTerm.class) return Optional.empty();
-            // Exhaustive switch — compile error when new DispositionAxis value is added
-            return Optional.of(switch (axis) {
-                case SOCIAL_ORIENTATION -> ConscientiousnessTerm.INDEPENDENT;
-                case RULE_FOLLOWING     -> ConscientiousnessTerm.FLEXIBLE;
-                case RISK_APPETITE      -> ConscientiousnessTerm.BOLD;
-                case AUTONOMY           -> ConscientiousnessTerm.AUTONOMOUS;
-            });
+            // Exhaustive switch — compile error when new DispositionAxis is added.
+            // Optional.empty() is valid where no meaningful mapping exists.
+            return switch (axis) {
+                case SOCIAL_ORIENTATION -> Optional.of(ConscientiousnessTerm.INDEPENDENT);
+                case RULE_FOLLOWING     -> Optional.of(ConscientiousnessTerm.FLEXIBLE);
+                case RISK_APPETITE      -> Optional.of(ConscientiousnessTerm.BOLD);
+                case AUTONOMY           -> Optional.of(ConscientiousnessTerm.AUTONOMOUS);
+            };
         }
     },
-    INFLUENCE    ("influence",     "Influence",     List.of("I")),
-    STEADINESS   ("steadiness",    "Steadiness",    List.of("S")),
-    CONSCIENTIOUSNESS_TYPE("conscientiousness-type","Conscientiousness Type",List.of("C"));
+    INFLUENCE("influence", "Influence", "High-I: enthusiastic, collaborative", List.of("I")) {
+        @Override
+        public Optional<VocabularyTerm> axisExactMatch(Class<?> targetVocab, DispositionAxis axis) {
+            if (targetVocab != ConscientiousnessTerm.class) return Optional.empty();
+            return switch (axis) {
+                case SOCIAL_ORIENTATION -> Optional.of(ConscientiousnessTerm.COLLABORATIVE);
+                case RULE_FOLLOWING     -> Optional.of(ConscientiousnessTerm.PRINCIPLED);
+                case RISK_APPETITE      -> Optional.of(ConscientiousnessTerm.MEASURED);
+                case AUTONOMY           -> Optional.empty();  // no clear mapping — eidos#26 to decide
+            };
+        }
+    },
+    STEADINESS    ("steadiness",         "Steadiness",         "High-S: patient, reliable",       List.of("S")),
+    CONSCIENTIOUSNESS_TYPE("conscientiousness-type","Conscientiousness Type","High-C: analytical, precise",List.of("C"));
 
-    // standard constructor + value()/label()/aliases() implementations
+    private final String value, label, description;
+    private final List<String> aliases;
+
+    DiscTerm(String v, String l, String d, List<String> a) {
+        value = v; label = l; description = d; aliases = a;
+    }
+
+    @Override public String value()         { return value; }
+    @Override public String label()         { return label; }
+    @Override public String description()   { return description; }
+    @Override public List<String> aliases() { return aliases; }
 }
 ```
 
-The exhaustive switch with no default branch is the actual compile-time completeness gate.
-When `DispositionAxis.CONFLICT_MODE` is added, this method fails to compile until the DISC
-implementor adds a mapping for it.
+`INFLUENCE.AUTONOMY → Optional.empty()` illustrates a legitimate gap. The exhaustive switch
+still compiles (all `DispositionAxis` values are covered); `Optional.empty()` is the honest
+answer when the mapping does not exist. This is the correct pattern — `Optional.of(switch{...})`
+would have forced an invented mapping.
 
 ### Companion registrars
-
-One thin `@ApplicationScoped` bean per vocabulary enum. As future improvement, `EidosProcessor`
-could scan for `@VocabularyMetadata`-annotated enum classes at Quarkus build time and
-auto-generate registrars, eliminating the companion pattern entirely. Not implemented here.
 
 ```java
 @ApplicationScoped
@@ -456,20 +512,23 @@ public class ConscientiousnessVocabRegistrar implements VocabularyRegistrar {
 }
 ```
 
+One per vocabulary enum. As a future improvement, `EidosProcessor` could scan for
+`@VocabularyMetadata`-annotated enum classes at Quarkus build time and auto-generate registrars.
+Not implemented here.
+
 ### Consumer registration (devtown example)
 
-A consumer app defines its own vocabulary enum and registrar — no changes to eidos required:
-
 ```java
-// In devtown's own module
-@VocabularyMetadata(uri = "urn:devtown:vocab:role", name = "Devtown Roles", version = "1.0")
+// In devtown's own module — no changes to eidos required
+@VocabularyMetadata(uri = "urn:devtown:vocab:role", name = "Devtown Roles")
 public enum DevtownRoleTerm implements VocabularyTerm {
-    PLANNER("planner", "Planner", List.of()) {
+    PLANNER("planner", "Planner", "Owns feature planning", List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
-            return t == CasehubSlotTerm.class ? Optional.of(CasehubSlotTerm.PLANNER) : Optional.empty();
+            return t == CasehubSlotTerm.class
+                ? Optional.of(CasehubSlotTerm.PLANNER) : Optional.empty();
         }
     },
-    REVIEWER("reviewer", "Reviewer", List.of());
+    REVIEWER("reviewer", "Reviewer", "Reviews pull requests", List.of());
     // ...
 }
 
@@ -479,42 +538,20 @@ public class DevtownRoleRegistrar implements VocabularyRegistrar {
 }
 ```
 
-devtown depends on `casehub-eidos-vocab` to reference `CasehubSlotTerm`. The `DevtownRoleTerm`
-registrar is picked up by `CdiVocabularyRegistry` automatically.
-
 ---
 
 ## Known Constraint: One-Directional Mapping
 
-Cross-vocabulary references in `exactMatch()` use the target enum class as the key. This means
-the source vocabulary must have a compile-time dependency on the target vocabulary. Outbound
-mappings work for any vocabulary that can reference its target:
-
-- `DevtownRoleTerm.PLANNER.exactMatch(CasehubSlotTerm.class)` → works (devtown depends on eidos-vocab)
-- `CasehubSlotTerm.PLANNER.exactMatch(DevtownRoleTerm.class)` → cannot work (eidos-vocab cannot
-  depend on devtown)
-
-Consequence: `equivalentValues(CasehubSlotTerm.PLANNER, DevtownRoleTerm.class)` always returns
-empty, even if devtown declared the reverse mapping. The string-based path has the same
-limitation — it resolves via the source term's `exactMatch()`, which has the same class
-dependency constraint.
+Cross-vocabulary references use the target enum class as key. The source vocabulary must have
+a compile-time dependency on the target. Outbound mappings work for any vocabulary that can
+reference its target; the reverse direction cannot be declared from a lower-layer module.
 
 For all current use cases (SVO ↔ CasehubSlot in the same module, DISC → Conscientiousness in
 the same module), this constraint does not apply.
 
 **Path forward:** A `VocabularyMapping<S, T>` SPI registered alongside vocabularies would
-decouple mappings from the source term entirely:
-```java
-public interface VocabularyMapping<S extends Enum<S> & VocabularyTerm,
-                                    T extends Enum<T> & VocabularyTerm> {
-    Class<S> source();
-    Class<T> target();
-    Map<S, T> mappings();
-}
-```
-
-The registry would maintain a reverse index, support third-party bridge modules, and make
-bidirectionality explicit and verifiable. Not implemented here.
+decouple mappings from the source term, support third-party bridge modules, and make
+bidirectionality explicit. Not implemented here.
 
 ---
 
@@ -522,13 +559,76 @@ bidirectionality explicit and verifiable. Not implemented here.
 
 | Condition | Behaviour |
 |---|---|
-| Zero-constant enum | throws `IllegalArgumentException` at registration |
-| `@VocabularyMetadata` annotation absent | throws `IllegalArgumentException` at registration |
-| Duplicate primary value within vocab | throws `IllegalArgumentException` at registration |
-| Alias duplicates another alias within vocab | throws `IllegalArgumentException` at registration |
-| Alias matches a primary value within vocab | throws `IllegalArgumentException` at registration |
-| Same URI from two different enum classes | throws `IllegalArgumentException` at registration |
-| Same URI + same class (re-registration) | overwrites silently (idempotent) |
+| Zero-constant enum | throws `IllegalArgumentException` |
+| `@VocabularyMetadata` absent | throws `IllegalArgumentException` |
+| Duplicate primary value within vocab | throws `IllegalArgumentException` |
+| Alias duplicates another alias within vocab | throws `IllegalArgumentException` |
+| Alias matches any primary value within vocab | throws `IllegalArgumentException` |
+| Same URI from two different enum classes | throws `IllegalArgumentException` |
+| Same URI + same class (re-registration) | silently overwrites (idempotent) |
+
+---
+
+## Test Coverage
+
+### `CdiVocabularyRegistryTest` (`@QuarkusTest`, runtime module)
+
+**Registration:**
+- Programmatic `register()` of a test enum — `isRegistered()` returns true
+- `isRegistered()` returns false for unknown URI
+- Zero-constant enum → throws at registration
+- Missing `@VocabularyMetadata` → throws at registration
+- Duplicate primary value → throws at registration
+- Alias duplicates another alias → throws at registration
+- Alias matches a primary value → throws at registration
+- Duplicate URI from different class → throws at registration
+- Re-registration with same class → idempotent, no throw
+
+**`allTerms()`:**
+- Returns all distinct constants in declaration order (not duplicated by aliases)
+- Returns empty list for unknown URI
+
+**`resolve()`:**
+- Typed: `resolve(Class<T>, String value)` — by primary value, by alias, missing → empty
+- String-based: `resolve(String uri, String value)` — by primary value, by alias
+
+**`equivalentValues()` — axis-unaware:**
+- Typed: `equivalentValues(S from, Class<T>)` — returns correct constant; cast validated
+- Typed: target vocab not covered by source term → `Optional.empty()`
+- String-based: `equivalentValues(String, String, String)` — returns correct value
+- String-based: unknown source URI → empty; unknown target URI → empty; unknown value → empty
+
+**`equivalentValues()` — axis-aware:**
+- Typed: `equivalentValues(S from, Class<T>, DispositionAxis)` — returns correct constant
+- Typed: axis returns `Optional.empty()` from implementation (sparse mapping) → empty
+- String-based: `equivalentValues(String, String, String, DispositionAxis)` — correct value
+- Axis-unaware overload against axis-only term → empty (correct, not an error)
+
+**Consumer pattern:**
+- Test enum with `exactMatch()` to a platform enum registered programmatically; typed
+  cross-vocab lookup returns the correct typed constant
+
+### `AgentDispositionTest` (unit test, api module)
+
+- All four `get(DispositionAxis)` cases return the correct field value
+- Null field values return `Optional.empty()`
+
+### `CrossVocabularyDiscoveryTest` (`@QuarkusTest`, examples module)
+
+Updated: `find(URI)` replaced by `isRegistered(URI)`. Typed assertions:
+```java
+assertThat(vocabRegistry.equivalentValues(SvoTerm.EVALUATOR, CasehubSlotTerm.class))
+    .contains(CasehubSlotTerm.REVIEWER);
+```
+
+### `DispositionVocabularyTest` (`@QuarkusTest`, examples module)
+
+Updated: typed `resolve(ConscientiousnessTerm.class, "strict")` replaces string-based resolve.
+`allTerms()` assertion: 12 distinct constants in declaration order.
+
+### Three vocab tests
+
+Updated to exercise enum constants directly.
 
 ---
 
@@ -559,12 +659,10 @@ or `VocabularyRegistry`.
 
 ## Out of Scope
 
-- `DiscTerm` and `BelbinTerm` enums — eidos#26. This spec provides the foundation.
-- `conflictMode` as 5th `AgentDisposition` axis — eidos#38. When it lands: add
-  `CONFLICT_MODE` to `DispositionAxis`; compiler identifies every exhaustive switch and
-  `AgentDisposition.get()` that needs updating.
-- `VocabularyMapping` SPI for open-world bidirectional mappings — acknowledged as path
-  forward; not needed for any current use case.
-- Build-time `@VocabularyMetadata` scanning via `EidosProcessor` — acknowledged as future
-  alternative to companion registrar beans.
-- JPA vocabulary persistence — all vocabularies are CDI-discovered in-memory.
+- `DiscTerm` and `BelbinTerm` full implementations — eidos#26
+- `conflictMode` as 5th `AgentDisposition` axis — eidos#38; when it lands, add
+  `CONFLICT_MODE` to `DispositionAxis` and the compiler identifies all sites
+- `VocabularyMapping` SPI for open-world bidirectional mappings — path forward documented
+- Build-time `@VocabularyMetadata` scanning via `EidosProcessor` — future alternative to
+  companion registrar beans
+- JPA vocabulary persistence — all vocabularies are CDI-discovered in-memory
