@@ -1,43 +1,47 @@
 # CaseHub Eidos — Session Handover
-**Date:** 2026-06-04
+**Date:** 2026-06-05
 
 ## Current State
 
-eidos#31 closed — ARC42STORIES.MD Foundation tier complete. §3–§13 written from 15
-blog entries, 8 specs, 2 ADRs, git log, and full Java source scan. Seven-layer
-taxonomy (L1 Zero-Dep API → L7 Knowledge Graph), 6 chapters, Layer×Chapter matrix,
-35-term glossary, 4 inline anti-patterns. First Foundation-tier ARC42STORIES.MD in
-the CaseHub ecosystem.
+eidos#29 closed — `docs/personality-frameworks.md` complete. 828 lines covering 11
+frameworks, cross-reference table, 3 combination patterns, 7 anti-patterns, vocabulary
+draft tables for Belbin (mechanical for #26) and DISC (blocked on eidos#40). ADR 0003
+written: DISC as disposition vocabulary, not slot vocabulary. Protocols filed to parent
+repo (parent#177, parent#178).
 
-Hygiene: `issue-36-agentoutcome-observedat` is missing `design/EPIC-CLOSED.md` on
-the epic branch — issues are closed and work is on main; marker only needs adding to
-the branch if the hygiene scan is to be clean.
+Key architectural decision: DISC types are disposition vocabulary, not slot vocabulary.
+An agent holds both simultaneously — `slotVocabulary=belbin` for team role and
+`dispositionVocabulary=disc` for behavioral style. The Belbin+DISC combination is
+additive; blocked on eidos#40 for full implementation.
 
 ## Immediate Next Step
 
-Pick up parent#167 — eidos deep-dive: update Reactive Build Gating section to note
-`ReactiveAgentGraphQuery` is not build-gated (it's `BlockingToReactiveGraphBridge
-@DefaultBean`); add `AgentOutcome.observedAt` to Current State. Run `/work parent#167`.
+Start eidos#40 — design the axis-aware `equivalentValues()` extension. Run `/work eidos#40`.
+Small: likely just an API change + ADR. Unblocks the DISC half of eidos#26.
 
 ## What's Left
 
-- parent#167 — eidos deep-dive: ReactiveAgentGraphQuery reactive build gating +
-  AgentOutcome.observedAt · XS · Low
+- parent#177 — add DISC vocab protocol to parent repo protocols/casehub/ · XS · Low
+- parent#178 — add delegation platform-semantic protocol · XS · Low
+- parent#174 — update eidos deep-dive with personality-frameworks.md reference · XS · Low
+- eidos#41 — three minor polish items in personality-frameworks.md · XS · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| parent#167 | eidos deep-dive reactive build gating + observedAt | XS | Low | — |
-| #29 | Docs: Mapping Personality and Role Frameworks to AgentDescriptor | M | Med | Gates #26 |
-| #26 | Belbin/DISC/Big Five vocabulary module | L | High | Gates on #29 |
-| — | casehub-engine: WorkOrchestrator write-path integration | M | Med | Requires engine issue |
+| eidos#40 | equivalentValues() axis-aware extension — API design decision | S | Med | Unblocks DISC half of eidos#26 |
+| eidos#26 | Belbin/DISC vocabulary module — BelbinVocabularyProducer | M | Low | Belbin half immediately startable; DISC half blocked on #40 |
+| eidos#38 | conflictMode as 5th AgentDisposition axis | M | Med | Design decision; requires AgentDisposition API change |
+| eidos#39 | AgentDisposition as Map<String,String> | L | High | Significant rearchitect; evaluate after #38 |
+| eidos#27 | Theoretical framework grounding in AgentDescriptor + renderer | M | Med | Depends on #26 (Option B) |
+| eidos#28 | casehub-engine: Belbin-based agent composition for phases | L | High | Cross-repo; depends on #26, #27 |
 
 ## References
 
 | What | Path |
 |------|------|
-| ARC42STORIES.MD (complete) | `ARC42STORIES.MD` (workspace root) |
-| Latest blog | `blog/2026-06-04-mdp02-writing-the-map.md` |
-| Garden entries | GE-20260604-043617 (NaN IEEE 754 guard), GE-20260604-4bfd2c (CDI field-injection no-arg loss) |
-| Open issues | parent#167; eidos#29, #26, #27, #28 |
+| Personality frameworks doc | `docs/personality-frameworks.md` (project) |
+| Spec (3 rounds of review) | `docs/superpowers/specs/2026-06-05-personality-framework-mapping-design.md` |
+| ADR 0003 | `docs/adr/0003-disc-vocabulary-disposition-not-slot.md` |
+| Latest blog | `blog/2026-06-05-mdp01-two-vocabularies.md` |
