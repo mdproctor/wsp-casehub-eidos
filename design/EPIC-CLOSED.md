@@ -1,3 +1,4 @@
-# Branch Closed — issue-36-agentoutcome-observedat
-**Date:** 2026-06-04
-**Issues:** casehubio/eidos#36, casehubio/eidos#37
+# Branch Closed — issue-40-equivalentvalues-axis-param
+**Date:** 2026-06-06
+**Issue:** #40
+**Covers:** 40
