@@ -19,3 +19,4 @@
 | [2026-06-04-mdp01-timestamps-and-gaps.md](2026-06-04-mdp01-timestamps-and-gaps.md) | 2026-06-04 | AgentOutcome.observedAt, NaN IEEE 754 guard, CDI no-arg constructor pattern |
 | [2026-06-04-mdp02-writing-the-map.md](2026-06-04-mdp02-writing-the-map.md) | 2026-06-04 | Writing the map — ARC42STORIES.MD Foundation tier complete; layer taxonomy, anti-patterns, Pattern to replicate |
 | [2026-06-05-mdp01-two-vocabularies.md](2026-06-05-mdp01-two-vocabularies.md) | 2026-06-05 | Two vocabularies are better than one — DISC as disposition not slot; Belbin+DISC combination; equivalentValues() API gap |
+| [2026-06-06-mdp01-vocabularies-without-strings.md](2026-06-06-mdp01-vocabularies-without-strings.md) | 2026-06-06 | eidos#40: vocabulary terms as enums, DispositionAxis exhaustive switch, axis-aware equivalentValues, Java wildcard inference gap |
