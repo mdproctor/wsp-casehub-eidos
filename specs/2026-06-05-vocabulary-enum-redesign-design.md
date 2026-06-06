@@ -1,7 +1,7 @@
 # Vocabulary System Enum Redesign + DispositionAxis
 **Issue:** eidos#40
 **Date:** 2026-06-05
-**Status:** approved (rev 3)
+**Status:** approved (rev 4)
 
 ---
 
@@ -193,6 +193,12 @@ public interface VocabularyRegistry {
     Optional<String> equivalentValues(String fromUri, String value, String toUri, DispositionAxis axis);
 
     // --- Typed resolution (compile-time-known vocab class) ---
+    // NOTE: typed equivalentValues methods do NOT require the source or target vocabulary to
+    // be registered. They delegate directly to the source constant's exactMatch() /
+    // axisExactMatch() methods, which are compile-time constants. isRegistered() and the
+    // typed equivalentValues methods are independent — registration state does not affect
+    // typed lookups. A caller may use equivalentValues(SvoTerm.EVALUATOR, CasehubSlotTerm.class)
+    // before either vocabulary is registered and receive the correct answer.
     <T extends Enum<T> & VocabularyTerm>
         Optional<T> resolve(Class<T> vocab, String value);
 
@@ -227,11 +233,32 @@ Map<Class<?>, Map<String, VocabularyTerm>>    byClass        // class → (value
 Map<Class<?>, List<? extends VocabularyTerm>> byClassOrdered // class → constants in declaration order (for allTerms)
 ```
 
+All three are `ConcurrentHashMap` for safe concurrent reads after initialization.
+
+**Thread safety:** `register()` is not thread-safe for concurrent calls. It modifies three maps
+in sequence without atomicity guarantees — two simultaneous `register()` calls could pass the
+duplicate-URI check before either stores the URI. `register()` is designed for single-threaded
+initialization via `@PostConstruct`. Concurrent reads after `@PostConstruct` completes are safe
+(ConcurrentHashMap). Concurrent registration support is a future concern if needed.
+
+**`@PostConstruct init()`:**
+```java
+@Inject @Any Instance<VocabularyRegistrar> registrars;
+
+@PostConstruct
+void init() {
+    for (VocabularyRegistrar r : registrars) {
+        register(r.vocabulary());  // validated path — not an internal shortcut
+    }
+}
+```
+
 **`register(Class<T>)`:**
 1. Reads `@VocabularyMetadata`; throws `IllegalArgumentException` if absent.
 2. Calls `vocab.getEnumConstants()`. Throws `IllegalArgumentException` if empty.
-3. Populates `byClassOrdered` with `List.of(constants)` — declaration order preserved by
-   `getEnumConstants()` contract.
+3. Populates `byClassOrdered` with `List.copyOf(Arrays.asList(constants))` — immutable list in
+   declaration order (`getEnumConstants()` contract). Stored immutably so `allTerms()` returns it
+   directly without defensive copying.
 4. Builds `byClass` lookup map. Throws `IllegalArgumentException` on:
    - Duplicate primary value across constants in this vocab.
    - Any alias duplicating another alias or any primary value within this vocab.
@@ -248,10 +275,11 @@ public List<? extends VocabularyTerm> allTerms(String vocabUri) {
 }
 ```
 
-Returns the pre-built ordered list. No streaming, no deduplication needed — distinct by
-construction (one entry per enum constant at registration time).
+Returns the pre-built immutable list directly. No streaming, no deduplication needed — distinct
+by construction (one entry per enum constant at registration time).
 
-**Typed equivalentValues** — delegate to source constant's interface methods:
+**Typed equivalentValues** — delegate to source constant's interface methods; do not touch
+internal maps (typed lookups bypass registration state by design, see SPI note above):
 ```java
 @Override
 public <S extends Enum<S> & VocabularyTerm, T extends Enum<T> & VocabularyTerm>
@@ -320,9 +348,11 @@ adding the corresponding field to `AgentDisposition`.
 ### `ConscientiousnessTerm`
 
 12 terms across 4 disposition axes. `description()` is used by `ClaudeMarkdownRenderer` during
-system prompt rendering and must be preserved. The axis groupings are informational (comments)
-only — the type system does not enforce that DISC maps a term to the correct axis. Correctness
-of axis assignment is the responsibility of tests in the DISC module (eidos#26).
+system prompt rendering and must be preserved. The renderer treats `description().isEmpty()` as
+absent and omits the description field from the rendered prompt. The axis groupings are
+informational (comments) only — the type system does not enforce that DISC maps a term to the
+correct axis. Correctness of axis assignment is the responsibility of tests in the DISC module
+(eidos#26).
 
 ```java
 @VocabularyMetadata(uri = "urn:casehub:vocab:conscientiousness",
@@ -381,6 +411,7 @@ Descriptions preserved from the original `SvoVocabularyProducer` — used by ren
 public enum SvoTerm implements VocabularyTerm {
     COORDINATOR("coordinator", "Coordinator", "Orchestrates other agents",       List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
+            // Class identity is correct — Class instances are singletons per class loader
             return t == CasehubSlotTerm.class ? Optional.of(CasehubSlotTerm.PLANNER) : Optional.empty();
         }
     },
@@ -417,6 +448,7 @@ public enum SvoTerm implements VocabularyTerm {
 public enum CasehubSlotTerm implements VocabularyTerm {
     PLANNER   ("planner",    "Planner",    "Plans and coordinates tasks",         List.of()) {
         @Override public Optional<VocabularyTerm> exactMatch(Class<?> t) {
+            // Class identity is correct — Class instances are singletons per class loader
             return t == SvoTerm.class ? Optional.of(SvoTerm.COORDINATOR) : Optional.empty();
         }
     },
@@ -446,10 +478,12 @@ public enum CasehubSlotTerm implements VocabularyTerm {
 }
 ```
 
-### Partial `DiscTerm` example (eidos#26 will complete all four types)
+### Partial `DiscTerm` example — illustrative only
 
-Demonstrates the correct `axisExactMatch` pattern — exhaustive switch with `Optional.empty()`
-allowed as valid branches:
+**This enum is NOT created as part of this issue.** eidos#26 owns all DISC and Belbin
+implementations. This example exists solely to validate that the API closes the original gap
+and to demonstrate the correct `axisExactMatch` pattern — exhaustive switch with
+`Optional.empty()` as valid branches.
 
 ```java
 @VocabularyMetadata(uri = "urn:casehub:vocab:disc",
@@ -459,7 +493,10 @@ public enum DiscTerm implements VocabularyTerm {
         @Override
         public Optional<VocabularyTerm> axisExactMatch(Class<?> targetVocab, DispositionAxis axis) {
             if (targetVocab != ConscientiousnessTerm.class) return Optional.empty();
-            // Exhaustive switch — compile error when new DispositionAxis is added.
+            // Exhaustive switch enforces axis completeness at compile time — adding a new
+            // DispositionAxis value causes a compile error here. Adding a new target vocabulary
+            // (e.g. BelbinTerm) requires a new if-branch above; no compile-time enforcement
+            // exists for the target-vocabulary dimension.
             // Optional.empty() is valid where no meaningful mapping exists.
             return switch (axis) {
                 case SOCIAL_ORIENTATION -> Optional.of(ConscientiousnessTerm.INDEPENDENT);
@@ -473,6 +510,7 @@ public enum DiscTerm implements VocabularyTerm {
         @Override
         public Optional<VocabularyTerm> axisExactMatch(Class<?> targetVocab, DispositionAxis axis) {
             if (targetVocab != ConscientiousnessTerm.class) return Optional.empty();
+            // Class identity is correct — Class instances are singletons per class loader
             return switch (axis) {
                 case SOCIAL_ORIENTATION -> Optional.of(ConscientiousnessTerm.COLLABORATIVE);
                 case RULE_FOLLOWING     -> Optional.of(ConscientiousnessTerm.PRINCIPLED);
