@@ -1,7 +1,7 @@
 # Vocabulary System Enum Redesign + DispositionAxis
 **Issue:** eidos#40
 **Date:** 2026-06-05
-**Status:** approved (rev 4)
+**Status:** approved (rev 5)
 
 ---
 
@@ -193,15 +193,15 @@ public interface VocabularyRegistry {
     Optional<String> equivalentValues(String fromUri, String value, String toUri, DispositionAxis axis);
 
     // --- Typed resolution (compile-time-known vocab class) ---
-    // NOTE: typed equivalentValues methods do NOT require the source or target vocabulary to
-    // be registered. They delegate directly to the source constant's exactMatch() /
-    // axisExactMatch() methods, which are compile-time constants. isRegistered() and the
-    // typed equivalentValues methods are independent — registration state does not affect
-    // typed lookups. A caller may use equivalentValues(SvoTerm.EVALUATOR, CasehubSlotTerm.class)
-    // before either vocabulary is registered and receive the correct answer.
+    // resolve(Class<T>, String) REQUIRES the vocabulary to be registered — it uses the byClass
+    // index populated by register(). Returns empty if the vocabulary is not registered.
     <T extends Enum<T> & VocabularyTerm>
         Optional<T> resolve(Class<T> vocab, String value);
 
+    // NOTE: the two typed equivalentValues methods do NOT require registration. They delegate
+    // directly to the source constant's exactMatch() / axisExactMatch() methods, which are
+    // compile-time constants. isRegistered() and typed equivalentValues are independent —
+    // registration state does not affect typed equivalentValues lookups.
     <S extends Enum<S> & VocabularyTerm, T extends Enum<T> & VocabularyTerm>
         Optional<T> equivalentValues(S from, Class<T> targetVocab);
 
@@ -253,18 +253,18 @@ void init() {
 }
 ```
 
-**`register(Class<T>)`:**
+**`register(Class<T>)`** — validate fully before writing any map:
 1. Reads `@VocabularyMetadata`; throws `IllegalArgumentException` if absent.
-2. Calls `vocab.getEnumConstants()`. Throws `IllegalArgumentException` if empty.
-3. Populates `byClassOrdered` with `List.copyOf(Arrays.asList(constants))` — immutable list in
-   declaration order (`getEnumConstants()` contract). Stored immutably so `allTerms()` returns it
-   directly without defensive copying.
-4. Builds `byClass` lookup map. Throws `IllegalArgumentException` on:
+2. Validates `vocab.getEnumConstants()` is non-empty; throws `IllegalArgumentException` if not.
+3. Validates URI: if `byUri` already maps the URI to a *different* class, throws
+   `IllegalArgumentException` (duplicate URI conflict). Fast-fail before any map writes.
+   If same class, proceeds (idempotent re-registration).
+4. Builds `orderedList` locally: `List.copyOf(Arrays.asList(constants))` — immutable, declaration
+   order preserved by `getEnumConstants()` contract.
+5. Builds `lookupMap` locally. Throws `IllegalArgumentException` on:
    - Duplicate primary value across constants in this vocab.
    - Any alias duplicating another alias or any primary value within this vocab.
-5. Throws `IllegalArgumentException` if `byUri` already maps the URI to a *different* class
-   (duplicate URI conflict); silently overwrites if same class (idempotent re-registration).
-6. Stores in all three maps.
+6. Writes to all three maps atomically in sequence: `byClassOrdered`, `byClass`, `byUri`.
 
 **`allTerms()` implementation:**
 ```java
@@ -278,8 +278,24 @@ public List<? extends VocabularyTerm> allTerms(String vocabUri) {
 Returns the pre-built immutable list directly. No streaming, no deduplication needed — distinct
 by construction (one entry per enum constant at registration time).
 
+**`resolve()` implementations:**
+```java
+@Override
+public <T extends Enum<T> & VocabularyTerm> Optional<T> resolve(Class<T> vocab, String value) {
+    var lookup = byClass.get(vocab);
+    return lookup == null ? Optional.empty() : Optional.ofNullable(vocab.cast(lookup.get(value)));
+}
+
+@Override
+public Optional<? extends VocabularyTerm> resolve(String vocabUri, String value) {
+    var clazz = byUri.get(vocabUri);
+    if (clazz == null) return Optional.empty();
+    return Optional.ofNullable(byClass.get(clazz).get(value));
+}
+```
+
 **Typed equivalentValues** — delegate to source constant's interface methods; do not touch
-internal maps (typed lookups bypass registration state by design, see SPI note above):
+internal maps (typed equivalentValues bypass registration state by design, see SPI note above):
 ```java
 @Override
 public <S extends Enum<S> & VocabularyTerm, T extends Enum<T> & VocabularyTerm>
@@ -641,6 +657,14 @@ bidirectionality explicit. Not implemented here.
 - Typed: axis returns `Optional.empty()` from implementation (sparse mapping) → empty
 - String-based: `equivalentValues(String, String, String, DispositionAxis)` — correct value
 - Axis-unaware overload against axis-only term → empty (correct, not an error)
+
+**Typed path bypasses registration:**
+```java
+// No vocabulary registered — typed equivalentValues still works
+var result = registry.equivalentValues(SvoTerm.EVALUATOR, CasehubSlotTerm.class);
+assertThat(result).contains(CasehubSlotTerm.REVIEWER);
+assertThat(registry.isRegistered(SvoTerm.URI)).isFalse(); // confirms no registration occurred
+```
 
 **Consumer pattern:**
 - Test enum with `exactMatch()` to a platform enum registered programmatically; typed
