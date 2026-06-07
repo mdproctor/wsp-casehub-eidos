@@ -1,50 +1,35 @@
-# CaseHub Eidos — Session Handover
-**Date:** 2026-06-06
+# eidos Session Handover — 2026-06-07
 
-## Current State
+## Last Session
 
-eidos#40 closed. Full vocabulary system redesign: `Vocabulary` and `VocabularyTerm`
-records deleted and replaced by a `VocabularyTerm` interface implemented by enum
-constants. `DispositionAxis` enum added. `@VocabularyMetadata` annotation on vocabulary
-enum classes. `VocabularyRegistrar` CDI SPI discovers vocab enums. `CdiVocabularyRegistry`
-rewritten — three-map, validate-then-write. `AgentDisposition.get(DispositionAxis)` added.
-All three built-in vocabularies (SVO, Conscientiousness, CasehubSlot) rewritten as enums
-with typed bidirectional `exactMatch()`.
-
-Squashed to 5 commits, pushed to `casehubio/eidos` main.
+Completed eidos#26 (Belbin/DISC/TK vocabulary module), eidos#38 (conflictMode as 5th disposition axis), and eidos#39 (fixed-fields design decision). All three issues are closed. Eight squashed commits landed on `casehubio/eidos` main. The vocabulary system now covers six frameworks across five disposition axes. `AgentDescriptor` gained `axisVocabularies(Map<DispositionAxis, String>)` + `vocabUriForAxis(DispositionAxis)` for per-axis vocabulary resolution. ADR-0004 documents the fixed-fields decision. `docs/operations.md` created with axis evolution guidance.
 
 ## Immediate Next Step
 
-Start eidos#26 — DISC and Belbin vocabulary module. Run `/work eidos#26`.
-`DiscTerm` and `BelbinTerm` implement `VocabularyTerm`, carry `@VocabularyMetadata`,
-and use `axisExactMatch()` with exhaustive switch on `DispositionAxis`. Foundation is ready.
+Pick up **#42** (vocab registry robustness gaps — alias-vs-alias collision test, blank URI guard, `allTerms()` isolation test). Three small tests and a guard. Run `/work` to start.
+
+## Cross-Module
+
+**We're blocking:** `casehub-engine` (#28) — Belbin-based agent composition for project phases needed the Belbin vocabulary to exist. It does now. Engine team can proceed.
 
 ## What's Left
 
-- parent#177 — add DISC vocab protocol to parent repo protocols/casehub/ · XS · Low
-- parent#178 — add delegation platform-semantic protocol · XS · Low
-- parent#174 — update eidos deep-dive with personality-frameworks.md reference · XS · Low
-- parent#182 — sync casehub-eidos.md and PLATFORM.md for enum vocabulary redesign · S · Low
-- parent#185 — add 3 casehub-eidos vocabulary protocols to parent repo · S · Low
-- eidos#41 — three minor polish items in personality-frameworks.md · XS · Low
-- eidos#42 — vocab registry minor robustness gaps (alias-alias test, blank URI guard) · XS · Low
+- `#43` — migrate ~95 `AgentDescriptor`/`AgentDisposition` positional constructor call sites to Builder · S · Low
+- `#41` — `personality-frameworks.md` minor polish items · XS · Low
+- `parent#192` — PLATFORM.md Capability Ownership + open design decisions stale · XS · Low (peer repo issue filed)
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| eidos#26 | DiscTerm + BelbinTerm enums — DISC→Conscientiousness axisExactMatch | M | Low | Foundation ready; spec in docs/personality-frameworks.md |
-| eidos#38 | conflictMode as 5th AgentDisposition axis | M | Med | Adds CONFLICT_MODE to DispositionAxis; exhaustive switch enforces all sites |
-| eidos#39 | AgentDisposition as Map<String,String> | L | High | Evaluate after #38 |
-| eidos#27 | Theoretical framework grounding in AgentDescriptor + renderer | M | Med | Depends on #26 |
-| eidos#28 | casehub-engine: Belbin-based agent composition for phases | L | High | Cross-repo; depends on #26, #27 |
+| #42 | Vocab registry robustness gaps — alias-alias collision, blank URI guard, allTerms isolation | S | Low | Immediate |
+| #43 | Builder migration for AgentDescriptor/AgentDisposition call sites | S | Low | Deferrable |
+| #27 | Theoretical framework grounding in AgentDescriptor + SystemPromptRenderer | M | High | Design required |
+| #28 | casehub-engine: Belbin-based agent composition for project phases | L | High | Cross-repo; Belbin vocab now available |
 
 ## References
 
-| What | Path |
-|------|------|
-| Vocabulary enum redesign spec | `docs/specs/2026-06-05-vocabulary-enum-redesign-design.md` (project) |
-| Personality frameworks doc | `docs/personality-frameworks.md` (project) |
-| ADR 0003 | `docs/adr/0003-disc-vocabulary-disposition-not-slot.md` |
-| Latest blog | `blog/2026-06-06-mdp01-vocabularies-without-strings.md` |
-| Robustness gaps issue | `casehubio/eidos#42` |
+- Blog: `blog/2026-06-07-mdp01-five-axes.md`
+- ADR: `docs/adr/0004-disposition-axes-fixed-fields-not-open-map.md`
+- Operations: `docs/operations.md`
+- Spec: `docs/superpowers/specs/2026-06-07-disposition-axis-belbin-disc-vocabulary-design.md`
