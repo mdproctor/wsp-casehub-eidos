@@ -1,0 +1,9 @@
+branch: issue-27-theoretical-framework-grounding
+project-sha: 9713e3f91d1ad85cf92217c463e8f11737156dd3
+date: 2026-06-08
+issue: 27
+issue-repo: casehubio/eidos
+covers: 27
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes:
