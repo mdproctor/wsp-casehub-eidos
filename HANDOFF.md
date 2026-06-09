@@ -1,4 +1,5 @@
 # eidos Session Handover — 2026-06-08
+*Updated: #27 closed — removed from backlog.*
 
 ## Last Session
 
@@ -8,10 +9,14 @@ commits landed on `casehubio/eidos` main. Garden entry GE-20260608-fc4733 submit
 vacuous assertion with typed collections). Protocol PP-20260608-e694ab captured (JPA mapper
 must use positional constructor for compile-time field-completeness).
 
+#27 (theoretical framework grounding in AgentDescriptor + SystemPromptRenderer) also shipped —
+vocab-resolved axis labels, per-axis nested disposition payload, conflictMode, structural
+renderers, and integration tests. Closes #27.
+
 ## Immediate Next Step
 
-Pick up **#27** (theoretical framework grounding in AgentDescriptor + SystemPromptRenderer).
-M-scale, High complexity — design required first. Run `/work` to start.
+Pick up **#44** — add `conflictMode` row to the `personality-frameworks.md` cross-reference
+table. XS · Low — quick doc fix, no design required.
 
 ## Cross-Module
 
@@ -27,9 +32,8 @@ Belbin vocab exists; engine team can proceed independently.
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #27 | Theoretical framework grounding in AgentDescriptor + SystemPromptRenderer | M | High | Design required |
+| #44 | personality-frameworks.md: add conflictMode row to cross-reference table | XS | Low | Filed last session |
 | #28 | casehub-engine: Belbin-based agent composition for project phases | L | High | Cross-repo |
-| #44 | personality-frameworks.md: add conflictMode row to cross-reference table | XS | Low | Filed this session |
 
 ## References
 
