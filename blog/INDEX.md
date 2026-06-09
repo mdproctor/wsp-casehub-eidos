@@ -21,3 +21,4 @@
 | [2026-06-04-mdp02-writing-the-map.md](2026-06-04-mdp02-writing-the-map.md) | 2026-06-04 | Writing the map — ARC42STORIES.MD Foundation tier complete; layer taxonomy, anti-patterns, Pattern to replicate |
 | [2026-06-05-mdp01-two-vocabularies.md](2026-06-05-mdp01-two-vocabularies.md) | 2026-06-05 | Two vocabularies are better than one — DISC as disposition not slot; Belbin+DISC combination; equivalentValues() API gap |
 | [2026-06-06-mdp01-vocabularies-without-strings.md](2026-06-06-mdp01-vocabularies-without-strings.md) | 2026-06-06 | eidos#40: vocabulary terms as enums, DispositionAxis exhaustive switch, axis-aware equivalentValues, Java wildcard inference gap |
+| [2026-06-09-mdp01-framework-grounding.md](2026-06-09-mdp01-framework-grounding.md) | 2026-06-09 | Vocabulary-grounded disposition payload — per-axis nested objects, conflictMode fix, addIfNonBlank distinction |
