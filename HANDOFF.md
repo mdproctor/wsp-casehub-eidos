@@ -1,5 +1,7 @@
 # eidos Session Handover — 2026-06-09
 
+*Updated: parent#192 closed — removed from backlog.*
+
 ## Last Session
 
 Closed #44 (personality-frameworks.md — conflictMode row + 5 related gaps: TK term
@@ -27,7 +29,6 @@ deps satisfied; A2A card now exposes frameworks index. Engine team can proceed.
 
 ## What's Left
 
-- `parent#192` — PLATFORM.md Capability Ownership stale · XS · Low (peer issue filed prev session)
 - `parent#216` — PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework refs · XS · Low (filed this session)
 
 ## What's Next
