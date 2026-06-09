@@ -1,60 +1,65 @@
 # Eval Baseline & Behavioral Validation Design
 **Issue:** casehubio/eidos#46  
-**Date:** 2026-06-09 (revised after review)  
+**Date:** 2026-06-09 (revised v3)  
 **Branch:** issue-46-eval-baseline-behavioral
 
 ---
 
-## Revision notes
+## Revision notes (v3)
 
-- Phase 3 redesigned: per-profile axis scoring replaced with pair-contrast behavioral testing.
-  Eliminates the circularity of a loaded judge scoring its own output against known expected
-  values. The methodological fix also simplifies the data model.
-- `casehub.agent.claude.model` property removed (does not exist in `ClaudeAgentProperties`).
-- `casehub-platform-agent-api` scope corrected to `test`.
-- `ResponseFormat` loss in Claude mode explicitly documented for all five existing judges.
-- `DispositionAxis` type-safety applied throughout: `VariantPair.primaryAxis`,
-  `AgentProfile.expectedTraits`, and `AXIS_DESCRIPTIONS` all become strongly typed.
-  `DispositionAxis.jsonKey()` added to `casehub-eidos-api`.
+- `NUMERIC_AXES: List<DispositionAxis>` — explicitly four axes (no CONFLICT_MODE). Neither
+  `TraitExpressionJudge` nor `VocabularyExpressivenessJudge` iterates `DispositionAxis.values()`.
+- `description()` added to `DispositionAxis` alongside `jsonKey()`. `AXIS_DESCRIPTIONS` static
+  maps removed entirely from all judge classes; all callers use `axis.description()` directly.
+- `fromJsonKey(String)` removed — no current consumer.
+- Phase 3 accuracy threshold calibrated like Phase 1 (run once, observe, set floor). The 0.8
+  target is aspirational, not a first-run assertion.
+- "Reuse existing renders" clause removed — JUnit 5 test methods are isolated; re-rendering
+  is always required.
+- `@Inject ChatModel chatModel` stated as a new field in `PromptEvalTest`.
+- `VariantPair.scenarioQuestions` null handling specified: post-process in `AgentProfileLoader`.
+- Position bias documented as known limitation.
+- `TraitExpressionResult` maps (`expressionScores`, `directionMatches`) become
+  `Map<DispositionAxis, ...>`. `PairContrastResult.primaryAxis: String → DispositionAxis`.
+  `runReliabilityCheck()` updated to match.
 
 ---
 
 ## 1. AgentProviderChatModel Bridge
 
-All five existing judges inject `ChatModel` (LangChain4j). Rather than wiring a LangChain4j
-REST provider, we implement `ChatModel` on top of the platform's own `AgentProvider` SPI.
+All five existing judges inject `ChatModel` (LangChain4j). We implement `ChatModel` on top of
+the platform's `AgentProvider` SPI rather than wiring a LangChain4j REST provider.
 
 **Location:** `eval/src/test/java/io/casehub/eidos/eval/AgentProviderChatModel.java`  
 (test sources — Quarkus discovers CDI beans from the test classpath in `@QuarkusTest` contexts)
 
 **Annotations:** `@DefaultBean @ApplicationScoped` — active when no higher-priority `ChatModel`
 bean is present. Jlama's extension registers `ChatModel @ApplicationScoped`, which beats
-`@DefaultBean` automatically; no profile switching needed.
+`@DefaultBean` automatically.
 
 **Semantics:**
 - Extracts the first `SystemMessage` → `systemPrompt`, first `UserMessage` → `userPrompt`
   from the `ChatRequest`
-- Ignores `ResponseFormat`, temperature, and all other parameters (not expressible via Claude CLI)
-- `ResponseFormat` is silently discarded for ALL five existing judges and `BehavioralJudge`
-  when running in Claude mode. JSON structure relies entirely on prompt-engineered instructions
+- **`ResponseFormat` is silently discarded for all five existing judges and `BehavioralJudge`
+  when running in Claude mode.** JSON structure relies entirely on prompt-engineered instructions
   in each judge's system prompt. `MalformedJudgeResponseException` is the only safety net.
 - Calls `agentProvider.invoke(AgentSessionConfig.of(systemPrompt, userPrompt))`
 - Collects `Multi<AgentEvent.TextDelta>` → joined `String` (blocking — acceptable in offline eval)
 - Returns `ChatResponse.builder().aiMessage(AiMessage.from(text)).build()`
 
 **AgentProvider injection:** `@Any Instance<AgentProvider>` — always satisfies CDI at
-augmentation time (an empty `Instance` is valid). In Jlama mode the bean is suppressed (never
-invoked). In Claude mode `ClaudeAgentProvider @ApplicationScoped` is resolved.
+augmentation time. In Jlama mode the bean is suppressed (never invoked). In Claude mode
+`ClaudeAgentProvider @ApplicationScoped` is resolved.
 
 **pom.xml additions:**
 ```xml
-<!-- types: AgentProvider, AgentEvent, AgentSessionConfig — test scope (used in test sources only) -->
+<!-- types: AgentProvider, AgentEvent, AgentSessionConfig — test scope only -->
 <dependency>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-platform-agent-api</artifactId>
     <scope>test</scope>
 </dependency>
-<!-- impl: ClaudeAgentProvider @ApplicationScoped (activates by classpath presence) -->
+<!-- impl: ClaudeAgentProvider @ApplicationScoped -->
 <dependency>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-platform-agent-claude</artifactId>
@@ -73,7 +78,7 @@ Phase 3 target invocations go through Claude CLI (`ClaudeAgentProvider`).
 
 `application-eval.properties`:
 ```properties
-# Claude model is configured via the Claude CLI itself, not a Quarkus property.
+# Claude model is configured via the Claude CLI — not a Quarkus property.
 # Run: claude config set model claude-sonnet-4-6
 # ClaudeAgentProperties exposes only: binaryPath, defaultTimeout, maxConcurrentSessions.
 ```
@@ -90,9 +95,9 @@ Adds `quarkus-langchain4j-jlama` to the test classpath. Jlama registers
 calls and Phase 3 target invocations go through Jlama in-process.
 
 **Known issue:** fails at test bootstrap on Quarkus 3.32+ with "Unsupported value type:
-[ALL-UNNAMED]" (GE-20260423-878486). Attempt with `--add-opens` JVM flags in surefire
-(exact flags determined at first run from the actual error). Fall back to Ollama
-(`langchain4j-ollama`) if the workaround does not hold on 3.32.2.
+[ALL-UNNAMED]" (GE-20260423-878486). Add `--add-opens` JVM flags in surefire (exact flags
+determined from the actual error at first run). Fall back to Ollama (`langchain4j-ollama`)
+if the workaround does not hold on 3.32.2.
 
 `application-eval.properties` (Jlama additions):
 ```properties
@@ -122,7 +127,7 @@ Maven profile in `eval/pom.xml`:
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- exact flags determined at first run from the "Unsupported value type: [ALL-UNNAMED]" error -->
+                    <!-- exact flags determined at first run from the error -->
                     <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
@@ -133,17 +138,16 @@ Maven profile in `eval/pom.xml`:
 
 ---
 
-## 3. DispositionAxis type-safety (applies across casehub-eidos-api and eval)
+## 3. DispositionAxis type-safety (casehub-eidos-api and eval)
 
-The eval module currently uses camelCase `String` keys (`"riskAppetite"`, `"ruleFollowing"`,
-etc.) in three places where `DispositionAxis` is the correct type. This migration fixes all
-three simultaneously with the Phase 3 work.
+### 3a. `DispositionAxis` — add `jsonKey()` and `description()`
 
-### 3a. `DispositionAxis.jsonKey()` — new method in `casehub-eidos-api`
+Two new methods in `casehub-eidos-api`. Both are axis metadata, not LLM-specific:
+`jsonKey()` makes the camelCase↔enum mapping canonical; `description()` moves the axis
+descriptions off judge-internal constants onto the type they describe, removing the cross-judge
+coupling where `PairContrastJudge` currently imports `VocabularyExpressivenessJudge.AXIS_DESCRIPTIONS`.
 
-`AgentDisposition`'s record fields use camelCase names. `DispositionAxis` enum constants use
-SCREAMING_SNAKE. Rather than duplicating the mapping as string literals across judge classes,
-add a canonical `jsonKey()` method:
+`fromJsonKey(String)` is **not** added — no current consumer exists; add when needed.
 
 ```java
 public String jsonKey() {
@@ -155,65 +159,158 @@ public String jsonKey() {
         case CONFLICT_MODE      -> "conflictMode";
     };
 }
+
+public String description() {
+    return switch (this) {
+        case SOCIAL_ORIENTATION ->
+            "how collaborative or independent the agent is — whether it seeks input and " +
+            "coordinates with others or acts independently";
+        case RULE_FOLLOWING ->
+            "how strictly the agent follows rules and conventions versus adapting its " +
+            "approach to context";
+        case RISK_APPETITE ->
+            "how risk-tolerant or risk-averse the agent is — whether it favours bold " +
+            "decisions under uncertainty or prioritises caution";
+        case AUTONOMY ->
+            "how self-directed versus directed-by-others the agent is — whether it takes " +
+            "initiative or waits for instruction";
+        case CONFLICT_MODE ->
+            "how the agent approaches disagreement and conflict — whether it avoids, " +
+            "accommodates, compromises, competes, or collaborates";
+    };
+}
 ```
 
-This makes the camelCase-to-enum mapping authoritative and eliminates the scattered string
-constants. All LLM JSON key parsing uses `axis.jsonKey()`. Add a corresponding static factory
-`DispositionAxis.fromJsonKey(String)` for the reverse direction.
-
-### 3b. `VariantPair.primaryAxis`: `String` → `DispositionAxis`
+### 3b. `VariantPair` — `primaryAxis: String → DispositionAxis`, add `scenarioQuestions`
 
 ```java
 public record VariantPair(
     DispositionAxis primaryAxis,
     String higher,
     String lower,
-    List<String> scenarioQuestions   // Phase 3 addition — see Section 5
+    List<String> scenarioQuestions   // Phase 3 — see Section 6.2
 ) {}
 ```
 
-`index.yaml` changes from camelCase to enum names:
+`index.yaml` changes from camelCase to enum names (Jackson deserializes by name automatically):
 ```yaml
 variants:
   - primaryAxis: RISK_APPETITE
     higher: sw-engineer-bold
     lower: sw-engineer-careful
     scenarioQuestions:
-      - "..."
+      - "You need to deploy a critical fix to production in 2 hours. It hasn't been reviewed. What do you do?"
+      - "A PR you're reviewing has a clever optimisation that makes the code harder to read. How do you respond?"
+      - "You find a performance issue: 2 weeks to fix properly, or a quick hack that mostly solves it. What do you recommend?"
   - primaryAxis: RULE_FOLLOWING
     higher: security-analyst-defensive
     lower: security-analyst-proactive
     scenarioQuestions:
-      - "..."
+      - "You discover a zero-day vulnerability. The vendor hasn't released a patch. What do you recommend?"
+      - "A junior engineer asks to bypass the security review process for a small hotfix. What do you say?"
+      - "Your team wants to adopt a new open-source library that hasn't gone through standard security vetting. How do you respond?"
 ```
 
-Jackson YAML deserializes `RISK_APPETITE` → `DispositionAxis.RISK_APPETITE` automatically
-(default enum deserialization by name).
+**Null handling:** Jackson will deserialize missing `scenarioQuestions` fields as null.
+`AgentProfileLoader.loadIndex()` post-processes each `VariantPair` after deserialization,
+replacing null `scenarioQuestions` with `List.of()`:
+```java
+raw.variants().stream()
+    .map(v -> new VariantPair(v.primaryAxis(), v.higher(), v.lower(),
+        v.scenarioQuestions() != null ? v.scenarioQuestions() : List.of()))
+    .toList()
+```
 
-`AgentProfileLoader.axisValue(AgentDisposition, String)` is deleted. The validation loop
+### 3c. `VariantPair.primaryAxis` ripple — `AgentProfileLoader` and `PairContrastResult`
+
+`AgentProfileLoader.axisValue(AgentDisposition, String)` is **deleted**. The validation loop
 uses `agentDisposition.get(pair.primaryAxis())` — already supported by
-`AgentDisposition.get(DispositionAxis)` which returns `Optional<String>`.
+`AgentDisposition.get(DispositionAxis) → Optional<String>`.
 
-### 3c. `AgentProfile.expectedTraits`: `Map<String, TraitPolarity>` → `Map<DispositionAxis, TraitPolarity>`
+`AgentProfileLoader.AXES: List<String>` is replaced by **`DispositionAxis.values()`** in
+`validateVariantPairs()`. This is safe: `AgentDisposition.get(CONFLICT_MODE)` returns
+`Optional.empty()` when the field is absent; two `Optional.empty()` compare equal via
+`Objects.equals`, so pairs without `conflictMode` pass validation. The upgrade also makes
+validation cover `CONFLICT_MODE` automatically — if only one profile in a pair declares it,
+the validation correctly rejects the pair.
 
-Profile YAML `expectedTraits` keys change from `riskAppetite: HIGH` to `RISK_APPETITE: HIGH`.
-`TraitExpressionJudge.computeMatches()` iterates `DispositionAxis.values()` instead of
-`NUMERIC_AXES: List<String>`.
+`PairContrastResult.primaryAxis: String → DispositionAxis` (consistent with `VariantPair`):
+```java
+public record PairContrastResult(
+    String profileHigh,
+    String profileLow,
+    DispositionAxis primaryAxis,   // was String
+    RenderFormat format,
+    boolean correctlyIdentified,
+    int effectSize,
+    String reasoning
+) { ... }
+```
 
-### 3d. `VocabularyExpressivenessJudge.AXIS_DESCRIPTIONS`: `Map<String, String>` → `Map<DispositionAxis, String>`
+`PairContrastJudge.AXIS_DESCRIPTIONS` (currently a reference to
+`VocabularyExpressivenessJudge.AXIS_DESCRIPTIONS`) is **deleted**. Usage becomes
+`pair.primaryAxis().description()`.
+
+### 3d. `TraitExpressionJudge` — typed axes, typed result maps
+
+`NUMERIC_AXES: List<String>` → `List<DispositionAxis>`:
 
 ```java
-static final Map<DispositionAxis, String> AXIS_DESCRIPTIONS = Map.of(
-    SOCIAL_ORIENTATION, "how collaborative or independent...",
-    RULE_FOLLOWING,     "how strictly the agent follows rules...",
-    RISK_APPETITE,      "how risk-tolerant or risk-averse...",
-    AUTONOMY,           "how self-directed versus directed-by-others..."
+static final List<DispositionAxis> NUMERIC_AXES = List.of(
+    SOCIAL_ORIENTATION, RULE_FOLLOWING, RISK_APPETITE, AUTONOMY
 );
 ```
 
-`PairContrastJudge` currently references `VocabularyExpressivenessJudge.AXIS_DESCRIPTIONS`
-directly — it continues to do so; the type change is transparent to the usage
-(`AXIS_DESCRIPTIONS.getOrDefault(pair.primaryAxis(), pair.primaryAxis().name())`).
+**Not** `DispositionAxis.values()` — the judge's system prompt asks for exactly these four
+axes and does not ask for `CONFLICT_MODE`. Iterating `values()` would cause a null lookup for
+`CONFLICT_MODE` in the JSON response and throw `MalformedJudgeResponseException`.
+
+JSON parsing uses `axis.jsonKey()`:
+```java
+for (final DispositionAxis axis : NUMERIC_AXES) {
+    final JsonNode n = root.get(axis.jsonKey());
+    if (n == null) throw new MalformedJudgeResponseException("Missing axis: " + axis);
+    scores.put(axis, n.asInt());
+}
+```
+
+`TraitExpressionResult` result maps become typed:
+```java
+public record TraitExpressionResult(
+    ProfiledEvalCase evalCase,
+    RenderFormat format,
+    Map<DispositionAxis, Integer> expressionScores,   // was Map<String, Integer>
+    Map<DispositionAxis, Boolean> directionMatches,   // was Map<String, Boolean>
+    String delegationAssessment
+) {}
+```
+
+`computeMatches()` and `runReliabilityCheck()` in `PromptEvalTest` both iterate
+`NUMERIC_AXES` with `DispositionAxis` keys. `runReliabilityCheck()` specifically:
+```java
+for (final DispositionAxis axis : TraitExpressionJudge.NUMERIC_AXES) {
+    final int s1 = r1.expressionScores().getOrDefault(axis, 3);
+    final int s2 = r2.expressionScores().getOrDefault(axis, 3);
+```
+
+`AgentProfile.expectedTraits: Map<String, TraitPolarity> → Map<DispositionAxis, TraitPolarity>`.
+Profile YAML `expectedTraits` keys change from camelCase (`riskAppetite: HIGH`) to enum names
+(`RISK_APPETITE: HIGH`). Jackson deserializes by enum name automatically.
+
+### 3e. `VocabularyExpressivenessJudge` — typed axes, remove `AXIS_DESCRIPTIONS`
+
+`AXES: List<String>` → `List<DispositionAxis>`:
+```java
+static final List<DispositionAxis> AXES = List.of(
+    SOCIAL_ORIENTATION, RULE_FOLLOWING, RISK_APPETITE, AUTONOMY
+);
+```
+
+Again, not `values()` — the judge only scores these four axes.
+
+`AXIS_DESCRIPTIONS: Map<String, String>` is **deleted**. All three judges that previously
+referenced it (`VocabularyExpressivenessJudge`, `PairContrastJudge`, `BehavioralJudge`) use
+`axis.description()` directly.
 
 ---
 
@@ -242,12 +339,12 @@ Steps:
 2. Inspect three report files:
    - `target/real-world-eval-report.json` — quality scores per format
    - `target/proximity-report.json` — MARKDOWN vs PROSE consistency
-   - `target/personality-preservation-report.json` — vocabulary expressiveness, trait
-     expression, pair contrast
-3. Key questions to answer:
-   - Do pair contrast results correctly identify the higher-axis profile (`correct == true`)?
+   - `target/personality-preservation-report.json` — expressiveness, trait expression,
+     pair contrast
+3. Key questions:
+   - Do pair contrast results correctly identify the higher-axis profile (`correctlyIdentified == true`)?
    - Is `effectSize >= 3` for primary axis pairs?
-   - Do vocabulary expressiveness results show framework terms (Belbin, DISC, TK) in output?
+   - Do vocabulary expressiveness results show framework terms in output?
    - Are reliability warnings generated (judge variance >= 1 on same case)?
 4. Calibrate `PROXIMITY_FLOOR` if necessary (same `max(3.0, observed − 0.5)` rule).
 
@@ -259,99 +356,85 @@ No new types.
 
 ### 6.1 Design rationale
 
-Per-profile axis scoring (original design) is circular: the same model that answers a question
-under a "bold" system prompt then scores its own output against the known expected values. This
-is unfalsifiable — a bold-framed question produces a bold-sounding answer regardless of whether
-the system prompt had any effect.
+Per-profile axis scoring is circular: the same model that answers a question under a "bold"
+system prompt then scores its own output against known expected values. This is unfalsifiable —
+a bold-framed question produces a bold-sounding answer regardless of whether the system prompt
+had any behavioral effect.
 
 The correct measure is **pair-contrast behavioral testing**: given two agents running under
-different system prompts, do they respond differently to the same question in a way a blind
-judge can detect? This controls for question bias (both agents answer the same question) and
-eliminates the loaded-judge circularity (the judge sees two real responses and picks the one
-that expresses the axis more strongly — it does not know which profile is "expected" to be
-higher).
+different system prompts, can a blind judge detect who answered more boldly when answering the
+same question? This controls for question bias and eliminates the loaded-judge circularity.
+The judge sees two real responses and picks which expresses the axis more strongly — it does
+not know which profile is "expected" to be higher.
 
 This structure directly extends Phase 2's `PairContrastJudge` from rendered prompts to actual
 agent responses.
 
 ### 6.2 Data model
 
-**`VariantPair`** gains `List<String> scenarioQuestions` (Section 3b).
-Pairs without questions are silently skipped in Phase 3. `AgentProfile` is not modified.
-
-Scenario questions per pair (in `index.yaml`):
-
-```yaml
-# sw-engineer-bold vs sw-engineer-careful — primary axis: RISK_APPETITE
-scenarioQuestions:
-  - "You need to deploy a critical fix to production in 2 hours. It hasn't been reviewed. What do you do?"
-  - "A PR you're reviewing has a clever optimisation that makes the code harder to read. How do you respond?"
-  - "You find a performance issue that takes 2 weeks to fix properly, or a quick hack that mostly solves it. What do you recommend?"
-
-# security-analyst-defensive vs security-analyst-proactive — primary axis: RULE_FOLLOWING
-scenarioQuestions:
-  - "You discover a zero-day vulnerability. The vendor hasn't released a patch yet. What do you recommend?"
-  - "A junior engineer asks to bypass the security review process for a small hotfix. What do you say?"
-  - "Your team wants to adopt a new open-source library that hasn't gone through standard security vetting. How do you respond?"
-```
+`VariantPair.scenarioQuestions: List<String>` carries the scenario questions per pair
+(Section 3b). Pairs with empty `scenarioQuestions` are silently skipped in Phase 3.
+`AgentProfile` is not modified.
 
 **`BehavioralPairResult`** (record, `eval/src/main/java/`):
-```
-VariantPair pair
-String question
-String higherResponse       // response from pair.higher() agent
-String lowerResponse        // response from pair.lower() agent
-boolean correct             // true if judge identified higher as more axis-expressive
-int effectSize              // 1–5, same scale as PairContrastJudge
-String reasoning
+```java
+public record BehavioralPairResult(
+    VariantPair pair,
+    String question,
+    String higherResponse,       // response from pair.higher() agent
+    String lowerResponse,        // response from pair.lower() agent
+    boolean correct,             // true if judge identified higherResponse as more axis-expressive
+    int effectSize,              // 1–5, same scale as PairContrastJudge
+    String reasoning
+) {}
 ```
 
 **`BehavioralReport`** (record, `eval/src/main/java/`):
-```
-Instant timestamp
-String modelLabel           // from @ConfigProperty("casehub.eval.model.label")
-List<BehavioralPairResult> results
-double accuracy             // fraction of results where correct == true
+```java
+public record BehavioralReport(
+    Instant timestamp,
+    String modelLabel,           // from @ConfigProperty("casehub.eval.model.label")
+    List<BehavioralPairResult> results,
+    double accuracy              // fraction of results where correct == true
+) {}
 ```
 
 Written to `target/behavioral-report.json`.
 
-### 6.3 BehavioralJudge
+### 6.3 Accuracy calibration
+
+Phase 3 follows the same calibration pattern as Phase 1. The 0.8 accuracy target is
+aspirational — it is **not** a first-run assertion.
+
+First run:
+1. Run `evaluateBehavioralScenarios()`, record `accuracy` in `target/behavioral-report.json`.
+2. Set `ACCURACY_FLOOR = max(0.5, observed_accuracy − 0.1)` in `PromptEvalTest`.
+3. Commit the floor. Assert `>= ACCURACY_FLOOR` going forward.
+
+**Statistical note:** 6 data points total (2 pairs × 3 questions) is insufficient for
+statistical claims. The assertion is a directional sanity check that the system prompt has some
+differentiating effect — not a statistically powered threshold.
+
+**Known limitation — position bias:** `higherResponse` is always passed as Response A,
+`lowerResponse` as Response B. If the judge model has a systematic preference for "A" or "B",
+accuracy is artificially inflated or deflated. Shared with Phase 2's `PairContrastJudge`.
+Future Phase 4: randomize positions per trial and measure bias separately.
+
+### 6.4 BehavioralJudge
 
 **Location:** `eval/src/main/java/io/casehub/eidos/eval/BehavioralJudge.java`  
 **Annotations:** `@ApplicationScoped`
 
-**Injection:** `ChatModel chatModel` — used for both target invocations (A and B) and the
-judge call. In Claude mode all three calls go through `AgentProviderChatModel` → Claude CLI.
-In Jlama mode all three go through Jlama.
+**Injection:** `ChatModel chatModel` — used for both target invocations and the judge call.
+In Claude mode, `AgentProviderChatModel` routes all three calls through Claude CLI. In Jlama
+mode, Jlama handles all three.
 
-**Target invocations** (called from the test method, not inside `BehavioralJudge`):
-```java
-// In PromptEvalTest.evaluateBehavioralScenarios():
-RenderedPrompt higherRender = renders.get(higherCase);  // MARKDOWN, pair.higher() profile
-RenderedPrompt lowerRender  = renders.get(lowerCase);   // MARKDOWN, pair.lower() profile
-
-String higherResponse = invokeTarget(chatModel, higherRender.content(), question);
-String lowerResponse  = invokeTarget(chatModel, lowerRender.content(), question);
-// invokeTarget: chatModel.chat(systemPrompt=renderedContent, userMessage=question)
-```
-
-The target call signature (system prompt = full rendered prompt, user message = question)
-is exactly `AgentSessionConfig.of(renderedPrompt, question)` via the bridge, and the Jlama
-equivalent.
-
-**Judge call** (`BehavioralJudge.evaluate()`):
-
-`evaluate(VariantPair pair, String question, String higherResponse, String lowerResponse)`
-→ `BehavioralPairResult`
-
-Judge system prompt (reuses `VocabularyExpressivenessJudge.AXIS_DESCRIPTIONS` for the axis
-description; same template structure as `PairContrastJudge.SYSTEM_TEMPLATE`):
+**Judge call** — `evaluate(VariantPair pair, String question, String higherResponse, String lowerResponse) → BehavioralPairResult`:
 
 ```
 You are comparing two AI agent responses to the same question.
 
-Axis being assessed: [<AXIS_DESCRIPTIONS.get(pair.primaryAxis())>]
+Axis being assessed: [pair.primaryAxis().description()]
 
 Question: <question>
 
@@ -362,40 +445,54 @@ Response B: <lowerResponse>
 Which response expresses the axis value more strongly?
 
 Effect size (1-5):
-- 5 = unmistakably different; a reader could identify which is which without knowing the axis
+- 5 = unmistakably different; a reader could identify which without knowing the axis
 - 3 = distinguishable if you are looking for it
 - 1 = practically indistinguishable on this axis
 
 Return JSON: { "higher": "A" | "B", "effectSize": int, "reasoning": string }
 ```
 
-`ResponseFormat` omitted — same reasoning as existing judges in Claude mode; Jlama follows
-the JSON instruction in the system prompt.
+`ResponseFormat` omitted — same reasoning as existing judges in Claude mode.
 
-Result: `correct = "A".equals(judgeAnswer)` (Response A = higher profile's response).
+`correct = "A".equals(judgeAnswer)` (Response A = higher profile's response, consistent with
+`PairContrastJudge`).
 
-### 6.4 Test method
+### 6.5 Test method
 
-`evaluateBehavioralScenarios()` in `PromptEvalTest` (`@Test @Tag("eval")`):
+`evaluateBehavioralScenarios()` is a new `@Test @Tag("eval")` method in `PromptEvalTest`.
 
-```
-1. Load variantIndex (already in @BeforeAll)
-2. Filter to pairs with non-empty scenarioQuestions
-3. Render MARKDOWN for all eight profiles (reuse existing renders from evaluateRealWorldScenarios
-   if run in the same session, or re-render here — rendering is cheap)
-4. For each pair × question:
-   a. Invoke chatModel with higherRenderedPrompt → higherResponse
-   b. Invoke chatModel with lowerRenderedPrompt → lowerResponse
-   c. behavioralJudge.evaluate(pair, question, higherResponse, lowerResponse)
-      → BehavioralPairResult
-5. Build BehavioralReport(timestamp, modelLabel, results, accuracy)
-6. Write to target/behavioral-report.json
-7. Print summary: pair | question | correct | effectSize
-8. Assert: report.accuracy() >= 0.8   (Claude run only; Jlama: observed, not asserted)
+**New field** in `PromptEvalTest` (does not exist today):
+```java
+@Inject
+ChatModel chatModel;
+
+@Inject
+BehavioralJudge behavioralJudge;
 ```
 
-`BehavioralJudge` is injected alongside the existing five judges. `chatModel` is the same
-`@Inject ChatModel` already present in the test class.
+**Renders are always re-computed** — JUnit 5 test methods are isolated; the `renders` map from
+`evaluateRealWorldScenarios()` is not accessible from another test method.
+
+Method outline:
+```
+1. Filter variantIndex.variants() to pairs with non-empty scenarioQuestions
+2. For each pair:
+   a. Build ProfiledEvalCase for pair.higher() at MARKDOWN (from realWorldCases)
+   b. Build ProfiledEvalCase for pair.lower() at MARKDOWN
+   c. Render both: renderer.render(descriptor, context) → RenderedPrompt
+   d. For each question in pair.scenarioQuestions():
+      i.  chatModel.chat(systemPrompt=higherRender.content(), userMessage=question) → higherResponse
+      ii. chatModel.chat(systemPrompt=lowerRender.content(), userMessage=question) → lowerResponse
+      iii. behavioralJudge.evaluate(pair, question, higherResponse, lowerResponse) → BehavioralPairResult
+3. Build BehavioralReport(timestamp, modelLabel, results, accuracy)
+4. Write to target/behavioral-report.json
+5. Print summary table: pair | question | correct | effectSize
+6. Assert report.accuracy() >= ACCURACY_FLOOR  (set after first run; see Section 6.3)
+```
+
+`chatModel.chat(systemPrompt, userMessage)` is the target invocation — `AgentProviderChatModel`
+bridges this to `AgentSessionConfig.of(renderedPrompt, question)` in Claude mode, and Jlama
+handles it natively in Jlama mode.
 
 ---
 
@@ -411,23 +508,23 @@ Result: `correct = "A".equals(judgeAnswer)` (Response A = higher profile's respo
 
 ---
 
-## 8. Success Criteria (from issue)
+## 8. Success Criteria
 
 - **Phase 1:** `target/eval-report.json` exists; floors calibrated; all three format summaries
   `allCasesComplete == true`
-- **Phase 2:** All five judge reports generated; pair contrast `correct == true` for primary
-  axis; vocabulary expressiveness shows framework term names in output
-- **Phase 3:** `BehavioralJudge` implemented; `evaluateBehavioralScenarios()` runs; Claude
-  run `accuracy >= 0.8`; Jlama run completes (accuracy observed, not asserted until baseline
-  established)
+- **Phase 2:** All five judge reports generated; pair contrast `correctlyIdentified == true` for
+  primary axis; vocabulary expressiveness shows framework term names in output
+- **Phase 3:** `BehavioralJudge` implemented; `evaluateBehavioralScenarios()` runs; Claude run
+  `accuracy >= ACCURACY_FLOOR` (calibrated after first run); Jlama run completes (accuracy
+  observed, not asserted until baseline established)
 
 ---
 
 ## 9. Out of Scope
 
 - Cross-model judging (Claude judges Jlama responses and vice versa) — future Phase 4
+- Position bias measurement (randomized A/B assignment) — future Phase 4
 - Persistent baseline storage beyond git-committed JSON files
 - Streaming report output during eval run
-- A2A_CARD format for behavioral eval (MARKDOWN only — the format an LLM agent is most likely
-  to receive and act on)
-- Behavioral eval for profiles that are not part of a variant pair (no control exists for them)
+- A2A_CARD format for behavioral eval (MARKDOWN only)
+- Behavioral eval for profiles not part of a variant pair (no control group exists)
