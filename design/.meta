@@ -1,0 +1,9 @@
+branch: issue-045-a2a-framework-refs
+project-sha: c35de2791f028e4b143ccd3ed1860f470ad00c4d
+date: 2026-06-09
+issue: 45
+issue-repo: casehubio/eidos
+covers: 45
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 
