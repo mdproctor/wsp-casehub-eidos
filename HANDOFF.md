@@ -1,43 +1,45 @@
-# eidos Session Handover — 2026-06-08
-*Updated: #27 closed — removed from backlog.*
+# eidos Session Handover — 2026-06-09
 
 ## Last Session
 
-Closed #42 (vocab registry robustness — blank URI guard + 3 tests), #43 (Builder migration
-across ~100 test/eval call sites), and #41 (personality-frameworks.md polish). Three squashed
-commits landed on `casehubio/eidos` main. Garden entry GE-20260608-fc4733 submitted (AssertJ
-vacuous assertion with typed collections). Protocol PP-20260608-e694ab captured (JPA mapper
-must use positional constructor for compile-time field-completeness).
-
-#27 (theoretical framework grounding in AgentDescriptor + SystemPromptRenderer) also shipped —
-vocab-resolved axis labels, per-axis nested disposition payload, conflictMode, structural
-renderers, and integration tests. Closes #27.
+Closed #44 (personality-frameworks.md — conflictMode row + 5 related gaps: TK term
+definitions, axis-by-axis entry, combination pattern examples, vocabulary URI worked
+example) and #45 (A2A card framework references — `vocabUriForSlot()` new API method,
+`buildDescriptorPayload()` + `assembleMarkdownStructural()` slot fix, `assembleA2aCard()`
+full replacement with slot object, per-axis disposition, and `frameworks` index array).
+32 new tests (27 unit + 5 @QuarkusTest). Spec went through two review rounds; code
+review caught the missed third rendering path (`assembleMarkdownStructural`). Garden
+entry GE-20260609-7600aa submitted (missed third caller on shared resolution method fix).
+Filed parent#216 (PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework
+references + vocabUriForSlot). Filed #46 (eval: first-principles validation — run
+harness, baselines, behavioral loop).
 
 ## Immediate Next Step
 
-Pick up **#44** — add `conflictMode` row to the `personality-frameworks.md` cross-reference
-table. XS · Low — quick doc fix, no design required.
+Pick up **#46** — configure eval credentials and run `evaluateAllScenarios()` to
+establish structural baseline. M · High — requires LLM credentials wired into
+`application-eval.properties`.
 
 ## Cross-Module
 
-**We're blocking:** `casehub-engine` (#28) — Belbin-based agent composition for project phases.
-Belbin vocab exists; engine team can proceed independently.
+**We're blocking:** `casehub-engine` (#28) — Belbin-based agent composition. All eidos
+deps satisfied; A2A card now exposes frameworks index. Engine team can proceed.
 
 ## What's Left
 
-- `parent#192` — PLATFORM.md Capability Ownership + open design decisions stale · XS · Low (peer repo issue filed)
-- `#44` — personality-frameworks.md cross-reference table missing `conflictMode` row · XS · Low
+- `parent#192` — PLATFORM.md Capability Ownership stale · XS · Low (peer issue filed prev session)
+- `parent#216` — PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework refs · XS · Low (filed this session)
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #44 | personality-frameworks.md: add conflictMode row to cross-reference table | XS | Low | Filed last session |
-| #28 | casehub-engine: Belbin-based agent composition for project phases | L | High | Cross-repo |
+| #46 | Eval: first-principles validation — run harness, baselines, behavioral loop | M | High | Requires LLM credentials in eval profile |
+| #28 | casehub-engine: Belbin-based agent composition | L | High | Cross-repo; all eidos deps done |
 
 ## References
 
-- Blog: `blog/2026-06-08-mdp01-the-test-that-always-passed.md`
-- Prev: `blog/2026-06-07-mdp01-five-axes.md`
+- Blog: `blog/2026-06-09-mdp02-the-card-that-knows-its-frameworks.md`
+- Spec: `docs/superpowers/specs/2026-06-09-a2a-framework-refs-design.md`
 - ADR: `docs/adr/0004-disposition-axes-fixed-fields-not-open-map.md`
 - Operations: `docs/operations.md`
