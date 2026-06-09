@@ -1,0 +1,9 @@
+branch: issue-46-eval-baseline-behavioral
+project-sha: 5bba3778c1e8b772cf574ca6b97c1ac0bb6d4017
+date: 2026-06-09
+issue: 46
+issue-repo: casehubio/eidos
+covers: 46
+flyway-next-v: none
+design-repo: project
+design-section-hashes: 
