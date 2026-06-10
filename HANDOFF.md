@@ -1,5 +1,7 @@
 # eidos Session Handover — 2026-06-10
 
+*Updated: parent#216, parent#220 closed — removed from backlog.*
+
 ## Last Session
 
 Closed #46 (eval: first-principles validation). Delivered three squashed commits to
@@ -29,8 +31,6 @@ deps satisfied; unblocked this session.
 
 ## What's Left
 
-- `parent#216` — PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework refs · XS · Low
-- `parent#220` — casehub-eidos.md: eval module table, DispositionAxis methods, Current State · XS · Low
 - `eidos#47` — eval test polish: loadIndex null-path test, inline ObjectMapper, blind-invariant assertion · S · Low
 
 ## What's Next
