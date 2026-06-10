@@ -1,0 +1,9 @@
+branch: issue-47-eval-test-polish
+project-sha: 539442df028851a621eca15926b9a1ae69f0630c
+date: 2026-06-10
+issue: 47
+issue-repo: casehubio/eidos
+covers: 47
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 
