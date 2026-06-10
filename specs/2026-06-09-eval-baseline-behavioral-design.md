@@ -1,6 +1,6 @@
 # Eval Baseline & Behavioral Validation Design
 **Issue:** casehubio/eidos#46  
-**Date:** 2026-06-09 (revised v4)  
+**Date:** 2026-06-09 (revised v5)  
 **Branch:** issue-46-eval-baseline-behavioral
 
 ---
@@ -109,6 +109,7 @@ if the workaround does not hold on 3.32.2.
 ```properties
 quarkus.langchain4j.jlama.model-path=/path/to/model.gguf
 quarkus.langchain4j.jlama.chat-model.temperature=0.0
+casehub.eval.model.label=jlama
 ```
 
 Run:
@@ -419,14 +420,22 @@ public record BehavioralPairResult(
     boolean correct,      // true if judge identified higherResponse as more axis-expressive
     int effectSize,       // 1–5
     String reasoning
-) {}
+) {
+    public BehavioralPairResult {
+        if (effectSize < 1 || effectSize > 5)
+            throw new IllegalArgumentException("effectSize out of range: " + effectSize);
+    }
+}
 ```
+
+Consistent with `PairContrastResult`, which has the same guard for the same 1–5 scale from the
+same LLM JSON source.
 
 **`BehavioralReport`** (record, `eval/src/main/java/`):
 ```java
 public record BehavioralReport(
     Instant timestamp,
-    String modelLabel,    // from @ConfigProperty("casehub.eval.model.label")
+    String modelLabel,
     List<BehavioralPairResult> results,
     double accuracy       // fraction where correct == true
 ) {}
@@ -492,7 +501,14 @@ Return JSON: { "higher": "A" | "B", "effectSize": int, "reasoning": string }
 ```java
 @Inject ChatModel chatModel;
 @Inject BehavioralJudge behavioralJudge;
+
+@ConfigProperty(name = "casehub.eval.model.label", defaultValue = "claude")
+String modelLabel;
 ```
+
+`defaultValue = "claude"` prevents `ConfigurationException` at augmentation time when the
+property is absent. For the Jlama run, `casehub.eval.model.label=jlama` in
+`application-eval.properties` overrides it (see Section 2).
 
 `evaluateBehavioralScenarios()` is a new `@Test @Tag("eval")` method. Renders are always
 re-computed — JUnit 5 test methods are isolated; the `renders` map from
