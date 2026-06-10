@@ -1,46 +1,52 @@
-# eidos Session Handover — 2026-06-09
-
-*Updated: parent#192 closed — removed from backlog.*
+# eidos Session Handover — 2026-06-10
 
 ## Last Session
 
-Closed #44 (personality-frameworks.md — conflictMode row + 5 related gaps: TK term
-definitions, axis-by-axis entry, combination pattern examples, vocabulary URI worked
-example) and #45 (A2A card framework references — `vocabUriForSlot()` new API method,
-`buildDescriptorPayload()` + `assembleMarkdownStructural()` slot fix, `assembleA2aCard()`
-full replacement with slot object, per-axis disposition, and `frameworks` index array).
-32 new tests (27 unit + 5 @QuarkusTest). Spec went through two review rounds; code
-review caught the missed third rendering path (`assembleMarkdownStructural`). Garden
-entry GE-20260609-7600aa submitted (missed third caller on shared resolution method fix).
-Filed parent#216 (PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework
-references + vocabUriForSlot). Filed #46 (eval: first-principles validation — run
-harness, baselines, behavioral loop).
+Closed #46 (eval: first-principles validation). Delivered three squashed commits to
+`casehubio/eidos` main: DispositionAxis type safety (`jsonKey()`, `description()`,
+typed AXES throughout eval), Phase 3 behavioral eval (`BehavioralJudge`,
+`AgentProviderChatModel` bridge, `evaluateBehavioralScenarios()`), and docs/protocols
+(PP-20260610-de090d behavioral-judge-blind, PP-20260610-70478e disposition-axis-string-boundary,
+ADR-0005 pair-contrast methodology, CLAUDE.md, spec). The eval harness is now wired and
+ready to run — the structural baseline and behavioral pair-contrast loop are implemented;
+neither has been executed yet.
 
 ## Immediate Next Step
 
-Pick up **#46** — configure eval credentials and run `evaluateAllScenarios()` to
-establish structural baseline. M · High — requires LLM credentials wired into
-`application-eval.properties`.
+Wire credentials and run Phase 1:
+```
+claude config set model claude-sonnet-4-6
+JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl eval -Peval -Dgroups=eval \
+  -Dtest=PromptEvalTest#evaluateAllScenarios
+```
+Inspect `target/eval-report.json` → calibrate `SCORE_FLOORS` in `PromptEvalTest.java` →
+commit the floor update + baseline artifact.
 
 ## Cross-Module
 
 **We're blocking:** `casehub-engine` (#28) — Belbin-based agent composition. All eidos
-deps satisfied; A2A card now exposes frameworks index. Engine team can proceed.
+deps satisfied; unblocked this session.
 
 ## What's Left
 
-- `parent#216` — PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework refs · XS · Low (filed this session)
+- `parent#216` — PLATFORM.md: EidosSystemPromptRenderer rename + A2A card framework refs · XS · Low
+- `parent#220` — casehub-eidos.md: eval module table, DispositionAxis methods, Current State · XS · Low
+- `eidos#47` — eval test polish: loadIndex null-path test, inline ObjectMapper, blind-invariant assertion · S · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #46 | Eval: first-principles validation — run harness, baselines, behavioral loop | M | High | Requires LLM credentials in eval profile |
+| — | Phase 1: run evaluateAllScenarios(), calibrate SCORE_FLOORS | S | Low | Needs Claude CLI configured |
+| — | Phase 2: run evaluateRealWorldScenarios(), inspect 3 reports | M | Low | Depends on Phase 1 floors |
+| — | Phase 3: run evaluateBehavioralScenarios(), calibrate ACCURACY_FLOOR | M | Med | Depends on Phase 2; 6 data points |
+| — | Phase 3 (Jlama): run with -Peval-jlama, compare reports | M | Med | Needs GGUF model file; may hit GE-20260423-878486 |
 | #28 | casehub-engine: Belbin-based agent composition | L | High | Cross-repo; all eidos deps done |
 
 ## References
 
-- Blog: `blog/2026-06-09-mdp02-the-card-that-knows-its-frameworks.md`
-- Spec: `docs/superpowers/specs/2026-06-09-a2a-framework-refs-design.md`
-- ADR: `docs/adr/0004-disposition-axes-fixed-fields-not-open-map.md`
-- Operations: `docs/operations.md`
+- Blog: `blog/2026-06-10-mdp01-the-evaluation-that-tests-itself.md`
+- Spec: `specs/2026-06-09-eval-baseline-behavioral-design.md`
+- ADR-0005: `adr/0005-pair-contrast-behavioral-evaluation.md`
+- Protocols: `docs/protocols/eval/`
+- Eval run command: see Immediate Next Step above
