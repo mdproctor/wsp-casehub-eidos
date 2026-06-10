@@ -1,0 +1,9 @@
+branch: issue-48-eval-phase1-baseline
+project-sha: 1e0131108b051692cda75b9f5130d53ffb262869
+date: 2026-06-10
+issue: 48
+issue-repo: casehubio/eidos
+covers: 48
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 
