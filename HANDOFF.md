@@ -1,52 +1,48 @@
-# eidos Session Handover — 2026-06-10
-
-*Updated: parent#216, parent#220 closed — removed from backlog.*
+# eidos Session Handover — 2026-06-12
 
 ## Last Session
 
-Closed #46 (eval: first-principles validation). Delivered three squashed commits to
-`casehubio/eidos` main: DispositionAxis type safety (`jsonKey()`, `description()`,
-typed AXES throughout eval), Phase 3 behavioral eval (`BehavioralJudge`,
-`AgentProviderChatModel` bridge, `evaluateBehavioralScenarios()`), and docs/protocols
-(PP-20260610-de090d behavioral-judge-blind, PP-20260610-70478e disposition-axis-string-boundary,
-ADR-0005 pair-contrast methodology, CLAUDE.md, spec). The eval harness is now wired and
-ready to run — the structural baseline and behavioral pair-contrast loop are implemented;
-neither has been executed yet.
+Closed #47 (eval test polish) and #48 (Phase 1 eval baseline). Fixed three silent bugs in
+the enrichment pipeline (missing `eval` Maven profile, code-fence fallback in all four enrichment
+steps, hyphen normalization in completeness check). Calibrated `SCORE_FLOORS` from Claude Opus 4.6
+baseline: MARKDOWN 3.95 / PROSE 4.50 / A2A_CARD 5.00. Ran full local model comparison via Jlama
+NEON, TornadoVM Metal, and Ollama (5 models). Captured PP-20260611-228599 (capability numeric
+metadata renders only in A2A_CARD). Branch hygiene complete — all 24 branches closed.
 
 ## Immediate Next Step
 
-Wire credentials and run Phase 1:
+Run Phase 2:
 ```
-claude config set model claude-sonnet-4-6
-JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl eval -Peval -Dgroups=eval \
-  -Dtest=PromptEvalTest#evaluateAllScenarios
+JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl eval -Peval \
+  -Dtest=PromptEvalTest#evaluateRealWorldScenarios
 ```
-Inspect `target/eval-report.json` → calibrate `SCORE_FLOORS` in `PromptEvalTest.java` →
-commit the floor update + baseline artifact.
-
-## Cross-Module
-
-**We're blocking:** `casehub-engine` (#28) — Belbin-based agent composition. All eidos
-deps satisfied; unblocked this session.
+Inspect `target/real-world-eval-report.json` — exercises real-world profiles and proximity judge.
+Set `PROXIMITY_FLOOR` from observed mean.
 
 ## What's Left
 
-- `eidos#47` — eval test polish: loadIndex null-path test, inline ObjectMapper, blind-invariant assertion · S · Low
+- **PP-20260611-228599 implementation** — renderer protocol captured but not implemented:
+  `EidosSystemPromptRenderer` still renders `epistemicDomains`/`qualityHint`/`latencyHint` in
+  PROSE/MARKDOWN. Suppress numeric metadata for non-A2A formats in `EidosRenderPipeline` · M · Med
+- **Independent judge comparison** — run Qwen 35B as judge on Claude-rendered outputs
+  (separates renderer quality from self-evaluation bias) · S · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| — | Phase 1: run evaluateAllScenarios(), calibrate SCORE_FLOORS | S | Low | Needs Claude CLI configured |
-| — | Phase 2: run evaluateRealWorldScenarios(), inspect 3 reports | M | Low | Depends on Phase 1 floors |
-| — | Phase 3: run evaluateBehavioralScenarios(), calibrate ACCURACY_FLOOR | M | Med | Depends on Phase 2; 6 data points |
-| — | Phase 3 (Jlama): run with -Peval-jlama, compare reports | M | Med | Needs GGUF model file; may hit GE-20260423-878486 |
-| #28 | casehub-engine: Belbin-based agent composition | L | High | Cross-repo; all eidos deps done |
+| — | Phase 2: evaluateRealWorldScenarios(), calibrate PROXIMITY_FLOOR | S | Low | See Immediate Next Step |
+| — | Phase 3: evaluateBehavioralScenarios(), calibrate ACCURACY_FLOOR | M | Med | Depends on Phase 2 |
+| — | Implement PP-20260611-228599 — suppress capability metadata in PROSE/MARKDOWN | M | Med | Renderer change |
+| — | Independent judge comparison: Qwen 35B judging Claude renders | S | Low | Ollama already running |
+| #28 | casehub-engine: Belbin-based agent composition | L | High | Verify status — showed MERGED in cross-check |
 
 ## References
 
-- Blog: `blog/2026-06-10-mdp01-the-evaluation-that-tests-itself.md`
-- Spec: `specs/2026-06-09-eval-baseline-behavioral-design.md`
-- ADR-0005: `adr/0005-pair-contrast-behavioral-evaluation.md`
-- Protocols: `docs/protocols/eval/`
-- Eval run command: see Immediate Next Step above
+- Baseline artifact: `eval/src/test/resources/eval-baseline-2026-06-10.json`
+- Eval comparison files: `/tmp/eval-comparison/` (eval-prose.md, eval-markdown.md, eval-a2a-card.md)
+- Blog: `blog/2026-06-11-mdp01-running-the-harness.md`
+- Protocol: `docs/protocols/renderer/capability-metadata-rendering.md` (PP-20260611-228599)
+- CLAUDE.md: eval run commands for all four backends now documented
+- TornadoVM Metal: `~/tornadovm-metal/tornadovm-4.0.0-jdk25-metal` (installed, argfile generated)
+- Ollama: running on localhost:11434 with llama3.2, llama3.1:8b, gemma3:4b, qwen3.6:35b-a3b
