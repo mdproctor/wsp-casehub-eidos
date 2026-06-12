@@ -1,5 +1,5 @@
 # eidos Workspace
-**Name:** eidos
+**Name:** casehub-eidos
 
 **Project repo:** /Users/mdproctor/claude/casehub/eidos
 **Workspace type:** public
