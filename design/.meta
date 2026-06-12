@@ -1,0 +1,9 @@
+branch: issue-49-suppress-capability-metadata
+project-sha: 4657a77551b59f9f86fab8b26c96dd54841ebf73
+date: 2026-06-12
+issue: 49
+issue-repo: casehubio/eidos
+covers: 49
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 
