@@ -2,6 +2,7 @@
 
 | File | Date | Title |
 |------|------|-------|
+| [2026-06-13-mdp01-a2a-card-needed-more.md](2026-06-13-mdp01-a2a-card-needed-more.md) | 2026-06-13 | Format-discriminated descriptor payload, A2A_CARD completeness, cache trap in the two-path renderer |
 | [2026-06-10-mdp01-the-evaluation-that-tests-itself.md](2026-06-10-mdp01-the-evaluation-that-tests-itself.md) | 2026-06-10 | DispositionAxis migration, pair-contrast behavioral judge, and why per-profile scoring is circular |
 | [2026-06-08-mdp01-the-test-that-always-passed.md](2026-06-08-mdp01-the-test-that-always-passed.md) | 2026-06-08 | Vocab registry guard, Builder migration, docs polish — and the AssertJ assertion that never fails |
 | [2026-05-23-mdp01-agent-identity-from-scratch.md](2026-05-23-mdp01-agent-identity-from-scratch.md) | 2026-05-23 | Agent identity from scratch — Phases 1 and 2 of casehub-eidos |
