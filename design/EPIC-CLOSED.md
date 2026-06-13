@@ -1,3 +1,4 @@
-# Branch Closed — issue-36-agentoutcome-observedat
-**Date:** 2026-06-04
-**Issues:** casehubio/eidos#36, casehubio/eidos#37
+# Branch Closed — issue-49-suppress-capability-metadata
+**Date:** 2026-06-13
+**Issue:** #49
+**Covers:** 49
