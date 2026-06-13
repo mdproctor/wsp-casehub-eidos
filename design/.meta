@@ -1,0 +1,9 @@
+branch: issue-51-eval-phase2-judge
+project-sha: f65b930ffc59328178fc1f97099a42d6448f40fb
+date: 2026-06-13
+issue: 51
+issue-repo: casehubio/eidos
+covers: 51,50
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 775b0697:## §Phase3 — SystemPromptRenderer + AgentStateStore|affd4dcb:## §eidos21-20-22 — RenderFormat rename, validation surface, multi-format eval|ecc16ff5:## §eidos23 — Real-world profile library + personality preservation
