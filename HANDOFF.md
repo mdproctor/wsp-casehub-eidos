@@ -1,42 +1,39 @@
-# eidos Session Handover — 2026-06-13
+# eidos Session Handover — 2026-06-14
 
 ## Last Session
 
-Implemented PP-20260611-228599 (eidos#49, now closed): `buildDescriptorPayload` is now
-format-discriminated — PROSE/MARKDOWN gets `{name, inputTypes?, outputTypes?}` only;
-A2A_CARD gets full numeric routing signals + type schema. `assembleA2aCard()` now carries
-`latencyHintP50Ms`, `costHint`, `epistemicDomains`, `inputTypes`, `outputTypes`. Spec went
-through four design-review rounds; the push-back on costHint exclusion (cache correctness
-trap when structural assembly reads from record directly) went into garden and protocol.
-3 garden entries (GE-20260613-3fa95a/53e590/718a57) and 1 new protocol (PP-20260613-608684).
+Closed eidos#50 and eidos#51 (Phase 2). PROXIMITY_FLOOR=3.0 confirmed from 16-case Qwen 3 8B run
+(min=3, mean=3.5). `evaluateWithIndependentJudge()` added — loads `target/renders-cache.json` and
+re-judges with any configured ChatModel to detect self-evaluation bias; Ollama eval infrastructure
+fully debugged and documented. TEMPLATE_HASH now covers PROMPT_TEMPLATE + A2A_PROMPT_TEMPLATE +
+all RESPONSE_FORMAT/A2A_RESPONSE_FORMAT schema descriptions (protocol PP-20260614). parent#232
+closed; casehub-eidos.md Current State filed as parent#245.
 
 ## Immediate Next Step
 
-*Unchanged — `git show HEAD~1:HANDOFF.md`*
+Run `evaluateWithIndependentJudge()` with Qwen 35B — the command is in CLAUDE.md (independent
+judge section). Phase 2a renders must exist at `eval/target/renders-cache.json` first; if stale
+or missing, re-run `evaluateRealWorldScenarios()` with Ollama (CLAUDE.md has both commands).
 
 ## What's Left
 
-- **Independent judge comparison** — run Qwen 35B as judge on Claude-rendered outputs
-  (separates renderer quality from self-evaluation bias) · S · Low
-- **parent#232** — PLATFORM.md "System prompt generation" entry stale (missing A2A_CARD
-  capability fields); filed on casehubio/parent · XS · Low
+- **parent#245** — casehub-eidos.md Current State: add eidos#50 complete, eidos#51 Phase 2 complete · XS · Low
+- **eidos#52** — Claude CLI subprocesses survive `atMost()` cancellation — platform-level bug in subprocess lifecycle; `activeSessions` set should `destroyForcibly()` on cancellation · M · High
+- **eidos#53** — `allCasesComplete()` fails for LLM-enriched renders (capability names paraphrased) — needs semantic check or `RenderedPrompt.enriched()` flag gate · S · Med
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| — | Phase 2: evaluateRealWorldScenarios(), calibrate PROXIMITY_FLOOR | S | Low | See Immediate Next Step |
-| — | Phase 3: evaluateBehavioralScenarios(), calibrate ACCURACY_FLOOR | M | Med | Depends on Phase 2 |
-| — | Independent judge comparison: Qwen 35B judging Claude renders | S | Low | Ollama already running |
-| #50 | Extend TEMPLATE_HASH to cover RESPONSE_FORMAT schema descriptions | S | Low | Cache gap — RESPONSE_FORMAT changes not self-invalidating |
-| #28 | casehub-engine: Belbin-based agent composition | L | High | Filed in casehubio/eidos repo |
+| — | Run evaluateWithIndependentJudge (Qwen 35B vs Claude baseline) | XS | Low | See Immediate Next Step |
+| — | Phase 3: evaluateBehavioralScenarios(), calibrate ACCURACY_FLOOR | M | Med | Depends on Phase 2 results |
+| #28 | casehub-engine: Belbin-based agent composition | L | High | casehubio/eidos repo |
 
 ## References
 
-- Baseline artifact: `eval/src/test/resources/eval-baseline-2026-06-10.json`
-- Blog: `blog/2026-06-13-mdp01-a2a-card-needed-more.md`
-- Protocol (implemented): `docs/protocols/renderer/capability-metadata-rendering.md` (PP-20260611-228599)
-- Protocol (new): `docs/protocols/renderer/a2a-structural-assembly-hash-coverage.md` (PP-20260613-608684)
-- CLAUDE.md: eval run commands for all four backends documented; A2A_CARD capability fields updated
-- TornadoVM Metal: `~/tornadovm-metal/tornadovm-4.0.0-jdk25-metal` (installed, argfile generated)
-- Ollama: running on localhost:11434 with llama3.2, llama3.1:8b, gemma3:4b, qwen3.6:35b-a3b
+- Proximity baseline (2026-06-14): `eval/target/proximity-report.json` (transient; re-run Ollama eval)
+- Blog: `blog/2026-06-14-mdp01-the-eval-fights-back.md`
+- Protocol (new): `docs/protocols/renderer/template-hash-input-coverage.md` (PP-20260614)
+- CLAUDE.md: Ollama eval commands (timeout=300s, mvn clean required), independent judge run command
+- Garden: GE-20260614-94c366 (Ollama augmentation cache), GE-20260614-1ece0f (Ollama 10s timeout), GE-20260614-337397 (@DefaultBean + Ollama ambiguity)
+- Ollama: running on localhost:11434 — qwen3.6:35b-a3b for independent judge, qwen3:8b for calibration
