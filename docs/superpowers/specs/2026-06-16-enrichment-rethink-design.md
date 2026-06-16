@@ -1,7 +1,7 @@
 # Enrichment Rethink — Design Spec
 
 **Date:** 2026-06-16  
-**Status:** Approved (revised ×4 after code review)  
+**Status:** Approved (revised ×5 after code review)  
 **Context:** Emerged from Phase 2 eval analysis — independent judge run, proximity scoring investigation, and systematic audit of the enrichment pipeline against its original design intent.
 
 ---
@@ -310,9 +310,11 @@ Together they cover the full fidelity space for the disposition section.
 
 #### 5b. Updated ProximityJudge
 
-**System prompt rewritten** to frame around omissions:
+**System prompt rewritten** to frame around omissions, with a null-disposition guard:
 
-> "You are evaluating whether a rendered AI agent system prompt correctly and completely expresses the agent's disposition axes as declared in the descriptor. For each axis present in the descriptor's disposition object, check whether the render conveys that axis value. Score 0–5: 5 = all axes clearly and correctly expressed; 4 = minor omission or softening; 3 = partial coverage; 2 = significant axes missing; 1 = most axes missing or contradicted; 0 = disposition absent from render."
+> "You are evaluating whether a rendered AI agent system prompt correctly and completely expresses the agent's disposition axes as declared in the descriptor. For each axis present in the descriptor's disposition object, check whether the render conveys that axis value. Score 0–5: 5 = all axes clearly and correctly expressed; 4 = minor omission or softening; 3 = partial coverage; 2 = significant axes missing; 1 = most axes missing or contradicted; 0 = disposition absent from render. **If no disposition object is provided in the payload, the descriptor has no disposition axes — return score: 5, reasoning: 'No disposition axes declared', gaps: [].**"
+
+The guard is required because when the descriptor has no disposition, the payload omits the "disposition" key. Without the guard, the scoring rubric's "0 = disposition absent from render" could be misapplied — the render correctly has no disposition section when none was declared, so the correct score is 5. `ProximityResult` returns `(score, reasoning, gaps)` — not an empty string.
 
 **User payload** changes from `originalProse` + `rendered` to `disposition` + `rendered`:
 
@@ -343,7 +345,7 @@ if (disp != null) {
     dispNode.put("canDelegate", disp.delegation());
     payload.set("disposition", dispNode);
 }
-// If disp is null, no "disposition" key is added — LLM returns empty string per PROMPT_TEMPLATE instruction
+// If disp is null, no "disposition" key is added — judge skips scoring (no axes to evaluate)
 ```
 
 **Only `ProximityJudge.evaluate()` body changes.** The method signature `evaluate(ProfiledEvalCase, RenderedPrompt)` is unchanged. No record or interface changes.
@@ -387,8 +389,10 @@ if (disp != null) {
 *Change 4 (briefing-field):*
 - Populate `briefing` in eval profiles from `vocabularyGap: FULL` entries
 - Re-run `evaluateRealWorldScenarios` — disposition prose should incorporate briefing principles
-- Expect improved disposition prose quality for FULL-LOSS cases
+- Quality scores (FACTUAL_FIDELITY, CONCISENESS, TONE) confirm the disposition prose is better written
+- **Full validation of FULL-LOSS recovery requires Change 5.** If Change 5 is not yet in place, the proximity judge still uses `originalProse` — producing misleading proximity signals for briefing cases (measuring reconstruction fidelity against intentionally-discarded information, the error this spec fixes). Implementations can proceed in parallel; full validation runs after both are done.
 
 *Change 5 (proximity-eval-redesign):*
 - Proximity scores should be high for structural renders (descriptor fields correctly expressed)
 - Verify FACTUAL_FIDELITY and redesigned proximity measure complementary things: false positives vs false negatives
+- Once both Change 4 and Change 5 are in place: redesigned proximity scores for briefing profiles should be higher than without briefing — confirming vocabulary-gap recovery
