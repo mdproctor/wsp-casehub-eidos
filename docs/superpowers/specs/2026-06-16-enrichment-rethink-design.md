@@ -1,7 +1,7 @@
 # Enrichment Rethink — Design Spec
 
 **Date:** 2026-06-16  
-**Status:** Approved (revised ×3 after code review)  
+**Status:** Approved (revised ×4 after code review)  
 **Context:** Emerged from Phase 2 eval analysis — independent judge run, proximity scoring investigation, and systematic audit of the enrichment pipeline against its original design intent.
 
 ---
@@ -117,7 +117,7 @@ Risk: if the LLM omits an axis, there is no structural anchor. Mitigation: the `
 #### 1d. Updated PROMPT_TEMPLATE and RESPONSE_FORMAT
 
 `PROMPT_TEMPLATE` rewritten to describe only two output fields:
-- `dispositionNarrative` (2-3 sentences): use `name` and `slot` (with `slotLabel`/`slotDescription`/`slotVocabularyName` when present) to make the narrative role-specific; cover ALL disposition axes in the payload — omitting any present axis is incorrect; use vocabulary framework language when `vocabularyName` is present on an axis; weave `briefing` principles naturally when present — do not quote verbatim; second person
+- `dispositionNarrative` (2-4 sentences): use `name` and `slot` (with `slotLabel`/`slotDescription`/`slotVocabularyName` when present) to make the narrative role-specific; cover ALL disposition axes in the payload — omitting any present axis is incorrect; use vocabulary framework language when `vocabularyName` is present on an axis; weave `briefing` principles naturally when present — do not quote verbatim; second person; **empty string if no disposition data present in the payload**
 - `goalNarrative` (1-3 sentences): current task and objectives in flowing prose; sub-goals as natural continuation, not bullets; second person; empty string if no goal
 
 `RESPONSE_FORMAT` JsonSchema narrows to two string fields: `dispositionNarrative` and `goalNarrative`. Both optional (either may be empty string).
@@ -329,9 +329,24 @@ Together they cover the full fidelity space for the disposition section.
 }
 ```
 
-The disposition payload uses **raw axis values from `AgentDisposition`** — not vocabulary-resolved labels. `ProximityJudge` has `evalCase.descriptor().disposition()` and `ObjectMapper`; `mapper.valueToTree(disposition)` produces raw field values. `VocabularyRegistry` is not injected and must not be added: the judge's task is to determine whether "bold" risk appetite is expressed in the render, which an LLM judge can determine from the raw string "bold" without needing the Belbin label "Shaper." Adding vocabulary resolution would require injecting `VocabularyRegistry` and `EidosRenderPipeline` into the eval module — a structural dependency that is neither necessary nor correct.
+The disposition payload uses **raw axis values from `AgentDisposition`** — not vocabulary-resolved labels. `VocabularyRegistry` is not injected into `ProximityJudge` and must not be added: the judge determines whether "bold" risk appetite is expressed in the render, which an LLM can do from the raw string "bold" without needing the Belbin label "Shaper." Adding vocabulary resolution would require injecting `VocabularyRegistry` and `EidosRenderPipeline` into eval — a structural dependency that is neither necessary nor correct.
 
-**Only `ProximityJudge.evaluate()` body changes.** The method signature `evaluate(ProfiledEvalCase, RenderedPrompt)` is unchanged. The disposition object is accessed as `evalCase.descriptor().disposition()`. No record or interface changes.
+**Disposition payload construction** — do NOT use `mapper.valueToTree(disposition)`. `AgentDisposition` has nullable String fields with no `@JsonInclude` annotation; Jackson's default serialiser includes null fields as `"conflictMode": null`. A null axis is "present" in the JSON — the judge may attempt to evaluate it and score incorrectly. Use `DispositionAxis.jsonKey()` (public method in `io.casehub.eidos.api`, accessible from eval) with `ifPresent` to include only non-null axes:
+
+```java
+final AgentDisposition disp = evalCase.descriptor().disposition();
+if (disp != null) {
+    final ObjectNode dispNode = mapper.createObjectNode();
+    for (DispositionAxis axis : DispositionAxis.values()) {
+        disp.get(axis).ifPresent(raw -> dispNode.put(axis.jsonKey(), raw));
+    }
+    dispNode.put("canDelegate", disp.delegation());
+    payload.set("disposition", dispNode);
+}
+// If disp is null, no "disposition" key is added — LLM returns empty string per PROMPT_TEMPLATE instruction
+```
+
+**Only `ProximityJudge.evaluate()` body changes.** The method signature `evaluate(ProfiledEvalCase, RenderedPrompt)` is unchanged. No record or interface changes.
 
 `originalProse` remains on `AgentProfile` — it is not removed. It is simply no longer the proximity eval reference.
 
@@ -360,18 +375,20 @@ The disposition payload uses **raw axis values from `AgentDisposition`** — not
 
 ## Validation
 
-After implementing Changes 1–3 (enrichment-mechanics issue):
+**Phase 1 — enrichment-mechanics baseline (Changes 1–3, sequential prerequisite):**
 - Re-run `evaluateRealWorldScenarios` with Claude
 - Target: enrichment success rate >80% (currently ~0%)
 - Disposition sections should be prose rather than bullet lists
 - Quality scores: unchanged or improved for MARKDOWN/PROSE formats
 - Run `evaluateWithIndependentJudge` with Qwen 8B to check for self-eval bias on enriched renders
 
-After implementing Change 4 (briefing-field issue):
-- Populate `briefing` in eval profiles from `vocabularyGap: FULL` entries
-- Re-run `evaluateRealWorldScenarios`
-- Run redesigned proximity eval (Change 5) — expect improvement for FULL-LOSS cases
+**Phase 2 — parallel after Phase 1 (Changes 4 and 5 are independent, neither blocks the other):**
 
-After implementing Change 5 (proximity-eval-redesign issue):
-- Proximity scores should be high for structural renders (descriptor fields are correctly expressed)
-- Verify FACTUAL_FIDELITY and redesigned proximity are measuring complementary things in practice
+*Change 4 (briefing-field):*
+- Populate `briefing` in eval profiles from `vocabularyGap: FULL` entries
+- Re-run `evaluateRealWorldScenarios` — disposition prose should incorporate briefing principles
+- Expect improved disposition prose quality for FULL-LOSS cases
+
+*Change 5 (proximity-eval-redesign):*
+- Proximity scores should be high for structural renders (descriptor fields correctly expressed)
+- Verify FACTUAL_FIDELITY and redesigned proximity measure complementary things: false positives vs false negatives
