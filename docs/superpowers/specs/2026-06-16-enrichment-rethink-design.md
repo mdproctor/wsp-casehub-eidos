@@ -1,8 +1,8 @@
 # Enrichment Rethink — Design Spec
 
 **Date:** 2026-06-16  
-**Status:** Approved (revised after code review)  
-**Context:** Emerged from Phase 2 eval analysis — independent judge run, proximity scoring investigation, and systematic audit of the enrichment pipeline against its original design intent. Revised to address assembly restructuring, reactive path coverage, module placement, payload narrowing, and design questions on disposition replacement and briefing.
+**Status:** Approved (revised ×2 after code review)  
+**Context:** Emerged from Phase 2 eval analysis — independent judge run, proximity scoring investigation, and systematic audit of the enrichment pipeline against its original design intent.
 
 ---
 
@@ -24,7 +24,7 @@ The eval shows the extra scope produces no value: identity, role, and capability
 
 `SemanticEnrichmentStep.stripCodeFences()` strips only the outer fence. It does not extract JSON from within prose preamble — it is not equivalent to `PromptJudge.extractJson()` which finds the outermost `{...}` block. Claude Opus 4.6 frequently returns prose starting with natural language, or JSON within code fences preceded by a preamble. Both fail silently as structural fallbacks.
 
-`ReactiveSemanticEnrichmentStep.parseOrEmpty()` has the same bug: it calls `stripCodeFences()` and uses the same 6-field `SemanticEnrichment` constructor. No retry on parse failure.
+`ReactiveSemanticEnrichmentStep.parseOrEmpty()` has the identical bug: it calls `stripCodeFences()` and uses the same 6-field `SemanticEnrichment` constructor. No retry on parse failure.
 
 Result: enrichment never runs in practice on Claude Opus 4.6. All renders are structural.
 
@@ -80,7 +80,7 @@ name, agentId, model, provider line
 // Role — always structural
 assembleMarkdownRole(sb, descriptor)
 
-// Capabilities — always structural  
+// Capabilities — always structural
 assembleMarkdownCapabilities(sb, descriptor)
 
 // Disposition — enriched OR structural (selective override)
@@ -104,9 +104,7 @@ else:
 
 The existing `assembleMarkdownStructural` method becomes the composition of its constituent section methods. Each section method is extracted to be callable independently: `assembleMarkdownRole`, `assembleMarkdownCapabilities`, `assembleMarkdownDisposition`, `assembleMarkdownDataHandling`, `assembleMarkdownGoal`. The outer structural method calls all of them in sequence; the selective-override path calls each directly.
 
-**`assembleProse` structure after Change 1:**
-
-Same pattern. Structural identity+role as dense prose runs always; capabilities structural prose runs always; disposition and goal become selective overrides.
+**`assembleProse` structure after Change 1:** Same selective override pattern. Structural identity+role as dense prose runs always; capabilities structural prose runs always; disposition and goal become selective overrides. No headers in PROSE — all enriched sections are prose paragraphs separated by `\n`.
 
 #### 1c. dispositionNarrative REPLACES structural disposition
 
@@ -114,21 +112,17 @@ When `dispositionNarrative` is present, it replaces the structural bullet list e
 
 Rationale: structural bullets ("- Risk appetite: bold") are factually correct but not actionable instructions. LLM prose ("You approach decisions boldly, approving when fundamentals are sound rather than blocking on theoretical concerns") is. Mixing both creates noise and redundancy.
 
-Risk: if the LLM omits an axis from the narrative, there is no structural anchor. Mitigation:
-- The PROMPT_TEMPLATE instructs: "Cover ALL axes present in the disposition payload. Omitting any axis present in the payload is incorrect."
-- Retry on parse failure handles transient non-JSON; the prompt instruction handles axis omission.
-- The `dispositionNarrative` field remains Optional — if enrichment fails entirely, the structural bullet list is the fallback. That is the correct fallback for total enrichment failure, not a partial-coverage supplement for enrichment success.
-- FACTUAL_FIDELITY in the quality eval flags omissions at eval time.
+Risk: if the LLM omits an axis, there is no structural anchor. Mitigation: the `PROMPT_TEMPLATE` instructs "Cover ALL axes present in the disposition payload — omitting any present axis is incorrect." If enrichment fails entirely, the structural bullet list is the fallback (correct behaviour for total enrichment failure). FACTUAL_FIDELITY in the quality eval flags omissions at eval time.
 
 #### 1d. Updated PROMPT_TEMPLATE and RESPONSE_FORMAT
 
 `PROMPT_TEMPLATE` rewritten to describe only two output fields:
-- `dispositionNarrative` (2-3 sentences): cover all disposition axes present in the payload; use vocabulary framework language when vocabularyName present; second person
+- `dispositionNarrative` (2-3 sentences): cover all disposition axes present in the payload; use vocabulary framework language when vocabularyName is present; weave `briefingText` principles naturally when present; second person
 - `goalNarrative` (1-3 sentences): current task and objectives in flowing prose; sub-goals as natural continuation, not bullets; second person; empty string if no goal
 
 `RESPONSE_FORMAT` JsonSchema narrows to two string fields: `dispositionNarrative` and `goalNarrative`. Both optional (either may be empty string).
 
-`TEMPLATE_HASH` is recomputed from the new template — this automatically invalidates all existing cached renders. No manual action required.
+`TEMPLATE_HASH` is recomputed from the new template — automatically invalidates all existing cached renders. No manual action required.
 
 ---
 
@@ -136,9 +130,9 @@ Risk: if the LLM omits an axis from the narrative, there is no structural anchor
 
 #### 2a. Extract JSON extraction to shared runtime utility
 
-`PromptJudge.extractJson()` is in the eval module. `SemanticEnrichmentStep` is in runtime. There is no dependency from runtime → eval (and adding one would be incorrect). The logic must be extracted to a shared class in the runtime module.
+`PromptJudge.extractJson()` is in the eval module (`io.casehub.eidos.eval`). `SemanticEnrichmentStep` is in the runtime module (`io.casehub.eidos.runtime.renderer`). A package-private class in the renderer package is inaccessible from the eval package even though eval has a compile dependency on runtime. The logic must live in a class within the runtime module.
 
-**New class:** `JsonExtractionUtil` (package-private, `io.casehub.eidos.runtime.renderer`)
+**New class:** `JsonExtractionUtil` — package-private in `io.casehub.eidos.runtime.renderer`.
 
 ```java
 static String extractJson(String text) {
@@ -157,9 +151,10 @@ static String extractJson(String text) {
 }
 ```
 
-`SemanticEnrichmentStep.stripCodeFences()` is replaced by a call to `JsonExtractionUtil.extractJson()`.
+`SemanticEnrichmentStep.stripCodeFences()` is replaced by `JsonExtractionUtil.extractJson()`.
 `ReactiveSemanticEnrichmentStep.parseOrEmpty()` uses `JsonExtractionUtil.extractJson()`.
-`PromptJudge.extractJson()` in the eval module is reimplemented as a call to the runtime's `JsonExtractionUtil.extractJson()` (eval depends on runtime) — or kept as a local copy with a comment pointing to the canonical location. Eval-to-runtime call is cleaner; local copy avoids a cross-module coupling for test-only code.
+
+`PromptJudge.extractJson()` in eval **keeps its existing local implementation** — identical logic, separate copy. This is correct module isolation: `JsonExtractionUtil` is package-private by design (encapsulates renderer internals); making it public to share with eval would expose a renderer implementation detail as a public API. Two 10-line copies of utility logic is the right trade-off.
 
 #### 2b. Add retry on parse failure — SemanticEnrichmentStep
 
@@ -189,32 +184,36 @@ The retry uses the same request object. Second failure falls back to `Optional.e
 1. Replace `SemanticEnrichmentStep.stripCodeFences(json)` with `JsonExtractionUtil.extractJson(json)` in `parseOrEmpty()`.
 2. Update the `SemanticEnrichment` constructor call from 6 fields to 2 fields (dispositionNarrative, goalNarrative) after Change 1 narrows the record.
 
-Retry in the reactive path: the `StreamingChatResponseHandler.onError()` already routes to `Optional.empty()`. Adding a retry in the reactive path requires a more complex CompletableFuture chain. For the reactive path, a single attempt with graceful fallback is sufficient — the synchronous path handles the retry case. Document this decision.
+Retry in the reactive path: adding a retry requires restructuring the `CompletableFuture` chain. For the reactive path, a single attempt with graceful fallback is sufficient — the synchronous path is the primary path for enrichment. Documented as deliberate: reactive path is a streaming optimisation, not the enrichment quality path.
 
 ---
 
-### Change 3 — Narrow the enrichment LLM payload
+### Change 3 — Narrow the enrichment LLM payload; delete buildLlmPayload
 
-`buildLlmPayload()` currently deep-copies the full descriptor node (identity, slot, capabilities, disposition, jurisdiction, data handling) and adds goal. After Changes 1, the enrichment LLM only produces disposition and goal narratives. Sending identity, slot, capability, and constraint fields is noise that wastes tokens and may distract the model.
+`buildLlmPayload()` deep-copies the full descriptor node (identity, slot, capabilities, disposition, jurisdiction, data handling) and adds goal. After Change 1, the enrichment LLM only produces disposition and goal narratives. Sending the other fields is noise that wastes tokens and may distract the model.
 
-**New method:** `buildEnrichmentPayload(descriptorNode, contextNode)` — replaces `buildLlmPayload` for the enrichment call.
+**New method:** `buildEnrichmentPayload(ObjectNode descriptorNode, ObjectNode contextNode)` on `EidosRenderPipeline`.
 
 Payload structure:
 ```json
 {
-  "disposition": { /* per-axis objects with vocabulary context, extracted from descriptorNode */ },
-  "goal": { /* description + subGoals + caseRef, if present, extracted from contextNode */ },
-  "briefing": "..."  /* if present in descriptor — see Change 4 */
+  "disposition": { /* per-axis objects with vocab context, extracted from descriptorNode */ },
+  "goal":        { /* description + subGoals + caseRef, if present, from contextNode */ },
+  "briefing":    "..."  /* if present, extracted from descriptorNode — see Change 4 */
 }
 ```
 
-`descriptorNode` already contains the disposition object with vocabulary-resolved labels and names (built by `buildDescriptorPayload`). Extract it directly: `descriptorNode.get("disposition")`. Same for goal from `contextNode.get("goal")`.
+`descriptorNode` already contains the vocabulary-resolved `disposition` object (built by `buildDescriptorPayload`). Extract directly: `descriptorNode.get("disposition")`. Same for `contextNode.get("goal")` and `descriptorNode.get("briefing")`.
 
-`buildLlmPayload` is retained for any existing callers if any exist outside the enrichment path; otherwise removed. If `buildLlmPayload` has no callers after this change, delete it.
+**Two call sites must be updated** — both switch from `buildLlmPayload` to `buildEnrichmentPayload`:
+1. `EidosSystemPromptRenderer.renderFresh()` — `pipeline.buildLlmPayload(s1.descriptorNode(), s1.contextNode())`
+2. `DefaultReactiveSystemPromptRenderer.executeStagesTwoAndThree()` — `pipeline.buildLlmPayload(s1.descriptorNode(), s1.contextNode())`
+
+**`buildLlmPayload` is deleted.** These are its only two callers. No other code calls it.
 
 ---
 
-### Change 4 — Add `AgentDescriptor.briefing` + include in enrichment payload
+### Change 4 — Add `AgentDescriptor.briefing` + persistence + payload inclusion
 
 #### 4a. AgentDescriptor field
 
@@ -225,29 +224,52 @@ public record AgentDescriptor(
 ) {}
 ```
 
-`briefing` is a nullable free-text field. Its content is behavioral principles the structured disposition axes cannot capture: "90% elegant beats perfect. Trust the pipeline. Speed is a feature." It is the correct answer to the `vocabularyGap: FULL` cases documented in eval profiles.
+`briefing` is a nullable free-text field for behavioral principles the structured disposition axes cannot capture: "90% elegant beats perfect. Trust the pipeline. Speed is a feature." It is the correct answer to the `vocabularyGap: FULL` cases documented in eval profiles.
 
-`AgentDescriptorValidator` adds a length bound (e.g. MAX_BRIEFING = 500 chars) — long enough for several principles, short enough to prevent misuse as a general notes field.
+`AgentDescriptorValidator` adds: `static final int MAX_BRIEFING = 500` and calls `validateOptional("briefing", briefing, MAX_BRIEFING)` in the compact constructor. 500 chars accommodates 4-5 medium-length principles; exceeding it signals misuse as a notes field.
 
-#### 4b. Briefing in the enrichment payload
+#### 4b. Persistence
 
-`briefing` is included in `buildEnrichmentPayload()` when non-null:
+Adding `briefing` to the `AgentDescriptor` record requires updates to three places in the runtime:
 
-```json
-{
-  "disposition": { ... },
-  "goal": { ... },
-  "briefing": "Speed is a feature. Review latency is a cost."
-}
+**`V1__initial_schema.sql`** (direct amendment — no existing installations):
+```sql
+briefing  TEXT  NULL
+```
+Added to the `agent_descriptor` table definition alongside the other nullable text fields.
+
+**`AgentDescriptorEntity`:**
+```java
+@Column(columnDefinition = "TEXT")
+String briefing;
 ```
 
-The `PROMPT_TEMPLATE` instructs: "If briefingText is present, weave its principles naturally into the dispositionNarrative — do not quote it verbatim."
+**`AgentDescriptorMapper`:**
+- `toRecord()`: add `e.briefing` to the `AgentDescriptor` constructor call
+- `toEntity()`: add `e.briefing = d.briefing()`
 
-Rationale: if briefing is appended structurally after LLM-generated disposition prose, the two outputs can contradict — the LLM might write "You approach decisions with measured care" while briefing says "Speed is a feature." Giving the LLM the briefing content allows it to produce coherent prose that incorporates the principle: "You approve changes boldly when fundamentals are sound — speed is a feature for your team, and review latency is a cost that compounds."
+#### 4c. Cache key correctness — briefing in buildDescriptorPayload
 
-Structural fallback when enrichment fails: if `briefing` is non-null and enrichment falls back to the structural disposition bullet list, briefing renders as a separate `## Operating Principles` section after disposition.
+`descriptorHash` is computed as `fingerprint(buildDescriptorPayload(descriptor, format).toString())`. If `briefing` is not included in `buildDescriptorPayload()`, two descriptors differing only in `briefing` produce identical `descriptorNode` JSON, identical hash, and the same cache key — a cached render built without `briefing` is incorrectly served for a descriptor that has `briefing`.
 
-#### 4c. YAML placement
+**Required:** add one line to `buildDescriptorPayload()`:
+```java
+addIfPresent(node, "briefing", descriptor.briefing());
+```
+
+This is separate from (but complementary to) including `briefing` in `buildEnrichmentPayload()`. The descriptor payload is the cache key source; the enrichment payload is the LLM input. Both must carry `briefing`.
+
+#### 4d. Briefing in the enrichment payload
+
+`briefing` is included in `buildEnrichmentPayload()` when non-null. The `PROMPT_TEMPLATE` instructs: "If briefingText is present, weave its principles naturally into the dispositionNarrative — do not quote it verbatim."
+
+Rationale: structural append after LLM disposition prose risks tonal contradiction — the LLM might write "You approach decisions with measured care" while briefing says "Speed is a feature." Giving the LLM the briefing content allows coherent incorporation: "You approve changes boldly when fundamentals are sound — speed is a feature for your team, and review latency is a cost that compounds."
+
+**Structural fallback when enrichment fails:** if `briefing` is non-null and enrichment falls back:
+- MARKDOWN: briefing renders as `## Operating Principles\n{briefing}` after the disposition bullet section
+- PROSE: briefing renders as a separate prose paragraph `"\n" + briefing` after the disposition inline text (no header — consistent with PROSE format)
+
+#### 4e. YAML placement
 
 `briefing` is a field on `AgentDescriptor`, not on `AgentProfile`. In the eval profile YAML it lives inside the `descriptor:` block:
 
@@ -259,9 +281,7 @@ descriptor:
   ...
 ```
 
-`AgentProfileLoader` requires no change — Jackson deserialises `briefing` automatically from the descriptor block.
-
-`AgentProfile.vocabularyGaps` with `loss: FULL` entries are the source for `briefing` content when populating eval profiles.
+`AgentProfileLoader` requires no change — Jackson deserialises `briefing` automatically from the descriptor block. `AgentProfile.vocabularyGaps` with `loss: FULL` entries are the source for `briefing` content when populating eval profiles.
 
 ---
 
@@ -275,7 +295,7 @@ New: measures **disposition axis completeness** — for each axis present in the
 
 This is distinct from `FACTUAL_FIDELITY`:
 - `FACTUAL_FIDELITY` = no false positives (claims in render not grounded in descriptor — hallucinations). Asks: "Did you invent things?"
-- Redesigned Proximity = no false negatives for disposition axes (axis values present in descriptor but missing or contradicted in render). Asks: "Did you miss things?"
+- Redesigned Proximity = no false negatives for disposition axes (axis values in descriptor but missing or contradicted in render). Asks: "Did you miss things?"
 
 Together they cover the full fidelity space for the disposition section.
 
@@ -294,9 +314,9 @@ Together they cover the full fidelity space for the disposition section.
 }
 ```
 
-`ProfiledEvalCase` no longer passes `originalProse` to the proximity judge. The `ProfiledEvalCase` record or `ProximityJudge.evaluate()` signature changes accordingly.
+**Only `ProximityJudge.evaluate()` body changes.** The method signature `evaluate(ProfiledEvalCase, RenderedPrompt)` is unchanged. `ProfiledEvalCase` already has `descriptor()` — the disposition object is accessed as `evalCase.descriptor().disposition()`. No record or interface changes.
 
-`originalProse` remains on `AgentProfile` for reference — it is not removed. It is simply no longer the proximity eval reference.
+`originalProse` remains on `AgentProfile` — it is not removed. It is simply no longer the proximity eval reference.
 
 ---
 
@@ -306,7 +326,7 @@ Together they cover the full fidelity space for the disposition section.
 - `RenderedPromptCache` SPI — unchanged. `TEMPLATE_HASH` changes automatically invalidate cache entries
 - A2A format assembly — unchanged; enrichment already skipped for `A2A_CARD`
 - `A2ASemanticEnrichmentStep` — out of scope; separate concern
-- Structural fallback contract — any enrichment failure still produces correct structural output for all sections
+- Structural fallback contract — any enrichment failure produces correct structural output for all sections
 - Enrichment format predicate (`usesEnrichment`) — `MARKDOWN` and `PROSE` use enrichment; `A2A_CARD` does not. No change
 
 ---
@@ -315,9 +335,9 @@ Together they cover the full fidelity space for the disposition section.
 
 | # | Scope | Depends on |
 |---|-------|-----------|
-| New: enrichment-mechanics | Changes 1 + 2 + 3: narrow scope, selective override, extractJson, retry, payload narrowing | — |
-| New: briefing-field | Change 4: `AgentDescriptor.briefing` + enrichment payload inclusion + structural fallback | enrichment-mechanics (validates enrichment works before testing briefing's effect) |
-| New: proximity-eval-redesign | Change 5: redefine proximity target, update judge prompt and payload | enrichment-mechanics (so proximity runs against fixed enrichment renders) |
+| New: enrichment-mechanics | Changes 1 + 2 + 3: narrow scope, selective override, JsonExtractionUtil, retry, payload narrowing, delete buildLlmPayload | — |
+| New: briefing-field | Change 4: `AgentDescriptor.briefing` + persistence (entity, migration, mapper) + cache key fix + enrichment payload inclusion + structural fallback | enrichment-mechanics (validates enrichment works before testing briefing's effect) |
+| New: proximity-eval-redesign | Change 5: redefine proximity target, update judge prompt and payload body | enrichment-mechanics (proximity runs against fixed enrichment renders) |
 
 ---
 
