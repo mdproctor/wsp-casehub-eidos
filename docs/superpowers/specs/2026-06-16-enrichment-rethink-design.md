@@ -1,7 +1,7 @@
 # Enrichment Rethink — Design Spec
 
 **Date:** 2026-06-16  
-**Status:** Approved (revised ×2 after code review)  
+**Status:** Approved (revised ×3 after code review)  
 **Context:** Emerged from Phase 2 eval analysis — independent judge run, proximity scoring investigation, and systematic audit of the enrichment pipeline against its original design intent.
 
 ---
@@ -117,7 +117,7 @@ Risk: if the LLM omits an axis, there is no structural anchor. Mitigation: the `
 #### 1d. Updated PROMPT_TEMPLATE and RESPONSE_FORMAT
 
 `PROMPT_TEMPLATE` rewritten to describe only two output fields:
-- `dispositionNarrative` (2-3 sentences): cover all disposition axes present in the payload; use vocabulary framework language when vocabularyName is present; weave `briefingText` principles naturally when present; second person
+- `dispositionNarrative` (2-3 sentences): use `name` and `slot` (with `slotLabel`/`slotDescription`/`slotVocabularyName` when present) to make the narrative role-specific; cover ALL disposition axes in the payload — omitting any present axis is incorrect; use vocabulary framework language when `vocabularyName` is present on an axis; weave `briefing` principles naturally when present — do not quote verbatim; second person
 - `goalNarrative` (1-3 sentences): current task and objectives in flowing prose; sub-goals as natural continuation, not bullets; second person; empty string if no goal
 
 `RESPONSE_FORMAT` JsonSchema narrows to two string fields: `dispositionNarrative` and `goalNarrative`. Both optional (either may be empty string).
@@ -197,13 +197,22 @@ Retry in the reactive path: adding a retry requires restructuring the `Completab
 Payload structure:
 ```json
 {
-  "disposition": { /* per-axis objects with vocab context, extracted from descriptorNode */ },
-  "goal":        { /* description + subGoals + caseRef, if present, from contextNode */ },
-  "briefing":    "..."  /* if present, extracted from descriptorNode — see Change 4 */
+  "name":               "Software Engineer — Bold",
+  "slot":               "reviewer",
+  "slotLabel":          "Shaper",
+  "slotDescription":    "Results-oriented, challenges others to excel...",
+  "slotVocabularyName": "Belbin Team Roles",
+  "disposition":        { /* per-axis objects with vocab context, extracted from descriptorNode */ },
+  "goal":               { /* description + subGoals + caseRef, if present, from contextNode */ },
+  "briefing":           "..."  /* if present, extracted from descriptorNode — see Change 4 */
 }
 ```
 
-`descriptorNode` already contains the vocabulary-resolved `disposition` object (built by `buildDescriptorPayload`). Extract directly: `descriptorNode.get("disposition")`. Same for `contextNode.get("goal")` and `descriptorNode.get("briefing")`.
+`name`, `slot`, `slotLabel`, `slotDescription`, `slotVocabularyName` are included so the LLM generates role-specific disposition prose rather than role-agnostic behavioral description. The distinction is material: without slot context the enrichment produces "You approach decisions boldly"; with slot context it produces "As your team's Reviewer, you approve PRs boldly when fundamentals are sound." `slotVocabularyDescription` is excluded — it describes the vocabulary framework, not the agent's role.
+
+All these fields are already in `descriptorNode` (built by `buildDescriptorPayload`). Extraction is conditional: `descriptorNode.get("name")` is always present; `slotLabel`, `slotDescription`, `slotVocabularyName` are only present when vocab resolution succeeded — extract with null check and `set()` only when non-null.
+
+`descriptorNode` also contains the vocabulary-resolved `disposition` object. Extract directly: `descriptorNode.get("disposition")`. Same for `contextNode.get("goal")` and `descriptorNode.get("briefing")`.
 
 **Two call sites must be updated** — both switch from `buildLlmPayload` to `buildEnrichmentPayload`:
 1. `EidosSystemPromptRenderer.renderFresh()` — `pipeline.buildLlmPayload(s1.descriptorNode(), s1.contextNode())`
@@ -261,7 +270,7 @@ This is separate from (but complementary to) including `briefing` in `buildEnric
 
 #### 4d. Briefing in the enrichment payload
 
-`briefing` is included in `buildEnrichmentPayload()` when non-null. The `PROMPT_TEMPLATE` instructs: "If briefingText is present, weave its principles naturally into the dispositionNarrative — do not quote it verbatim."
+`briefing` is included in `buildEnrichmentPayload()` when non-null. The `PROMPT_TEMPLATE` instructs: "If briefing is present, weave its principles naturally into the dispositionNarrative — do not quote it verbatim." The payload key and the PROMPT_TEMPLATE instruction both use "briefing" — they must match because the LLM reasons about the payload by key name.
 
 Rationale: structural append after LLM disposition prose risks tonal contradiction — the LLM might write "You approach decisions with measured care" while briefing says "Speed is a feature." Giving the LLM the briefing content allows coherent incorporation: "You approve changes boldly when fundamentals are sound — speed is a feature for your team, and review latency is a cost that compounds."
 
@@ -309,12 +318,20 @@ Together they cover the full fidelity space for the disposition section.
 
 ```json
 {
-  "disposition": { /* the descriptor's disposition object with vocab labels */ },
+  "disposition": {
+    "socialOrient":  "independent",
+    "ruleFollowing": "strict",
+    "riskAppetite":  "bold",
+    "autonomy":      "directed",
+    "canDelegate":   false
+  },
   "rendered": "..."
 }
 ```
 
-**Only `ProximityJudge.evaluate()` body changes.** The method signature `evaluate(ProfiledEvalCase, RenderedPrompt)` is unchanged. `ProfiledEvalCase` already has `descriptor()` — the disposition object is accessed as `evalCase.descriptor().disposition()`. No record or interface changes.
+The disposition payload uses **raw axis values from `AgentDisposition`** — not vocabulary-resolved labels. `ProximityJudge` has `evalCase.descriptor().disposition()` and `ObjectMapper`; `mapper.valueToTree(disposition)` produces raw field values. `VocabularyRegistry` is not injected and must not be added: the judge's task is to determine whether "bold" risk appetite is expressed in the render, which an LLM judge can determine from the raw string "bold" without needing the Belbin label "Shaper." Adding vocabulary resolution would require injecting `VocabularyRegistry` and `EidosRenderPipeline` into the eval module — a structural dependency that is neither necessary nor correct.
+
+**Only `ProximityJudge.evaluate()` body changes.** The method signature `evaluate(ProfiledEvalCase, RenderedPrompt)` is unchanged. The disposition object is accessed as `evalCase.descriptor().disposition()`. No record or interface changes.
 
 `originalProse` remains on `AgentProfile` — it is not removed. It is simply no longer the proximity eval reference.
 
