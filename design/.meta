@@ -1,0 +1,9 @@
+branch: issue-53-allcasescomplete-fix
+project-sha: 0f33eb31add71a8933e185bc98860323f0974f4b
+date: 2026-06-17
+issue: 53
+issue-repo: casehubio/eidos
+covers: 53,59
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 
