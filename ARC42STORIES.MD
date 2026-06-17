@@ -17,11 +17,11 @@
 
 Core capabilities:
 
-- **AgentDescriptor** — four-layer structured description: identity (id, name, model, provider), slot (open-string role classification), capabilities (capability name, quality, latency, epistemic domain confidence), disposition (four open-string axes + delegation flag)
+- **AgentDescriptor** — four-layer structured description: identity (id, name, model, provider), slot (open-string role classification), capabilities (capability name, quality, latency, epistemic domain confidence), disposition (four open-string axes + delegation flag); optional `briefing` freeform text field for per-agent narrative context
 - **AgentRegistry / ReactiveAgentRegistry** — SPI for agent registration and discovery by slot, capability, and tenancyId
 - **VocabularyRegistry / CdiVocabularyRegistry** — pluggable vocabulary system; CDI `Instance<Vocabulary>` discovery with cross-vocabulary equivalence traversal
 - **CapabilityHealth / ReactiveCapabilityHealth** — two-layer probe: declared (descriptor) vs. operable now (runtime degradation state); `AgentStateStore` SPI records degradation with TTL
-- **SystemPromptRenderer / ReactiveSystemPromptRenderer** — three-stage render pipeline (canonical JSON payload → optional LLM semantic enrichment → format-specific assembly) into `RenderedPrompt`; `RenderedPromptCache` / `ReactiveRenderedPromptCache` SPI for cache coherence
+- **SystemPromptRenderer / ReactiveSystemPromptRenderer** — three-stage render pipeline (canonical JSON payload → optional LLM semantic enrichment → format-specific assembly) into `RenderedPrompt`; `RenderedPromptCache` / `ReactiveRenderedPromptCache` SPI for cache coherence; capability rendering is format-discriminated: PROSE/MARKDOWN surface names + `inputTypes`/`outputTypes` only; numeric routing signals (`qualityHint`, `latencyHintP50Ms`, `costHint`, `epistemicDomains`) appear in A2A_CARD only — protocol PP-20260611-228599; `RenderedPrompt.enriched` flag set when Stage 2 enrichment ran
 - **Eval framework** (`casehub-eidos-eval`) — LLM-as-judge quality harness; `PromptJudge` (4 dimensions), `ProximityJudge` (prose fidelity), three-stage personality preservation attribution (VocabularyExpressivenessJudge → TraitExpressionJudge → PairContrastJudge)
 - **Knowledge graph** (`casehub-eidos-graph`) — `AgentGraphStore` SPI records tasks and outcomes; `AgentGraphQuery` ranks agents by Wilson lower-bound confidence; `AttestationRef` chains outcomes to casehub-ledger hashes; `TaskSemanticEnricher` SPI (pull interface for domain-specific axis correlation)
 
@@ -173,7 +173,7 @@ C4Container
   }
 
   Container_Boundary(vocab_b, "Optional — casehub-eidos-vocab") {
-    Container(vocab, "SVO / CasehubSlot / Conscientiousness", "CDI Vocabulary beans", "Well-known starting-point vocabularies with exactMatches cross-references")
+    Container(vocab, "SVO / CasehubSlot / Conscientiousness / Belbin / DISC / Thomas-Kilmann", "VocabularyRegistrar CDI beans", "Well-known starting-point vocabularies; enum constants implementing VocabularyTerm with axis-aware exactMatches")
   }
 
   Container_Boundary(eval_b, "Quality — casehub-eidos-eval (never deployed)") {
@@ -579,6 +579,11 @@ casehub-engine can record tasks dispatched to agents (`AgentTask`) and their out
 What this layer adds:
 
 - **Four-layer agent identity** — `AgentDescriptor(agentId, name, slot, capabilities, disposition, tenancyId, ...)` record; compact constructor validates all string fields at construction time; no invalid descriptor can be constructed anywhere
+- **`DispositionAxis` enum** — `SOCIAL_ORIENTATION`, `RULE_FOLLOWING`, `RISK_APPETITE`, `AUTONOMY`, `CONFLICT_MODE`; `jsonKey()` returns camelCase JSON key for A2A payload; `description()` returns LLM-readable axis description for judge prompts; typed axis parameter for axis-aware `equivalentValues` resolution
+- **`VocabularyMetadata` annotation** — `@Retention(RUNTIME) @Target(TYPE)` on vocabulary enum classes; `uri()` required; `name()`, `version()` default to `""`; read by `VocabularyRegistry.register(Class<T>)` — absent annotation throws `IllegalArgumentException`
+- **`VocabularyRegistrar` @FunctionalInterface SPI** — `@ApplicationScoped` CDI beans call `registry.register(MyVocabEnum.class)` in their single method; replaces the removed `Vocabulary` record; discovered by `CdiVocabularyRegistry` via `@Any Instance<VocabularyRegistrar>`
+- **`AgentDescriptor.briefing`** — optional freeform text field for per-agent narrative context; rendered in MARKDOWN+PROSE structural fallback; `briefingHash` included in cache key; populated in eval profiles via `vocabularyGap:FULL` entries
+- **`RenderedPrompt.enriched` flag** — set `true` when Stage 2 semantic enrichment ran successfully; `ProximityJudge` skips substring completeness check when `enriched = true` (prevents false negatives on rich LLM-generated content)
 - **Open-String slot** — `slot` is a plain `String`, not an enum; domain apps define their own vocabulary via `Vocabulary` CDI beans; the platform never constrains slot values
 - **Capability with epistemic domain confidence** — `AgentCapability(name, qualityHint, latencyHintP50Ms, epistemicDomains Map<String,Double>)` qualifies declared capability by domain (e.g. `{"java": 0.95, "rust": 0.42}`)
 - **Mandatory tenancyId** — `AgentQuery` compact constructor requires non-null `tenancyId`; `findById(agentId, tenancyId)` is the only signature — single-parameter overloads do not exist
@@ -610,6 +615,9 @@ Not closed here: L4 (`DefaultCapabilityHealth` implementation, `AgentStateStore`
 - `api/src/main/java/io/casehub/eidos/api/AgentGraphStore.java` — SPI: `recordTask`, `recordOutcome`, `addAttestation`
 - `api/src/main/java/io/casehub/eidos/api/AgentGraphQuery.java` — SPI: `agentHistory`, `topAgentsByOutcome`, `attestationsFor`, `historyByCapability`
 - `api/src/main/java/io/casehub/eidos/api/AgentOutcome.java` — compact constructor validates `observedAt` non-null; `Double.isNaN || < 0.0 || > 1.0` guard on confidence
+- `api/src/main/java/io/casehub/eidos/api/DispositionAxis.java` — enum: SOCIAL_ORIENTATION, RULE_FOLLOWING, RISK_APPETITE, AUTONOMY, CONFLICT_MODE; `jsonKey()` → camelCase JSON key; `description()` → axis description for LLM judge prompts
+- `api/src/main/java/io/casehub/eidos/api/VocabularyMetadata.java` — annotation: `uri` (required), `name`, `version`; read by `VocabularyRegistry.register(Class<T>)`
+- `api/src/main/java/io/casehub/eidos/api/spi/VocabularyRegistrar.java` — `@FunctionalInterface` CDI SPI; `@ApplicationScoped` beans auto-register vocab enums; replaces removed `Vocabulary` record
 - `api/src/main/java/io/casehub/eidos/api/ReactiveAgentRegistry.java`, `ReactiveCapabilityHealth.java`, `ReactiveAgentGraphQuery.java` — `Uni<T>` mirrors; nested non-Mutiny types reference blocking SPI to avoid Mutiny dep on shared types
 
 ##### Key wiring
@@ -693,28 +701,34 @@ Not closed here: L3 (JPA registry), L4 (capability health uses vocabulary for sl
 
 ##### Key files
 
-- `runtime/src/main/java/io/casehub/eidos/runtime/vocabulary/CdiVocabularyRegistry.java` — `@DefaultBean @ApplicationScoped`; injects `@Any Instance<Vocabulary>`; discovers all beans at startup; supports programmatic `register()`
-- `api/src/main/java/io/casehub/eidos/api/Vocabulary.java` — named, versioned vocabulary SPI
-- `api/src/main/java/io/casehub/eidos/api/VocabularyTerm.java` — term record with `aliases` list and `exactMatches` list of `(vocabularyName, termName)` pairs
-- `vocab/src/main/java/io/casehub/eidos/vocab/SVO.java`, `CasehubSlot.java`, `Conscientiousness.java` — reference vocabulary CDI beans; `exactMatches` cross-references link SVO ↔ CasehubSlot
+- `runtime/src/main/java/io/casehub/eidos/runtime/vocabulary/CdiVocabularyRegistry.java` — `@DefaultBean @ApplicationScoped`; discovers `@Any Instance<VocabularyRegistrar>`; three internal maps: byUri/byClass/byClassOrdered; `register(Class<T>)` reads `@VocabularyMetadata` annotation; axis-aware `equivalentValues`
+- `api/src/main/java/io/casehub/eidos/api/VocabularyRegistry.java` — SPI: `register(Class<T>)`, `isRegistered`, `resolve`, `allTerms`, `equivalentValues` (typed generic + string-based + axis-aware with `DispositionAxis`)
+- `api/src/main/java/io/casehub/eidos/api/VocabularyTerm.java` — interface implemented by vocabulary enum constants; `exactMatch` cross-references (same vocab); `axisExactMatch` cross-references (axis-discriminated, for DISC-as-disposition)
+- `api/src/main/java/io/casehub/eidos/api/VocabularyMetadata.java` — `@Retention(RUNTIME) @Target(TYPE)` annotation; `uri()` required; `name()`, `version()` default to `""`
+- `api/src/main/java/io/casehub/eidos/api/spi/VocabularyRegistrar.java` — `@FunctionalInterface`; `void register(VocabularyRegistry registry)`; `@ApplicationScoped` beans call `registry.register(MyVocabEnum.class)`
+- `vocab/src/main/java/io/casehub/eidos/vocab/SvoTerm.java`, `ConscientiousnessTerm.java`, `CasehubSlotTerm.java`, `BelbinTerm.java`, `DiscTerm.java`, `ThomasKilmannTerm.java` — enum constants implementing `VocabularyTerm`; each paired with a `VocabularyRegistrar` CDI bean
 
 ##### Key wiring
 
-**CDI `@Any Instance<Vocabulary>`** discovers all `Vocabulary` beans regardless of qualifier. `CdiVocabularyRegistry` iterates the instance at startup via `@PostConstruct` — do not call `.get()` lazily; the iterator is stateful.
+**`@Any Instance<VocabularyRegistrar>`** discovers all registrar beans. `CdiVocabularyRegistry` iterates at `@PostConstruct` and calls `registrar.register(this)` for each; the registrar calls `registry.register(MyVocabEnum.class)`. Do not call `.get()` lazily; the iterator is stateful.
 
-**`casehub-eidos-vocab` is optional.** Consumers that do not need well-known vocabularies omit the dependency. `CdiVocabularyRegistry` functions with zero discovered beans.
+**`register(Class<T>)` reads `@VocabularyMetadata.uri()`** — absent annotation throws `IllegalArgumentException`. The enum class IS the vocabulary; per-constant URI methods are architecturally impossible.
+
+**`equivalentValues` axis-aware overload** — `equivalentValues(fromVocab, value, toVocabClass, DispositionAxis axis)` resolves DISC `"dominance"` to different Conscientiousness values depending on which disposition axis is being queried. Without the axis parameter, a single DISC type maps ambiguously to multiple Conscientiousness values.
+
+**`casehub-eidos-vocab` is optional.** Consumers that do not need well-known vocabularies omit the dependency. `CdiVocabularyRegistry` functions with zero registered vocabularies.
 
 ##### Architectural decisions
 
-**Why CDI `Instance<Vocabulary>` rather than a `@Produces`-based registry bean:** domain apps add `Vocabulary` beans without modifying eidos. Any `@ApplicationScoped Vocabulary` on the classpath is automatically discovered. A `@Produces` registry would require explicit wiring by each domain app.
+**Why `VocabularyRegistrar` @FunctionalInterface rather than `Vocabulary` record CDI bean:** The enum class IS the vocabulary — all term values are compile-time constants, not runtime instances. A `Vocabulary` record required a CDI bean that existed solely to return a list of `VocabularyTerm` records mirroring the enum constants. `VocabularyRegistrar` eliminates the mirror: domain apps write `registry.register(MyVocab.class)` and the enum constants themselves are the terms. `@Any Instance<VocabularyRegistrar>` discovers all registrar beans without explicit registration. See ADR-0004.
 
 ##### Pattern introduced
 
-CDI `Instance<T>` service discovery — produce a `@DefaultBean` registry that discovers all `T` implementations at startup via `@Any Instance<T>` without requiring consuming apps to explicitly register them.
+Enum-based vocabulary SPI — vocabulary enum class IS the vocabulary; `@VocabularyMetadata` annotation carries URI; `VocabularyRegistrar` @FunctionalInterface registers enum classes; `CdiVocabularyRegistry` discovers `@Any Instance<VocabularyRegistrar>` at startup; axis-aware `equivalentValues` enables DISC-as-disposition-vocabulary pattern.
 
 ##### Pattern anchor
 
-`CdiVocabularyRegistry.java` (`@PostConstruct` iterating `@Any Instance<Vocabulary>`)
+`CdiVocabularyRegistry.java` (`@PostConstruct` iterating `@Any Instance<VocabularyRegistrar>`); `VocabularyRegistrar.java` (@FunctionalInterface SPI pattern)
 
 ##### Gotchas
 
@@ -724,11 +738,11 @@ CDI `Instance<T>` service discovery — produce a `@DefaultBean` registry that d
 
 ##### Pattern to replicate
 
-1. Define a `T` SPI interface in the API module.
-2. Create a `@DefaultBean @ApplicationScoped` registry that injects `@Any Instance<T>`.
-3. Iterate the instance in a `@PostConstruct` method and populate an internal map.
-4. Expose `find(name)`, `resolve(name, value)`, and optional `equivalentValues(name, value)` methods on the registry interface.
-5. Provide optional well-known implementations as separate modules (activates by classpath presence — no configuration required).
+1. Define a `@VocabularyMetadata`-annotated enum implementing `VocabularyTerm`. Each constant provides `exactMatch()` and optionally `axisExactMatch(DispositionAxis)` for axis-discriminated cross-vocab resolution.
+2. Create a `@ApplicationScoped VocabularyRegistrar` bean that calls `registry.register(MyVocab.class)` in its single `register(VocabularyRegistry)` method.
+3. `CdiVocabularyRegistry` discovers all `VocabularyRegistrar` beans via `@Any Instance<VocabularyRegistrar>` and registers them at startup.
+4. Callers use `registry.equivalentValues(fromUri, value, ToVocab.class, axis)` for typed cross-vocab resolution, or the string-based overload for runtime descriptor lookups (where vocab values are plain strings from `AgentDescriptor`).
+5. Provide optional well-known vocabulary modules (activates by classpath presence — no configuration required).
 
 ---
 
@@ -898,6 +912,11 @@ What this layer adds:
 - **A2A enrichment isolation** — `A2ASemanticEnrichmentStep` uses its own schema (only `capabilityNarratives`), its own prompt, and a descriptor-only payload (no goal context); prevents token waste on non-A2A renders and goal contamination on A2A cards
 - **`TEMPLATE_HASH` computed from `PROMPT_TEMPLATE`** — changing the prompt template automatically invalidates all cached results; no manual `TEMPLATE_VERSION` bump required
 - **`RenderFormat` is structure-named** — `MARKDOWN`, `PROSE`, `A2A_CARD`; adding a new LLM provider does not require a new enum member; provider-named `CLAUDE_MD`, `OPENAI_SYSTEM`, `GEMINI` retired
+- **Format-discriminated capability signals** (eidos#49, protocol PP-20260611-228599) — PROSE/MARKDOWN render capability names + `inputTypes`/`outputTypes` only; numeric signals (`qualityHint`, `latencyHintP50Ms`, `costHint`, `epistemicDomains`) appear in A2A_CARD only — avoids bloating prose prompts with routing metadata irrelevant to LLM runtime behaviour
+- **Enrichment mechanics rework** (eidos#56) — `JsonExtractionUtil.extractJson()` strips markdown fences and retries on non-JSON LLM responses; selective override (enriched fields merged into structural output, not full replacement); `buildEnrichmentPayload()` separates LLM input from descriptor payload
+- **`RenderedPrompt.enriched` flag** (eidos#53) — set `true` when Stage 2 enrichment ran successfully; `ProximityJudge` skips substring completeness check when `enriched = true`; prevents false negatives where LLM-generated narrative rephrases rather than echoes descriptor field values
+- **`AgentDescriptor.briefing` in cache key** (eidos#57) — briefing is rendered in MARKDOWN+PROSE structural fallback; `briefingHash = sha256(briefing)` included in cache key so briefing changes correctly invalidate cached renders
+- **`TEMPLATE_HASH` covers all LLM-influencing inputs** (eidos#50, protocol PP-20260613-608684) — schema field descriptions included in hash computation; changing a schema description invalidates cached renders without requiring a manual version bump
 
 Not closed here: L6 (eval harness measures render quality); the LLM enrichment path is LLM-optional by construction.
 
@@ -909,6 +928,9 @@ Not closed here: L6 (eval harness measures render quality); the LLM enrichment p
 | Blocking/reactive cache incoherence | `RenderedPromptCache` and `ReactiveRenderedPromptCache` operate on different backing stores — two writes, inconsistent reads | `ReactiveRenderedPromptCache` canonical SPI + `BlockingToReactiveRenderedPromptCacheAdapter @DefaultBean` |
 | Cache key misses on resource change | `contextHash` computed from only `goal` — changing a `resources` URI serves stale rendered content | `buildContextPayload` covers goal, resources, and situationalContext; `buildLlmPayload` covers only goal (LLM input) |
 | A2A token waste | Every non-A2A render generates and discards N capability descriptions | `A2ASemanticEnrichmentStep` with separate schema; `usesEnrichment(A2A_CARD)` returns false for main `SemanticEnrichmentStep` |
+| Substring completeness check gives false negatives on enriched content | A2A card with rich LLM-generated descriptions fails substring check; eval falsely reports missing capability descriptions | `RenderedPrompt.enriched` flag; `ProximityJudge` skips check when `true` |
+| LLM returns malformed JSON on first response | Judge call fails, losing an eval result | `JsonExtractionUtil.extractJson()` strips markdown fences and retries; `MalformedJudgeResponseException` on second failure |
+| `qualityHint`/`latencyHintP50Ms` appear in PROSE breaking format contract | PROSE prompt bloated with routing metadata; LLM agent sees capacity signals irrelevant to its task | Format-discriminated rendering; protocol PP-20260611-228599 |
 
 ##### Key files
 
@@ -1004,6 +1026,9 @@ What this layer adds:
 - **Three-stage personality preservation** — Stage 1 (`VocabularyExpressivenessJudge`): can a short phrase capture this disposition axis? Stage 2 (`TraitExpressionJudge`): blind-scores rendered text (judge sees only `rendered.content()` — no descriptor, no profile); Stage 3 (`PairContrastJudge`): pairwise effect size between variant profiles
 - **Sealed `EvalCase`** — `SyntheticEvalCase` (hand-crafted) and `ProfiledEvalCase` (wraps `AgentProfile`); eliminates `Optional<AgentProfile>` guards; three new judges take `ProfiledEvalCase` directly
 - **Eval module never deployed** — `maven-deploy-plugin skip=true`; `eval` group excluded from CI Surefire by default; `evaluateRealWorldScenarios()` test requires a configured judge model
+- **`briefing` in all 8 profiles** (eidos#59, protocol PP-20260617-bfc66f) — each `AgentProfile` YAML has `briefing:` populated from `vocabularyGap:FULL` entries identified by `VocabularyExpressivenessJudge`; provides richer groundtruth for `ProximityJudge` scoring
+- **`ProximityJudge` descriptor-axis completeness** (eidos#58) — per-axis check using `DispositionAxis.jsonKey()` to locate axis values in rendered output; `null-safe` for absent disposition; `DispositionAxis.description()` drives axis-aware judge prompts
+- **Eval judge resilience** (eidos#54) — `extractJson` stripping before parse; retry on non-JSON LLM response; configurable renders-cache path (`casehub.eval.renders-cache.path` property, default `target/renders-cache.json`) so `mvn clean` no longer destroys the cache
 
 Not closed here: personality preservation thresholds not yet calibrated — first real LLM run against configured credentials is pending (no CI requirement on integration tests).
 
@@ -1036,6 +1061,8 @@ Not closed here: personality preservation thresholds not yet calibrated — firs
 **`TraitExpressionJudge` user message is `rendered.content()` only** — if the judge sees `riskAppetite: "conservative"` in the descriptor JSON, it scores the axis high regardless of whether the rendered text expresses conservatism. The blind-scoring invariant is compile-tracked: a test asserts the user message payload does not contain `agentId`.
 
 **`Attribution.WORKING` requires `s1 >= 4`** — `PROFILE_DESIGN_GAP` and `WORKING` branches also require `s1 >= 4`. Without this guard, a profile with borderline vocabulary (Stage 1 score = 3) and a high Stage 2 match rate diagnoses as `WORKING` incorrectly.
+
+**`RenderedPrompt.enriched` skips substring completeness check.** Enriched renders contain LLM-generated narrative that rephrases rather than echoes capability names — substring matching produces false negatives. When `enriched = true`, `ProximityJudge` skips the completeness substring check and relies on semantic proximity scoring instead.
 
 ##### Architectural decisions
 
@@ -1236,3 +1263,9 @@ Cross-cutting decisions not captured inline in layer entries. Layer-specific dec
 | `@IfBuildProperty` | Quarkus build-time conditional that activates a bean only when a specified property has a given value; used for reactive build gating throughout eidos |
 | Jandex library pattern | A module packaged without `quarkus:build` goal; activates by classpath presence; Jandex indexing required for CDI bean discovery |
 | Compact constructor | Java record feature that runs validation logic before the record is fully constructed; used across all eidos domain records to enforce invariants at the point of construction |
+| `DispositionAxis` | Enum: SOCIAL_ORIENTATION, RULE_FOLLOWING, RISK_APPETITE, AUTONOMY, CONFLICT_MODE; typed axis key for vocabulary equivalence resolution and `AgentDisposition.get(DispositionAxis)` access; `jsonKey()` returns camelCase JSON key for A2A payload; `description()` returns LLM-readable axis description for judge prompts |
+| `VocabularyMetadata` | `@Retention(RUNTIME) @Target(TYPE)` annotation on vocabulary enum classes; `uri()` required — absent annotation throws `IllegalArgumentException`; `name()`, `version()` optional; read by `VocabularyRegistry.register(Class<T>)` |
+| `VocabularyRegistrar` | `@FunctionalInterface` CDI SPI; `void register(VocabularyRegistry registry)`; `@ApplicationScoped` beans call `registry.register(MyVocabEnum.class)` in the single method; replaces the removed `Vocabulary` record; discovered by `CdiVocabularyRegistry` via `@Any Instance<VocabularyRegistrar>` |
+| `AgentDescriptor.briefing` | Optional freeform text field on `AgentDescriptor`; authored per agent profile; rendered in MARKDOWN+PROSE structural fallback; `briefingHash` included in cache key; populated in eval profiles from `vocabularyGap:FULL` entries |
+| `RenderedPrompt.enriched` | Boolean flag set by `EidosSystemPromptRenderer` when Stage 2 semantic enrichment ran successfully; used by `ProximityJudge` to skip substring completeness check that produces false negatives on rich LLM-generated content |
+| `JsonExtractionUtil` | Package-private utility in eval module; `extractJson(String)` strips markdown code fences and retries extraction on non-JSON LLM responses; throws `MalformedJudgeResponseException` on second failure; distinguishes parse failure from LLM infrastructure failure |
