@@ -26,7 +26,7 @@ When parallel enrichment calls all timeout simultaneously (observed: 16 at once 
 | `run()` → `buildEventStream()` | One-shot (`-p "prompt"`) | `ClaudeAgentClient` owns `Process` directly | `process.destroyForcibly()` — immediate |
 | `openSession()` → `ClaudeAgentSession` | Session mode (SDK) | SDK owns | Unchanged — out of scope for eidos#52 |
 
-The output format (`--output-format stream-json`) is identical in both modes. SDK parsing classes (`ControlMessageParser`, `ParsedMessage`) are reused as-is for JSON line parsing.
+The output format (`--output-format stream-json`) is identical in both modes. SDK parsing classes (`ControlMessageParser`, `ParsedMessage`) are reused for JSON line parsing.
 
 ---
 
@@ -36,7 +36,9 @@ Owns a single-invocation subprocess: construction starts the process, `destroyFo
 
 #### Construction
 
-Accepts `AgentSessionConfig config`, `ClaudeAgentProperties properties`. Builds and starts the subprocess immediately.
+Accepts `AgentSessionConfig config`, `ClaudeAgentProperties properties`, `ObjectMapper objectMapper`.
+
+`objectMapper` is the CDI-injected Jackson mapper passed from `ClaudeAgentClient`. It is used **only** for MCP config JSON serialization (`writeValueAsString`). `ControlMessageParser` creates its own internal `ObjectMapper` — it is self-contained and does not require one from outside.
 
 #### Command construction
 
@@ -50,7 +52,7 @@ Flags derived from `AgentSessionConfig` and `ClaudeAgentProperties`:
 
 **`--verbose` is required.** Without it, `--output-format stream-json` emits only the final `ResultMessage` — no incremental `AssistantMessage` text deltas. The stream would produce zero `TextDelta` events before the final completion signal, yielding degenerate (non-streaming) behaviour.
 
-**Session-mode flags excluded** (these are not applicable to one-shot):
+**Session-mode flags excluded** (not applicable to one-shot):
 - `--input-format stream-json` — the defining session-mode flag; one-shot has no stdin protocol
 - `--permission-prompt-tool` — requires the bidirectional control channel IPC
 - `--continue`, `--resume`, `--fork-session` — session resume/fork semantics
@@ -63,7 +65,7 @@ Flags derived from `AgentSessionConfig` and `ClaudeAgentProperties`:
 
 #### MCP config file
 
-When `config.mcpServers()` is non-empty, write a temp file with the MCP server JSON (same format and logic as `StreamingTransport.buildMcpConfigForCli()`) and pass `--mcp-config /tmp/file`. The temp file path is stored in a field. Deleted in `destroyForcibly()` and `close()` — both paths delete it idempotently.
+When `config.mcpServers()` is non-empty, write a temp file with the MCP server JSON (same format and logic as `StreamingTransport.buildMcpConfigForCli()`) using the injected `ObjectMapper`, and pass `--mcp-config /tmp/file`. The temp file path is stored in a field. Deleted in `destroyForcibly()` and `close()` — both paths delete it idempotently.
 
 #### Environment
 
@@ -78,44 +80,56 @@ Inheriting the full JVM environment is simpler, but behavioral parity and subpro
 
 Returns a `Multi.createFrom().emitter(...)` backed by a blocking `readLine()` loop on process stdout. The emitter runs on whatever thread subscribes — `buildEventStream()` shifts this to the worker pool via `runSubscriptionOn(Infrastructure.getDefaultWorkerPool())`.
 
-**The load-bearing contract:** when `destroyForcibly()` is called from outside (cancellation or timeout), the OS closes the subprocess's stdout pipe. The blocked `readLine()` call immediately returns null (EOF), the loop exits, and the worker thread is freed. No additional signalling is needed.
+**The load-bearing contract:** when `destroyForcibly()` is called from outside (cancellation or timeout), the OS closes the subprocess's stdout pipe. The blocked `readLine()` call immediately returns null (EOF), the loop exits, and the worker thread is freed.
 
-**Emitter registration:**
-```java
-em.onTermination(() -> destroyForcibly());  // defense-in-depth
-```
-
-This fires when the emitter is terminated for any reason (cancellation, failure, completion). Combined with the `onCancellation()` handler in `buildEventStream()`, this is belt-and-suspenders.
+**No `em.onTermination()` is registered.** `onCancellation()` in `buildEventStream()` is the sole cancellation path. Adding `onTermination` would fire `destroyForcibly()` on the normal completion path too — where the process has already exited — creating invisible ordering dependency between `destroyForcibly()` and `close()`. If `onCancellation()` in `buildEventStream()` ever fails, the semaphore release chain fails simultaneously, and the system is fundamentally broken regardless of an emitter safety net.
 
 **Read loop logic:**
 
 ```
 resultMessageSeen = false
-while (line = stdout.readLine()) != null:
-    ParsedMessage parsed = parser.parse(line)
-    switch parsed:
-        case ParsedMessage.RegularMessage(var message):
-            if message instanceof AssistantMessage am and !am.text().isEmpty():
-                em.emit(new AgentEvent.TextDelta(am.text()))
-            else if message instanceof ResultMessage:
-                resultMessageSeen = true
-                // do NOT break — let loop drain remaining lines
-        case ParsedMessage.RateLimitEventMessage:
-            LOG.debug("rate limit event received, continuing")
-        case ParsedMessage.Control, ControlResponseMessage, EndOfStream:
-            // not expected in one-shot mode; skip silently
-// EOF reached:
-if timedOut.get():
-    em.fail(new AgentTimeoutException(effectiveTimeout))
-else if process.exitValue() != 0 and !resultMessageSeen:
-    em.fail(new AgentProcessException("claude exited with code " + process.exitValue()))
-else:
-    em.complete()
+try:
+    while (line = stdout.readLine()) != null:
+        if line.isBlank(): continue
+        try:
+            ParsedMessage parsed = parser.parse(line)   // throws MessageParseException on malformed JSON
+            if parsed == null: continue                  // unrecognized but parseable type — forward compatible
+            switch (parsed):
+                case ParsedMessage.RegularMessage(var message):
+                    if message instanceof AssistantMessage am and !am.text().isEmpty():
+                        em.emit(new AgentEvent.TextDelta(am.text()))
+                    else if message instanceof ResultMessage:
+                        resultMessageSeen = true
+                        // continue draining — remaining lines may follow
+                case ParsedMessage.RateLimitEventMessage:
+                    LOG.debug("rate limit event in one-shot stream — continuing")
+                case ParsedMessage.Control:
+                    LOG.debug("unexpected control_request in one-shot mode — skipping")
+                case ParsedMessage.ControlResponseMessage:
+                    LOG.debug("unexpected control_response in one-shot mode — skipping")
+                case ParsedMessage.EndOfStream:
+                    // unreachable: parse() never returns EndOfStream (internal sentinel for
+                    // MessageStreamIterator only); present for sealed-interface exhaustiveness
+        catch MessageParseException e:
+            LOG.warn("malformed JSON line, continuing: {}", truncate(line, 200))
+            // forward-compatible: skip bad lines, same as StreamingTransport line 788
+    // EOF reached — stdout closed because process exited
+    int exitCode = process.exitValue()
+    if exitCode != 0 and !resultMessageSeen:
+        em.fail(new AgentProcessException("claude exited with code " + exitCode))
+    else:
+        if !resultMessageSeen:
+            LOG.warn("claude exited cleanly (code 0) but emitted no ResultMessage — protocol violation or empty response")
+        em.complete()
+catch IOException e:
+    em.fail(new AgentProcessException("stdout read error: " + e.getMessage()))
 ```
 
-`process.exitValue()` is available immediately after stdout closes because stdout closure implies process termination. The `if timedOut.get()` check takes priority so that a timeout-triggered kill is reported as `AgentTimeoutException`, not `AgentProcessException` (even though exit code 137/SIGKILL would otherwise satisfy the non-zero check).
-
-If the emitter is already terminated (because cancellation fired before EOF), the `em.fail()` / `em.complete()` calls are no-ops — Mutiny guarantees idempotent emitter termination.
+**Key design points:**
+- `timedOut` and `effectiveTimeout` are local to `buildEventStream()`. `ClaudeOneShotProcess` has no access to them and no business knowing about them. The timeout-to-exception conversion is `buildEventStream()`'s responsibility (see `onFailure().transform()` below).
+- After `destroyForcibly()` kills the process (timeout or cancellation path), stdout closes → `readLine()` returns null → EOF branch runs → `process.exitValue()` is non-zero, no `ResultMessage` seen → `em.fail(AgentProcessException("claude exited with code 137"))`. `buildEventStream()` converts this to `AgentTimeoutException` when `timedOut` is set.
+- `parse()` throws `MessageParseException` for null/blank input, buffer overflow, and malformed JSON. It returns null for parseable-but-unrecognized message types (forward compatibility). Both cases are handled separately.
+- `em.fail()` / `em.complete()` after stream termination (cancellation) are no-ops — Mutiny guarantees idempotent emitter termination.
 
 **Stderr** is drained on a daemon thread; logged at WARN. No effect on the event stream.
 
@@ -125,18 +139,18 @@ Idempotent (AtomicBoolean guard). Actions:
 1. `process.destroyForcibly()` — immediate SIGKILL
 2. Delete MCP temp file (if it exists)
 
-Used on: cancellation path, wall-clock timeout path.
+Used on: cancellation path, wall-clock timeout path, `shutdown()`.
 
 #### `void close()`
 
-Graceful shutdown. Actions:
+Graceful cleanup. Actions:
 1. Close stdout reader, stderr reader, stdin writer
 2. `process.destroy()` — SIGTERM
 3. `process.waitFor(5, TimeUnit.SECONDS)` — wait for graceful exit
-4. `process.destroyForcibly()` if still alive
+4. `process.destroyForcibly()` if still alive (AtomicBoolean guard — no-op if already called)
 5. Delete MCP temp file (idempotent)
 
-Used on: normal completion path and failure path (when the process has already exited naturally).
+Used on: normal completion path and failure path (process has already exited naturally; steps 1–4 are mostly no-ops, step 5 ensures cleanup).
 
 #### `long pid()`
 
@@ -154,6 +168,14 @@ private final CopyOnWriteArraySet<ClaudeOneShotProcess> activeProcesses;
 
 Initialised alongside `activeSessions` in **all three constructors** (CDI inject, test, protected no-arg). `activeSessions` (tracking `ClaudeAsyncClient` for the session path) is unchanged.
 
+#### Constructor changes
+
+**CDI inject constructor**: add `@Inject ObjectMapper objectMapper`; store and pass to `ClaudeOneShotProcess` at creation time.
+
+**Test constructor** `ClaudeAgentClient(ClaudeAgentProperties, Function<AgentSessionConfig, Multi<AgentEvent>>)`: the `streamFactory` path bypasses `ClaudeOneShotProcess`, so the mapper is never used on this path. Use `new ObjectMapper()` inline — avoids requiring a mock from test code.
+
+**Protected no-arg constructor**: no change needed (proxy subclass, never invoked directly).
+
 #### `buildEventStream(AgentSessionConfig config)` — full replacement
 
 ```
@@ -165,12 +187,16 @@ Before:
   [onCancellation → sdkClient.close().subscribe()]
 
 After:
-  ClaudeOneShotProcess proc = new ClaudeOneShotProcess(config, properties)
+  ClaudeOneShotProcess proc = new ClaudeOneShotProcess(config, properties, objectMapper)
   activeProcesses.add(proc)
   [wall-clock timeout → timedOut.compareAndSet(false, true) + proc.destroyForcibly()]
   Multi<AgentEvent> raw = proc.stream()
       .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
   eventStream = raw
+      .onFailure().transform(e ->
+          timedOut.get()
+              ? new AgentTimeoutException(effectiveTimeout)
+              : e)                        // AgentProcessException passes through unchanged
       .onCompletion().invoke(() -> {
           timeoutFuture.cancel(false)
           proc.close()
@@ -187,7 +213,7 @@ After:
       })
 ```
 
-Note: `timedOut` CAS and `AgentTimeoutException` conversion remain in `buildEventStream()`. The completion path (`proc.close()`) handles the case where `timedOut == true` — `proc.stream()` has already emitted `AgentTimeoutException` via the emitter, so `buildEventStream()`'s completion intercept converts it to failure identically to the current implementation.
+The `onFailure().transform()` mirrors exactly the current SDK code's timeout conversion pattern. `timedOut` and `effectiveTimeout` remain as local variables in `buildEventStream()` — they are not passed to `ClaudeOneShotProcess`.
 
 The `timedOut` CAS race (wall-clock timeout firing simultaneously with natural process completion) is an accepted tradeoff inherited from the current design.
 
@@ -219,8 +245,11 @@ Set<Long> activeProcessPids() {
 
 - **Command construction**: verify exact flags from various `AgentSessionConfig` + `ClaudeAgentProperties` combinations; assert excluded flags are absent
 - **MCP config**: verify temp file is written with correct JSON on construction; verify file is deleted by both `destroyForcibly()` and `close()` (idempotent: second call is a no-op, no exception)
-- **JSON dispatch**: pipe synthetic `--output-format stream-json` lines through the parser; assert `TextDelta` events for `AssistantMessage`, stream completion for `ResultMessage`, silent skip for `RateLimitEventMessage` and unknown subtypes
+- **JSON dispatch — null guard**: pipe a line with an unrecognized `type` field (parseable JSON); assert stream continues without error
+- **JSON dispatch — malformed**: pipe a non-JSON line; assert `MessageParseException` is caught and stream continues (no failure)
+- **JSON dispatch — events**: pipe synthetic `--output-format stream-json` lines; assert `TextDelta` events for `AssistantMessage`, stream completion for `ResultMessage`, silent skip for `RateLimitEventMessage`
 - **Exit-code check**: subprocess that exits with code 1 without emitting `ResultMessage` → stream fails with `AgentProcessException`; subprocess that exits with code 0 after `ResultMessage` → stream completes normally
+- **Exit code 0, no ResultMessage**: subprocess exits with code 0 without a `ResultMessage` → stream completes but a WARN log is produced
 - **`destroyForcibly()`**: start `sleep 60` subprocess; call `destroyForcibly()`; assert `!process.isAlive()` within 200 ms; assert MCP temp file deleted
 - **`destroyForcibly()` idempotence**: call twice; no exception on second call
 
@@ -251,7 +280,7 @@ Extend with a test that:
 - All current `invoke()` callers use `AgentSessionConfig.of(systemPrompt, userPrompt)` — no MCP servers, no permission callbacks. One-shot mode is safe.
 - `ClaudeAgentChatModel` (langchain4j adapter) uses `openSession()`, not `invoke()` — unaffected.
 - MCP types (`Stdio`, `Sse`, `Http`) in `AgentSessionConfig` are structurally supported; `--mcp-config` covers them in one-shot mode. In-process SDK MCP servers require the bidirectional control channel and are not representable via `AgentMcpServer` — no caller uses them.
-- `ParsedMessage` is a sealed interface with 5 permitted types: `RegularMessage`, `Control`, `ControlResponseMessage`, `RateLimitEventMessage`, `EndOfStream`. Only `RegularMessage` and `RateLimitEventMessage` are expected in one-shot output; the rest are defensively skipped.
+- `ParsedMessage` is a sealed interface with 5 permitted types: `RegularMessage`, `Control`, `ControlResponseMessage`, `RateLimitEventMessage`, `EndOfStream`. `parse()` returns null for unrecognized-but-parseable message types (forward compatibility). `EndOfStream` is an internal sentinel only (`MessageStreamIterator`) — `parse()` never returns it. Null guard and per-line exception handling are required.
 
 ---
 
