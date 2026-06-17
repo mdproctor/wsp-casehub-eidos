@@ -39,11 +39,12 @@ Owns a single-invocation subprocess: construction starts the process, `destroyFo
 Accepts `AgentSessionConfig config`, `ClaudeAgentProperties properties`, `ObjectMapper objectMapper`.
 
 The constructor:
-1. Builds the command from config and properties (see below)
+1. Builds the command from config and properties (see below), including writing the MCP config temp file if needed
 2. Builds the process environment (replicated from `StreamingTransport.buildProcessEnvironment()`)
 3. Creates the `ProcessBuilder`, calls `pb.start()` → subprocess is live
-4. Wraps streams as fields: `stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))`, `stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), UTF_8))`
+4. In a **try/catch** wrapping steps 4–5: wraps streams as fields: `stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))`, `stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), UTF_8))`
 5. Starts the stderr daemon thread (reads and logs at WARN; detailed below)
+   — **On any exception in steps 4–5**: calls `process.destroyForcibly()` before rethrowing, preventing an orphaned subprocess. Consistent with `StreamingTransport.startSession()` which resets state and throws on failure.
 
 **Eager start is intentional and is a behavior change from the current SDK path.** In the current implementation, `sdkClient.connect(prompt)` is lazy — `doConnect()` runs on the Reactor bounded-elastic pool at subscription time. In `ClaudeOneShotProcess`, the subprocess is alive the moment the constructor returns. Consequence: after `agentProvider.invoke(config)` returns (which calls `buildEventStream()` synchronously), the subprocess is already running and its PID is in `activeProcesses` — before any subscriber has been attached.
 
@@ -134,13 +135,21 @@ try:
             // forward-compatible: skip bad lines, same as StreamingTransport line 788
     // Reached when stdout closes via EOF (natural process exit, or SIGKILL pipe close winning
     // the race over Java closeQuietly). If Java closeQuietly wins instead, IOException fires below.
-    int exitCode = process.exitValue()
-    if exitCode != 0 and !resultMessageSeen:
-        em.fail(new AgentProcessException("claude exited with code " + exitCode))
+    //
+    // process.exitValue() throws IllegalThreadStateException if the process hasn't fully terminated.
+    // Stdout EOF is a strong indicator but not an atomic guarantee. Wait up to 1s to be safe.
+    boolean terminated = process.waitFor(1, TimeUnit.SECONDS)
+    if !terminated:
+        LOG.warn("process still alive 1s after stdout EOF — unexpected state, treating as failure")
+        em.fail(new AgentProcessException("process still alive after stdout EOF"))
     else:
-        if !resultMessageSeen:
-            LOG.warn("claude exited cleanly (code 0) but emitted no ResultMessage — protocol violation or empty response")
-        em.complete()
+        int exitCode = process.exitValue()
+        if exitCode != 0 and !resultMessageSeen:
+            em.fail(new AgentProcessException("claude exited with code " + exitCode))
+        else:
+            if !resultMessageSeen:
+                LOG.warn("claude exited cleanly (code 0) but emitted no ResultMessage — protocol violation or empty response")
+            em.complete()
 catch IOException e:
     // Fired when: (a) destroyForcibly() closes stdoutReader from another thread,
     // or (b) the OS pipe closes unexpectedly. Both cases are surfaced as AgentProcessException.
@@ -175,7 +184,7 @@ Graceful cleanup. Used on normal completion and failure paths (where the process
 2. `closeQuietly(stderrReader)` — same
 3. `process.destroy()` — SIGTERM (no-op if process already exited)
 4. `process.waitFor(5, TimeUnit.SECONDS)` — wait for graceful exit (returns immediately if already exited)
-5. `process.destroyForcibly()` if still alive — guarded by the shared `AtomicBoolean` (no-op if `destroyForcibly()` already ran)
+5. `this.destroyForcibly()` if still alive — the `AtomicBoolean` guard makes this a genuine no-op if the method has already run (cancellation path). Calling `process.destroyForcibly()` directly would bypass the guard.
 6. Delete MCP temp file (idempotent via `Files.deleteIfExists`)
 
 All stream operations use `closeQuietly` (catches and ignores `IOException`) — same pattern as `StreamingTransport.closeStreams()`. This is required because `destroyForcibly()` may have already closed the streams before `close()` is invoked.
