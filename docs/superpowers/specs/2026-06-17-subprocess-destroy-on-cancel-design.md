@@ -32,13 +32,22 @@ The output format (`--output-format stream-json`) is identical in both modes. SD
 
 ### New class: `ClaudeOneShotProcess` (package-private, `agent-claude/`)
 
-Owns a single-invocation subprocess: construction starts the process, `destroyForcibly()` kills it immediately, `close()` closes it gracefully.
+Owns a single-invocation subprocess: construction starts the process, `destroyForcibly()` kills it immediately and closes Java stream objects, `close()` closes it gracefully.
 
-#### Construction
+#### Construction — subprocess starts eagerly
 
 Accepts `AgentSessionConfig config`, `ClaudeAgentProperties properties`, `ObjectMapper objectMapper`.
 
-`objectMapper` is the CDI-injected Jackson mapper passed from `ClaudeAgentClient`. It is used **only** for MCP config JSON serialization (`writeValueAsString`). `ControlMessageParser` creates its own internal `ObjectMapper` — it is self-contained and does not require one from outside.
+The constructor:
+1. Builds the command from config and properties (see below)
+2. Builds the process environment (replicated from `StreamingTransport.buildProcessEnvironment()`)
+3. Creates the `ProcessBuilder`, calls `pb.start()` → subprocess is live
+4. Wraps streams as fields: `stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))`, `stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), UTF_8))`
+5. Starts the stderr daemon thread (reads and logs at WARN; detailed below)
+
+**Eager start is intentional and is a behavior change from the current SDK path.** In the current implementation, `sdkClient.connect(prompt)` is lazy — `doConnect()` runs on the Reactor bounded-elastic pool at subscription time. In `ClaudeOneShotProcess`, the subprocess is alive the moment the constructor returns. Consequence: after `agentProvider.invoke(config)` returns (which calls `buildEventStream()` synchronously), the subprocess is already running and its PID is in `activeProcesses` — before any subscriber has been attached.
+
+`objectMapper` is used **only** for MCP config JSON serialization (`writeValueAsString`). `ControlMessageParser` creates its own internal `ObjectMapper` — it is self-contained.
 
 #### Command construction
 
@@ -63,9 +72,11 @@ Flags derived from `AgentSessionConfig` and `ClaudeAgentProperties`:
 
 `ClaudeAgentProperties` currently exposes only `binaryPath()`, `defaultTimeout()`, and `maxConcurrentSessions()`. `AgentSessionConfig` exposes `systemPrompt`, `userPrompt`, `mcpServers`, `timeout`, and `correlationId`. Only these fields are implemented for this issue.
 
+One-shot mode does not interact with stdin — the prompt is passed as `-p` CLI arg. There is no `stdinWriter` field.
+
 #### MCP config file
 
-When `config.mcpServers()` is non-empty, write a temp file with the MCP server JSON (same format and logic as `StreamingTransport.buildMcpConfigForCli()`) using the injected `ObjectMapper`, and pass `--mcp-config /tmp/file`. The temp file path is stored in a field. Deleted in `destroyForcibly()` and `close()` — both paths delete it idempotently.
+When `config.mcpServers()` is non-empty, write a temp file with the MCP server JSON (same format and logic as `StreamingTransport.buildMcpConfigForCli()`) using the injected `ObjectMapper`, and pass `--mcp-config /tmp/file`. The temp file path is stored in a field. Deleted in both `destroyForcibly()` and `close()` — both paths delete it idempotently.
 
 #### Environment
 
@@ -76,20 +87,26 @@ Replicate `StreamingTransport.buildProcessEnvironment()` exactly:
 
 Inheriting the full JVM environment is simpler, but behavioral parity and subprocess predictability outweigh the convenience.
 
+#### Stderr daemon thread
+
+Started in the constructor (immediately after `pb.start()`). Reads `stderrReader` line by line; logs each line at WARN. On `IOException` (pipe closed after process exit or `destroyForcibly()`): exits silently. The thread is marked daemon so it doesn't prevent JVM shutdown.
+
 #### `Multi<AgentEvent> stream()`
 
-Returns a `Multi.createFrom().emitter(...)` backed by a blocking `readLine()` loop on process stdout. The emitter runs on whatever thread subscribes — `buildEventStream()` shifts this to the worker pool via `runSubscriptionOn(Infrastructure.getDefaultWorkerPool())`.
+Returns a `Multi.createFrom().emitter(...)` backed by a blocking `readLine()` loop on the stored `stdoutReader` field. The emitter runs on whatever thread subscribes — `buildEventStream()` shifts this to the worker pool via `runSubscriptionOn(Infrastructure.getDefaultWorkerPool())`.
 
-**The load-bearing contract:** when `destroyForcibly()` is called from outside (cancellation or timeout), the OS closes the subprocess's stdout pipe. The blocked `readLine()` call immediately returns null (EOF), the loop exits, and the worker thread is freed.
+**The load-bearing contract:** when `destroyForcibly()` is called from outside (cancellation or wall-clock timeout), it closes `stdoutReader` (in addition to killing the process). The worker thread blocked on `stdoutReader.readLine()` immediately gets `IOException("Stream closed")`. This is caught by the outer `catch IOException`, which calls `em.fail(AgentProcessException("stdout read error: ..."))`. The emitter call is a no-op if the stream was terminated by cancellation (emitter already terminated). On the wall-clock timeout path, the emitter is still active → `em.fail` fires → `onFailure().transform()` in `buildEventStream()` converts to `AgentTimeoutException`.
 
-**No `em.onTermination()` is registered.** `onCancellation()` in `buildEventStream()` is the sole cancellation path. Adding `onTermination` would fire `destroyForcibly()` on the normal completion path too — where the process has already exited — creating invisible ordering dependency between `destroyForcibly()` and `close()`. If `onCancellation()` in `buildEventStream()` ever fails, the semaphore release chain fails simultaneously, and the system is fundamentally broken regardless of an emitter safety net.
+**Critical consequence: after `destroyForcibly()`, the exit-code branch is never reached.** The read loop exits via `IOException` (stream closed), not via `null` from `readLine()`. The `process.exitValue()` check runs only when the process exits naturally and stdout closes via EOF.
+
+**No `em.onTermination()` is registered.** `onCancellation()` in `buildEventStream()` is the sole cancellation path. Adding `onTermination` would fire `destroyForcibly()` on normal completion too — where the process has already exited — creating invisible ordering dependency between `destroyForcibly()` and `close()`. If `onCancellation()` in `buildEventStream()` ever fails, the semaphore release chain fails simultaneously, and the system is fundamentally broken regardless.
 
 **Read loop logic:**
 
 ```
 resultMessageSeen = false
 try:
-    while (line = stdout.readLine()) != null:
+    while (line = stdoutReader.readLine()) != null:     // stdoutReader is a stored field
         if line.isBlank(): continue
         try:
             ParsedMessage parsed = parser.parse(line)   // throws MessageParseException on malformed JSON
@@ -113,7 +130,7 @@ try:
         catch MessageParseException e:
             LOG.warn("malformed JSON line, continuing: {}", truncate(line, 200))
             // forward-compatible: skip bad lines, same as StreamingTransport line 788
-    // EOF reached — stdout closed because process exited
+    // Reached only when process exits naturally (stdout EOF) — NOT reached after destroyForcibly()
     int exitCode = process.exitValue()
     if exitCode != 0 and !resultMessageSeen:
         em.fail(new AgentProcessException("claude exited with code " + exitCode))
@@ -122,35 +139,43 @@ try:
             LOG.warn("claude exited cleanly (code 0) but emitted no ResultMessage — protocol violation or empty response")
         em.complete()
 catch IOException e:
+    // Fired when: (a) destroyForcibly() closes stdoutReader from another thread,
+    // or (b) the OS pipe closes unexpectedly. Both cases are surfaced as AgentProcessException.
+    // On cancellation path: em.fail() is a no-op (emitter already terminated).
+    // On wall-clock timeout path: onFailure().transform() in buildEventStream() converts to AgentTimeoutException.
     em.fail(new AgentProcessException("stdout read error: " + e.getMessage()))
 ```
 
 **Key design points:**
-- `timedOut` and `effectiveTimeout` are local to `buildEventStream()`. `ClaudeOneShotProcess` has no access to them and no business knowing about them. The timeout-to-exception conversion is `buildEventStream()`'s responsibility (see `onFailure().transform()` below).
-- After `destroyForcibly()` kills the process (timeout or cancellation path), stdout closes → `readLine()` returns null → EOF branch runs → `process.exitValue()` is non-zero, no `ResultMessage` seen → `em.fail(AgentProcessException("claude exited with code 137"))`. `buildEventStream()` converts this to `AgentTimeoutException` when `timedOut` is set.
+- `timedOut` and `effectiveTimeout` are local to `buildEventStream()`. `ClaudeOneShotProcess` has no access to them. Timeout-to-exception conversion is `buildEventStream()`'s responsibility via `onFailure().transform()`.
 - `parse()` throws `MessageParseException` for null/blank input, buffer overflow, and malformed JSON. It returns null for parseable-but-unrecognized message types (forward compatibility). Both cases are handled separately.
 - `em.fail()` / `em.complete()` after stream termination (cancellation) are no-ops — Mutiny guarantees idempotent emitter termination.
 
-**Stderr** is drained on a daemon thread; logged at WARN. No effect on the event stream.
-
 #### `void destroyForcibly()`
 
-Idempotent (AtomicBoolean guard). Actions:
+Idempotent (`AtomicBoolean` guard — entire method is a no-op after the first invocation). Actions:
 1. `process.destroyForcibly()` — immediate SIGKILL
-2. Delete MCP temp file (if it exists)
+2. `closeQuietly(stdoutReader)` — releases JVM file descriptor immediately; causes blocked `readLine()` to throw `IOException` (caught and handled as described above)
+3. `closeQuietly(stderrReader)` — releases JVM file descriptor; stderr daemon thread unblocks and exits
+4. Delete MCP temp file (if it exists, via `Files.deleteIfExists`)
+
+`closeQuietly` catches and ignores `IOException` — safe to call on already-closed streams.
+
+No `stdinWriter` — one-shot mode has no stdin interaction; there is no such field.
 
 Used on: cancellation path, wall-clock timeout path, `shutdown()`.
 
 #### `void close()`
 
-Graceful cleanup. Actions:
-1. Close stdout reader, stderr reader, stdin writer
-2. `process.destroy()` — SIGTERM
-3. `process.waitFor(5, TimeUnit.SECONDS)` — wait for graceful exit
-4. `process.destroyForcibly()` if still alive (AtomicBoolean guard — no-op if already called)
-5. Delete MCP temp file (idempotent)
+Graceful cleanup. Used on normal completion and failure paths (where the process has exited naturally). Actions:
+1. `closeQuietly(stdoutReader)` — defensive; may already be closed if `destroyForcibly()` ran first
+2. `closeQuietly(stderrReader)` — same
+3. `process.destroy()` — SIGTERM (no-op if process already exited)
+4. `process.waitFor(5, TimeUnit.SECONDS)` — wait for graceful exit (returns immediately if already exited)
+5. `process.destroyForcibly()` if still alive — guarded by the shared `AtomicBoolean` (no-op if `destroyForcibly()` already ran)
+6. Delete MCP temp file (idempotent via `Files.deleteIfExists`)
 
-Used on: normal completion path and failure path (process has already exited naturally; steps 1–4 are mostly no-ops, step 5 ensures cleanup).
+All stream operations use `closeQuietly` (catches and ignores `IOException`) — same pattern as `StreamingTransport.closeStreams()`. This is required because `destroyForcibly()` may have already closed the streams before `close()` is invoked.
 
 #### `long pid()`
 
@@ -188,6 +213,7 @@ Before:
 
 After:
   ClaudeOneShotProcess proc = new ClaudeOneShotProcess(config, properties, objectMapper)
+  // subprocess is alive HERE — before runSubscriptionOn, before subscription
   activeProcesses.add(proc)
   [wall-clock timeout → timedOut.compareAndSet(false, true) + proc.destroyForcibly()]
   Multi<AgentEvent> raw = proc.stream()
@@ -208,12 +234,14 @@ After:
           activeProcesses.remove(proc)
       })
       .onCancellation().invoke(() -> {
-          proc.destroyForcibly()
+          proc.destroyForcibly()          // kills process + closes stdoutReader + stderrReader
           activeProcesses.remove(proc)
+          // proc.close() is NOT called here — it contains waitFor(5s) which must not block
+          // the cancellation thread. Stream objects are closed by destroyForcibly() instead.
       })
 ```
 
-The `onFailure().transform()` mirrors exactly the current SDK code's timeout conversion pattern. `timedOut` and `effectiveTimeout` remain as local variables in `buildEventStream()` — they are not passed to `ClaudeOneShotProcess`.
+`timedOut` and `effectiveTimeout` remain as local variables in `buildEventStream()`. The `onFailure().transform()` mirrors exactly the current SDK code's timeout conversion pattern.
 
 The `timedOut` CAS race (wall-clock timeout firing simultaneously with natural process completion) is an accepted tradeoff inherited from the current design.
 
@@ -250,19 +278,41 @@ Set<Long> activeProcessPids() {
 - **JSON dispatch — events**: pipe synthetic `--output-format stream-json` lines; assert `TextDelta` events for `AssistantMessage`, stream completion for `ResultMessage`, silent skip for `RateLimitEventMessage`
 - **Exit-code check**: subprocess that exits with code 1 without emitting `ResultMessage` → stream fails with `AgentProcessException`; subprocess that exits with code 0 after `ResultMessage` → stream completes normally
 - **Exit code 0, no ResultMessage**: subprocess exits with code 0 without a `ResultMessage` → stream completes but a WARN log is produced
-- **`destroyForcibly()`**: start `sleep 60` subprocess; call `destroyForcibly()`; assert `!process.isAlive()` within 200 ms; assert MCP temp file deleted
+- **`destroyForcibly()`**: start `sleep 60` subprocess; call `destroyForcibly()`; assert `!process.isAlive()` within 200 ms; assert MCP temp file deleted; assert `stdoutReader`/`stderrReader` are closed (attempt `readLine()` → `IOException`)
 - **`destroyForcibly()` idempotence**: call twice; no exception on second call
 
 #### `ClaudeAgentClientTest` (existing, unit)
 
 No changes. `streamFactory` bypasses `ClaudeOneShotProcess`; all existing semaphore and cancellation tests continue working.
 
-#### `ClaudeAgentClientIT` (integration)
+#### `ClaudeAgentClientIT` (integration, `agent-claude/`)
 
-Extend with a test that:
-1. Records `activeProcessPids()` before subscribing
-2. Subscribes and immediately cancels
-3. Asserts within 500 ms that no PID from step 1 is alive via `ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false)`
+New test class (or extended from existing `ClaudeAgentClientIT`). Requires `CLAUDE_AGENT_TESTS_ENABLED=true` and an authenticated `claude` binary.
+
+```java
+@Inject AgentProvider agentProvider;
+@Inject ClaudeAgentClient client;       // needed for activeProcessPids()
+
+@Test
+void cancel_killsSubprocessImmediately() {
+    var config = AgentSessionConfig.of("sys", "Write a 500-word essay.");  // takes time
+    var multi = agentProvider.invoke(config);  // subprocess starts HERE — constructor is eager
+    var pids = client.activeProcessPids();     // PID already in set before any subscribe()
+    assertThat(pids).isNotEmpty();
+
+    // Subscribe then immediately cancel
+    var sub = multi.subscribe().with(e -> {}, err -> {}, () -> {});
+    sub.cancel();                               // triggers proc.destroyForcibly()
+
+    Awaitility.await("subprocess killed after cancellation")
+        .atMost(500, MILLISECONDS)
+        .pollInterval(10, MILLISECONDS)
+        .until(() -> pids.stream().noneMatch(pid ->
+            ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false)));
+}
+```
+
+The subprocess is alive and trackable **before** `subscribe()` because `ClaudeOneShotProcess` is constructed eagerly inside `buildEventStream()`, which runs synchronously when `invoke()` is called. This is a documented behavior change from the current SDK path.
 
 ---
 
@@ -281,6 +331,7 @@ Extend with a test that:
 - `ClaudeAgentChatModel` (langchain4j adapter) uses `openSession()`, not `invoke()` — unaffected.
 - MCP types (`Stdio`, `Sse`, `Http`) in `AgentSessionConfig` are structurally supported; `--mcp-config` covers them in one-shot mode. In-process SDK MCP servers require the bidirectional control channel and are not representable via `AgentMcpServer` — no caller uses them.
 - `ParsedMessage` is a sealed interface with 5 permitted types: `RegularMessage`, `Control`, `ControlResponseMessage`, `RateLimitEventMessage`, `EndOfStream`. `parse()` returns null for unrecognized-but-parseable message types (forward compatibility). `EndOfStream` is an internal sentinel only (`MessageStreamIterator`) — `parse()` never returns it. Null guard and per-line exception handling are required.
+- `ControlMessageParser` is self-contained — creates its own internal `ObjectMapper`. The injected `ObjectMapper` in `ClaudeOneShotProcess` is for MCP config serialization only.
 
 ---
 
