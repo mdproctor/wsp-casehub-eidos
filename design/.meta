@@ -1,0 +1,9 @@
+branch: issue-52-subprocess-destroy-on-cancel
+project-sha: 7894203d9d503d78fd3febb24101fc9a553090a1
+date: 2026-06-17
+issue: 52
+issue-repo: casehubio/eidos
+covers: 52
+flyway-next-v: none
+design-repo: workspace
+design-section-hashes: 
