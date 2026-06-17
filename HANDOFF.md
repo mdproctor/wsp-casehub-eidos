@@ -2,7 +2,7 @@
 
 ## Last Session
 
-Validated the enrichment pipeline (proximity 5.00/5.00, all 16 cases complete), discovered inverse self-evaluation bias (Claude scores own enriched renders 1.88-2.13 on FACTUAL_FIDELITY; Qwen 8B scores same renders 5.00), added `RenderedPrompt.enriched` flag to skip the completeness substring check for enriched renders (eidos#53), populated `briefing` in all 8 eval profiles from `vocabularyGap:FULL` entries (eidos#59), and recalibrated PROSE floor from 4.0 → 3.5. All work merged to upstream/main.
+Discovered ARC42STORIES.MD was workspace-only (routing table in CLAUDE.md never mentioned it). Fixed the routing gap, rescued 2 specs that existed only on closed workspace branches, reconstituted ARC42STORIES.MD for all post-C6 changes (L2 vocab enum redesign, L5 capability signal discrimination/enrichment mechanics/briefing/enriched flag, L6 eval improvements, 6 new glossary entries), and promoted the updated document to the project repo. Confirmed all 27 eidos blogs are already published.
 
 ## Immediate Next Step
 
@@ -23,8 +23,8 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| — | Re-run evaluateRealWorldScenarios with briefings populated | XS | Low | Compare proximity scores vs pre-briefing baseline |
-| — | evaluateWithIndependentJudge (Qwen 8B) after briefings run | XS | Low | Check if briefing improves FACTUAL_FIDELITY from Qwen too |
+| — | Re-run `evaluateRealWorldScenarios` with briefings | XS | Low | Compare vs pre-briefing baseline |
+| — | `evaluateWithIndependentJudge` (Qwen 8B) after | XS | Low | Check if briefing lifts FACTUAL_FIDELITY |
 | #28 | casehub-engine: Belbin-based agent composition | L | High | casehubio/eidos repo |
 
 ## References
@@ -34,3 +34,4 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
 - Blog: 2026-06-17-mdp01-judging-the-judge.md
 - Ollama: qwen3:8b confirmed working for independent judge
 - Renders cache: /tmp/eidos-renders-cache.json (survives mvn clean — use -Dcasehub.eval.renders-cache.path)
+- ARC42STORIES.MD: now in project repo root (promoted this session); covers all 6 chapters through Knowledge Graph
