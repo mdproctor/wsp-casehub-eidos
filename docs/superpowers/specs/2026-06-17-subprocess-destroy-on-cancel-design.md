@@ -93,11 +93,13 @@ Started in the constructor (immediately after `pb.start()`). Reads `stderrReader
 
 #### `Multi<AgentEvent> stream()`
 
-Returns a `Multi.createFrom().emitter(...)` backed by a blocking `readLine()` loop on the stored `stdoutReader` field. The emitter runs on whatever thread subscribes — `buildEventStream()` shifts this to the worker pool via `runSubscriptionOn(Infrastructure.getDefaultWorkerPool())`.
+Returns a `Multi.createFrom().emitter(...)` backed by a blocking `readLine()` loop on the stored `stdoutReader` field. The emitter runs on whatever thread subscribes — `run()` shifts this to the worker pool via `runSubscriptionOn(Infrastructure.getDefaultWorkerPool())`, consistent with the current architecture where `buildEventStream()` is a pure logic builder and `run()` owns threading.
 
-**The load-bearing contract:** when `destroyForcibly()` is called from outside (cancellation or wall-clock timeout), it closes `stdoutReader` (in addition to killing the process). The worker thread blocked on `stdoutReader.readLine()` immediately gets `IOException("Stream closed")`. This is caught by the outer `catch IOException`, which calls `em.fail(AgentProcessException("stdout read error: ..."))`. The emitter call is a no-op if the stream was terminated by cancellation (emitter already terminated). On the wall-clock timeout path, the emitter is still active → `em.fail` fires → `onFailure().transform()` in `buildEventStream()` converts to `AgentTimeoutException`.
+**The load-bearing contract:** when `destroyForcibly()` is called from outside (cancellation or wall-clock timeout), it sends SIGKILL and then closes `stdoutReader`. Either of two races will unblock the worker thread:
+- **OS pipe close wins** (typical): SIGKILL causes the OS to close the subprocess's stdout write end before the JVM executes `closeQuietly(stdoutReader)`. The blocked `read()` syscall returns EOF → `readLine()` returns null → exit-code branch fires → `em.fail(AgentProcessException("claude exited with code 137"))`.
+- **Java close wins**: `closeQuietly(stdoutReader)` closes the Java reader before the OS pipe-close reaches the blocked `read()` → `readLine()` throws `IOException("Stream closed")` → outer `catch IOException` fires → `em.fail(AgentProcessException("stdout read error: ..."))`.
 
-**Critical consequence: after `destroyForcibly()`, the exit-code branch is never reached.** The read loop exits via `IOException` (stream closed), not via `null` from `readLine()`. The `process.exitValue()` check runs only when the process exits naturally and stdout closes via EOF.
+Both paths produce `AgentProcessException`. On the cancellation path, `em.fail()` is a no-op (emitter already terminated by cancellation). On the wall-clock timeout path, the emitter is still active → `em.fail` fires → `onFailure().transform()` in `buildEventStream()` converts to `AgentTimeoutException`.
 
 **No `em.onTermination()` is registered.** `onCancellation()` in `buildEventStream()` is the sole cancellation path. Adding `onTermination` would fire `destroyForcibly()` on normal completion too — where the process has already exited — creating invisible ordering dependency between `destroyForcibly()` and `close()`. If `onCancellation()` in `buildEventStream()` ever fails, the semaphore release chain fails simultaneously, and the system is fundamentally broken regardless.
 
@@ -130,7 +132,8 @@ try:
         catch MessageParseException e:
             LOG.warn("malformed JSON line, continuing: {}", truncate(line, 200))
             // forward-compatible: skip bad lines, same as StreamingTransport line 788
-    // Reached only when process exits naturally (stdout EOF) — NOT reached after destroyForcibly()
+    // Reached when stdout closes via EOF (natural process exit, or SIGKILL pipe close winning
+    // the race over Java closeQuietly). If Java closeQuietly wins instead, IOException fires below.
     int exitCode = process.exitValue()
     if exitCode != 0 and !resultMessageSeen:
         em.fail(new AgentProcessException("claude exited with code " + exitCode))
@@ -155,7 +158,7 @@ catch IOException e:
 
 Idempotent (`AtomicBoolean` guard — entire method is a no-op after the first invocation). Actions:
 1. `process.destroyForcibly()` — immediate SIGKILL
-2. `closeQuietly(stdoutReader)` — releases JVM file descriptor immediately; causes blocked `readLine()` to throw `IOException` (caught and handled as described above)
+2. `closeQuietly(stdoutReader)` — releases JVM file descriptor immediately; may cause blocked `readLine()` to throw `IOException` if it wins the race over the OS pipe-close EOF (both paths produce `AgentProcessException` — see load-bearing contract above)
 3. `closeQuietly(stderrReader)` — releases JVM file descriptor; stderr daemon thread unblocks and exits
 4. Delete MCP temp file (if it exists, via `Files.deleteIfExists`)
 
@@ -213,27 +216,31 @@ Before:
 
 After:
   ClaudeOneShotProcess proc = new ClaudeOneShotProcess(config, properties, objectMapper)
-  // subprocess is alive HERE — before runSubscriptionOn, before subscription
+  // subprocess is alive HERE — eager construction, before any subscription
   activeProcesses.add(proc)
+  if (config.correlationId() != null):
+      LOG.infof("Agent session started [correlationId=%s]", config.correlationId())
   [wall-clock timeout → timedOut.compareAndSet(false, true) + proc.destroyForcibly()]
-  Multi<AgentEvent> raw = proc.stream()
-      .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+  Multi<AgentEvent> raw = proc.stream()   // no runSubscriptionOn here — run() applies it
   eventStream = raw
       .onFailure().transform(e ->
           timedOut.get()
               ? new AgentTimeoutException(effectiveTimeout)
               : e)                        // AgentProcessException passes through unchanged
       .onCompletion().invoke(() -> {
+          logCorrelationEvent(config, "completed")
           timeoutFuture.cancel(false)
           proc.close()
           activeProcesses.remove(proc)
       })
       .onFailure().invoke(t -> {
+          logCorrelationEvent(config, "failed")
           timeoutFuture.cancel(false)
           proc.close()
           activeProcesses.remove(proc)
       })
       .onCancellation().invoke(() -> {
+          logCorrelationEvent(config, "cancelled")
           proc.destroyForcibly()          // kills process + closes stdoutReader + stderrReader
           activeProcesses.remove(proc)
           // proc.close() is NOT called here — it contains waitFor(5s) which must not block
