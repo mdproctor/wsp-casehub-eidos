@@ -39,12 +39,14 @@ Owns a single-invocation subprocess: construction starts the process, `destroyFo
 Accepts `AgentSessionConfig config`, `ClaudeAgentProperties properties`, `ObjectMapper objectMapper`.
 
 The constructor:
-1. Builds the command from config and properties (see below), including writing the MCP config temp file if needed
+1. Builds the command from config and properties (see below), including writing the MCP config temp file if needed (stored in `this.mcpConfigFile`)
 2. Builds the process environment (replicated from `StreamingTransport.buildProcessEnvironment()`)
-3. Creates the `ProcessBuilder`, calls `pb.start()` → subprocess is live
-4. In a **try/catch** wrapping steps 4–5: wraps streams as fields: `stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))`, `stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), UTF_8))`
-5. Starts the stderr daemon thread (reads and logs at WARN; detailed below)
-   — **On any exception in steps 4–5**: calls `process.destroyForcibly()` before rethrowing, preventing an orphaned subprocess. Consistent with `StreamingTransport.startSession()` which resets state and throws on failure.
+3. **try/catch wrapping steps 3–5** (any exception: null-check then delete `mcpConfigFile`, null-check then `process.destroyForcibly()`, then rethrow):
+4. &nbsp;&nbsp;&nbsp;&nbsp;Creates the `ProcessBuilder`, calls `pb.start()` → subprocess is live (or throws: temp file is cleaned up, no process to kill)
+5. &nbsp;&nbsp;&nbsp;&nbsp;Wraps streams as fields: `stdoutReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))`, `stderrReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), UTF_8))`
+6. &nbsp;&nbsp;&nbsp;&nbsp;Starts the stderr daemon thread (reads and logs at WARN; detailed below)
+
+The try/catch covers `pb.start()` through thread start. Null checks are required because `this.process` may not be set if `pb.start()` itself throws. Consistent with `StreamingTransport.startSession()` which resets state and throws on failure.
 
 **Eager start is intentional and is a behavior change from the current SDK path.** In the current implementation, `sdkClient.connect(prompt)` is lazy — `doConnect()` runs on the Reactor bounded-elastic pool at subscription time. In `ClaudeOneShotProcess`, the subprocess is alive the moment the constructor returns. Consequence: after `agentProvider.invoke(config)` returns (which calls `buildEventStream()` synchronously), the subprocess is already running and its PID is in `activeProcesses` — before any subscriber has been attached.
 
@@ -138,18 +140,22 @@ try:
     //
     // process.exitValue() throws IllegalThreadStateException if the process hasn't fully terminated.
     // Stdout EOF is a strong indicator but not an atomic guarantee. Wait up to 1s to be safe.
-    boolean terminated = process.waitFor(1, TimeUnit.SECONDS)
-    if !terminated:
-        LOG.warn("process still alive 1s after stdout EOF — unexpected state, treating as failure")
-        em.fail(new AgentProcessException("process still alive after stdout EOF"))
-    else:
-        int exitCode = process.exitValue()
-        if exitCode != 0 and !resultMessageSeen:
-            em.fail(new AgentProcessException("claude exited with code " + exitCode))
+    try:
+        boolean terminated = process.waitFor(1, TimeUnit.SECONDS)   // throws InterruptedException
+        if !terminated:
+            LOG.warn("process still alive 1s after stdout EOF — unexpected state, treating as failure")
+            em.fail(new AgentProcessException("process still alive after stdout EOF"))
         else:
-            if !resultMessageSeen:
-                LOG.warn("claude exited cleanly (code 0) but emitted no ResultMessage — protocol violation or empty response")
-            em.complete()
+            int exitCode = process.exitValue()
+            if exitCode != 0 and !resultMessageSeen:
+                em.fail(new AgentProcessException("claude exited with code " + exitCode))
+            else:
+                if !resultMessageSeen:
+                    LOG.warn("claude exited cleanly (code 0) but emitted no ResultMessage — protocol violation or empty response")
+                em.complete()
+    catch InterruptedException ie:
+        Thread.currentThread().interrupt()   // restore interrupt status — critical for worker pool health
+        em.fail(new AgentProcessException("interrupted while waiting for process termination"))
 catch IOException e:
     // Fired when: (a) destroyForcibly() closes stdoutReader from another thread,
     // or (b) the OS pipe closes unexpectedly. Both cases are surfaced as AgentProcessException.
