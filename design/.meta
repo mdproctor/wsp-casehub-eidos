@@ -1,0 +1,9 @@
+branch: issue-55-capability-specialization-metadata
+project-sha: 60598bda45e558c5c937651306459092fa6f13ad
+date: 2026-06-18
+issue: 55
+issue-repo: casehubio/eidos
+covers: 55
+flyway-next-v: unknown
+design-repo: workspace
+design-section-hashes: 
