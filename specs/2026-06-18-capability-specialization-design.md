@@ -41,7 +41,7 @@ public record AgentCapability(
 - Defensively copied in compact constructor to unmodifiable set.
 - Builder added (record now has 9 fields; positional construction is fragile at this arity). All existing call sites migrated to the builder as part of this issue.
 
-**Relationship to `epistemicDomains`:** these are complementary, not overlapping. `epistemicDomains` expresses graded confidence (`{java: 0.95, kotlin: 0.80}`). `excludedDomains` expresses categorical exclusion (`{rust, go}`). A domain in `excludedDomains` takes priority over any `epistemicDomains` entry for the same domain.
+**Relationship to `epistemicDomains`:** these are complementary, not overlapping. `epistemicDomains` expresses graded confidence (`{java: 0.95, kotlin: 0.80}`). `excludedDomains` expresses categorical exclusion (`{rust, go}`). A domain must not appear in both `excludedDomains` and `epistemicDomains`. The compact constructor enforces this as a hard invariant — violation throws `AgentValidationException`.
 
 ### 2. `CapabilitySpecializationStore` SPI — new, in `casehub-eidos-api`
 
@@ -55,20 +55,53 @@ public interface CapabilitySpecializationStore {
 
     /**
      * Retracts all learned data for a capability (e.g. agent re-trained or evidence invalidated).
+     * Clears all entries for the (agentId, tenancyId, capabilityName) triple regardless of TTL.
      */
     void clearDeclines(String agentId, String tenancyId, String capabilityName);
 
     /**
-     * Returns domain → decline count for all domains with at least 1 recorded decline.
-     * Empty map when no declines recorded. Never null.
+     * Returns domain → count of unexpired DECLINE records for all domains with at least 1
+     * unexpired recorded decline. Empty map when none. Never null.
      */
     Map<String, Integer> learnedExclusions(String agentId, String tenancyId, String capabilityName);
+
+    /**
+     * Returns the count of unexpired DECLINE records for the given domain.
+     * 0 when no unexpired records exist. Never negative.
+     */
+    int declineCount(String agentId, String tenancyId, String capabilityName, String domain);
 }
 ```
 
 **Implementations:**
-- `NoOpCapabilitySpecializationStore` — `@DefaultBean @ApplicationScoped` in `runtime/health/`. Returns `Map.of()`, ignores writes.
-- `InMemoryCapabilitySpecializationStore` — `@Alternative @Priority(1) @ApplicationScoped` in `persistence-memory/`. Compound key `agentId:tenancyId:capabilityName:domain` → `AtomicInteger`. Thread-safe via `ConcurrentHashMap.compute()`. `clearDeclines` removes all keys with matching `agentId:tenancyId:capabilityName` prefix.
+- `NoOpCapabilitySpecializationStore` — `@DefaultBean @ApplicationScoped` in `runtime/health/`. Returns `Map.of()` from `learnedExclusions`, returns `0` from `declineCount`, ignores writes.
+- `InMemoryCapabilitySpecializationStore` — `@Alternative @Priority(1) @ApplicationScoped` in `persistence-memory/`.
+
+  Structure:
+  ```
+  record AgentCapKey(String agentId, String tenancyId, String capabilityName)
+  ConcurrentHashMap<AgentCapKey, ConcurrentHashMap<String, ConcurrentLinkedQueue<Instant>>>
+    Outer key: AgentCapKey. Inner key: domain. Value: queue of expiry Instants.
+  ```
+
+  TTL: `@ConfigProperty(name = "casehub.eidos.specialization.decline-ttl-days", defaultValue = "30") int declineTtlDays`.
+  Owned by the store — callers do not supply `expiresAt`.
+
+  `recordDecline(agentId, tenancyId, capabilityName, domain)`:
+  1. Purge expired entries from the domain's queue: `queue.removeIf(ts -> !Instant.now().isBefore(ts))`.
+  2. Add `Instant.now().plusDays(declineTtlDays)` to the queue.
+  `ConcurrentLinkedQueue.removeIf()` is weakly-consistent and thread-safe.
+
+  `clearDeclines(agentId, tenancyId, capabilityName)`:
+  `store.remove(new AgentCapKey(agentId, tenancyId, capabilityName))` — O(1).
+
+  `learnedExclusions(agentId, tenancyId, capabilityName)`:
+  Get inner map for `AgentCapKey`. For each domain, count entries in its queue where
+  `Instant.now().isBefore(expiresAt)`. Return domain → unexpired count. Omit domains with count 0.
+
+  `declineCount(agentId, tenancyId, capabilityName, domain)`:
+  Get inner map for `AgentCapKey`. Count unexpired entries in the domain's queue. Return 0 if
+  `AgentCapKey` or domain absent.
 
 **JPA-backed implementation** deferred to eidos#62 (separate module, separate Flyway migration).
 
@@ -93,47 +126,78 @@ sealed interface CapabilityStatus permits
 ```
 
 - `Excluded(domain, DECLARED, 0)` — for domains in `capability.excludedDomains()`.
-- `Excluded(domain, LEARNED, N)` — for domains where `learnedExclusions` count ≥ threshold.
+- `Excluded(domain, LEARNED, N)` — for domains where `declineCount` ≥ threshold.
 - `declineCount = 0` for `DECLARED` (count is meaningless; admin stated it directly).
 - All existing `CapabilityStatus` switch sites update to handle `Excluded` — sealed interface guarantees compile-time exhaustiveness.
 
 ### 4. `DefaultCapabilityHealth` — updated probe logic
 
-Inject `CapabilitySpecializationStore` alongside `AgentStateStore`. Inject `Preferences` for per-tenancy threshold resolution (replacing `@ConfigProperty` for the new exclude threshold).
+Inject `Instance<PreferenceProvider>` alongside `AgentStateStore` and `CapabilitySpecializationStore`.
+`casehub-platform-api` added to `runtime/pom.xml`.
 
 **Probe priority order** (unchanged positions 1, 2, 5, 6; new positions 3, 4):
 
 1. `AgentStateStore.query()` → `Degraded` if present
 2. Capability not declared → `Unavailable`
 3. `taskDomain != null` AND `taskDomain ∈ capability.excludedDomains()` → `Excluded(domain, DECLARED, 0)`
-4. `taskDomain != null` AND `learnedExclusions.get(taskDomain) >= excludeThreshold` → `Excluded(domain, LEARNED, count)`
+4. `taskDomain != null` AND `store.declineCount(descriptor.agentId(), descriptor.tenancyId(), capabilityTag, taskDomain) >= excludeThreshold` → `Excluded(taskDomain, LEARNED, count)`
 5. `taskDomain != null` AND `epistemicDomains.get(taskDomain) < weakThreshold` → `EpistemicallyWeak`
 6. `Ready`
 
-Steps 3 and 4 only run when `context.taskDomain()` is non-null. Step 3 short-circuits before the store lookup — declared exclusion takes priority and avoids an unnecessary map call.
+Steps 3 and 4 only run when `context.taskDomain()` is non-null. Step 3 short-circuits before the store lookup — declared exclusion takes priority and avoids an unnecessary store call.
 
-**`Preferences`-backed threshold:**
+**Step 4 implementation note** — `declineCount` is called once; the return value serves both the threshold check and the `Excluded` record constructor:
 
 ```java
-// casehub-eidos runtime
-public final class EidosPreferenceKeys {
-    public static final PreferenceKey<ExcludeThresholdPreference> EXCLUDE_THRESHOLD =
-        new PreferenceKey<>("casehub.eidos.specialization.exclude-threshold",
-                            ExcludeThresholdPreference.class);
-}
-
-public record ExcludeThresholdPreference(int value) implements Preference {
-    public static final ExcludeThresholdPreference DEFAULT = new ExcludeThresholdPreference(3);
+int count = store.declineCount(descriptor.agentId(), descriptor.tenancyId(), capabilityTag, taskDomain);
+if (count >= excludeThreshold) {
+    return new CapabilityStatus.Excluded(taskDomain, CapabilityStatus.ExclusionSource.LEARNED, count);
 }
 ```
 
-Resolved at probe time: `preferences.get(EXCLUDE_THRESHOLD, SettingsScope.of(Path.of(tenancyId), Instant.now())).orElse(DEFAULT).value()`.
+Two calls (one to check, one to get count) would be wasteful and racey.
+
+**`Instance<PreferenceProvider>`-backed threshold** (in package `io.casehub.eidos.runtime.preferences`, runtime module only — no casehubio deps in api):
+
+```java
+public final class EidosPreferenceKeys {
+    public static final PreferenceKey<ExcludeThresholdPreference> EXCLUDE_THRESHOLD =
+        new PreferenceKey<>("casehub.eidos", "specialization.exclude-threshold",
+                            new ExcludeThresholdPreference(3),
+                            s -> new ExcludeThresholdPreference(Integer.parseInt(s)));
+}
+
+public record ExcludeThresholdPreference(int value) implements SingleValuePreference {}
+```
+
+Injection:
+
+```java
+@Inject Instance<PreferenceProvider> preferenceProviderInstance;
+```
+
+Threshold resolution at probe time:
+
+```java
+int threshold;
+if (preferenceProviderInstance.isUnsatisfied()) {
+    threshold = EidosPreferenceKeys.EXCLUDE_THRESHOLD.defaultValue().value();
+} else {
+    threshold = preferenceProviderInstance.get()
+        .resolve(SettingsScope.of(descriptor.tenancyId()))
+        .getOrDefault(EidosPreferenceKeys.EXCLUDE_THRESHOLD).value();
+}
+```
+
+`isUnsatisfied()` is true only when no `PreferenceProvider` bean is on the classpath — covers pure-eidos deployments without casehub-platform. All real consumer apps have `MockPreferenceProvider @DefaultBean` from casehub-platform and resolve via the else branch. `PreferenceProvider.resolve(SettingsScope.of(tenancyId))` walks the ancestor chain (root → tenancyId), so a deployment-wide threshold set at root propagates to all tenancies without per-tenancy configuration.
+
+No `NoOpPreferenceProvider` in eidos. Two `@DefaultBean` beans for the same type causes `AmbiguousResolutionException`.
 
 **Default = 3** is provisional — 1 would be correct if DECLINE attestations are already filtered to capability-based declines before `recordDecline` is called; 3 provides noise tolerance when raw DECLINE events flow in. Revisit once casehub-ledger/CBR integration is live and real DECLINE data is available.
 
 `weakThreshold` (existing) stays as `@ConfigProperty` — it's a deployment-wide confidence interpretation, not per-tenancy routing policy.
 
-`DefaultReactiveCapabilityHealth` mirrors this update. `CapabilitySpecializationStore` is a blocking map lookup (no I/O), safe to call inline in the reactive path.
+`DefaultReactiveCapabilityHealth` mirrors this update. `CapabilitySpecializationStore` is a blocking map lookup (no I/O for the in-memory store), safe to call inline in the reactive path.
 
 ### 5. Persistence
 
@@ -182,22 +246,28 @@ e.excludedDomains = writeJson(c.excludedDomains());
 - Builder round-trips all 9 fields correctly
 - `excludedDomains` validation: blank domain rejected, null OK, over-length rejected, banned chars rejected
 - Defensive copy: mutating input set after construction doesn't affect the record
+- Domain appearing in both `excludedDomains` and `epistemicDomains` → `AgentValidationException` at construction
 
 ### `DefaultCapabilityHealthTest`
 - `taskDomain` in `excludedDomains` → `Excluded(domain, DECLARED, 0)`, store not consulted
-- `learnedExclusions` count below threshold → continues to `Ready`
-- `learnedExclusions` count at threshold → `Excluded(domain, LEARNED, count)`
-- Threshold resolved from `Preferences` mock returning per-tenancy value
+- `declineCount` below threshold → continues to `Ready`
+- `declineCount` at threshold → `Excluded(domain, LEARNED, count)`, count captured in single call
+- Threshold resolved via `Instance<PreferenceProvider>` returning per-tenancy value via `resolve(SettingsScope.of(tenancyId))`
+- No `PreferenceProvider` on classpath (`isUnsatisfied()`) → threshold falls back to `EXCLUDE_THRESHOLD.defaultValue()` = 3
 - `null` `taskDomain` → neither new check runs; existing behaviour preserved
 - `Degraded` from `AgentStateStore` still takes priority over declared exclusion
 - Declared exclusion takes priority over learned exclusion
 
 ### `InMemoryCapabilitySpecializationStoreTest`
-- `recordDecline` accumulates count per domain correctly
-- Concurrent `recordDecline` is safe (AtomicInteger)
-- `clearDeclines` removes all entries for the capability, not others with shared prefix
+- `recordDecline` accumulates unexpired count per domain correctly
+- Concurrent `recordDecline` is thread-safe (`ConcurrentLinkedQueue.removeIf` + `offer`)
+- `clearDeclines` removes exactly the `AgentCapKey` entry; `code-review-enhanced` not removed when `code-review` is cleared
 - `learnedExclusions` returns only entries for the requested triple, not other agents or tenancies
 - Returns empty map when no declines recorded
+- Expired decline entries not counted in `learnedExclusions` or `declineCount`
+- `declineCount` returns 0 after all entries for a domain expire
+- `recordDecline` purges expired entries before inserting — queue does not grow unboundedly
+- `declineCount` returns 0 for different `agentId`, `tenancyId`, or `domain` (isolation)
 
 ### `DefaultCapabilityHealthDegradedTest` (existing — extend)
 - Add: `Excluded` status paths confirmed; `Degraded` wins over both
@@ -219,6 +289,7 @@ e.excludedDomains = writeJson(c.excludedDomains());
 |-------|------|
 | eidos#61 | `AgentQuery.taskDomain` — pre-filter at registry level for efficiency |
 | eidos#62 | JPA-backed `CapabilitySpecializationStore` for production persistence |
+| eidos#62-pre | `ReactiveCapabilitySpecializationStore` SPI — required before JPA implementation can avoid blocking the event loop |
 | parent#281 | PLATFORM.md capability ownership + cross-repo dependency map update |
 
 ---
