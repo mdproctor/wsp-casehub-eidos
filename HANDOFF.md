@@ -1,12 +1,13 @@
-# eidos Session Handover — 2026-06-17
+# eidos Session Handover — 2026-06-18
 
 ## Last Session
 
-Discovered ARC42STORIES.MD was workspace-only (routing table in CLAUDE.md never mentioned it). Fixed the routing gap, rescued 2 specs that existed only on closed workspace branches, reconstituted ARC42STORIES.MD for all post-C6 changes (L2 vocab enum redesign, L5 capability signal discrimination/enrichment mechanics/briefing/enriched flag, L6 eval improvements, 6 new glossary entries), and promoted the updated document to the project repo. Confirmed all 27 eidos blogs are already published.
+Fixed eidos#52: Claude CLI subprocesses accumulate when parallel `AgentProviderChatModel` enrichment calls all timeout simultaneously. Root cause was `buildEventStream()` using the SDK's session mode (bidirectional subprocess, 5-second graceful close) for single-turn `invoke()` calls. Built `ClaudeOneShotProcess` in casehub-platform: one-shot subprocess (`-p "prompt" --output-format stream-json`), direct `Process` ownership, immediate `destroyForcibly()` on cancellation. 22 unit tests, 4 garden entries. Branch closed; platform commit cc08daa on `issue-52-subprocess-destroy-on-cancel`.
 
 ## Immediate Next Step
 
-Run the next eval with briefings populated to see if briefing content shifts proximity scores:
+Re-run `evaluateRealWorldScenarios` with briefings — the zombie accumulation that was hanging ProximityJudge is now fixed. Compare proximity scores against pre-briefing baseline:
+
 ```bash
 JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
   -Dtest=PromptEvalTest#evaluateRealWorldScenarios \
@@ -16,22 +17,22 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
 
 ## What's Left
 
-- **eidos#52** — Claude CLI subprocesses survive `atMost()` cancellation; `destroyForcibly()` on cancellation · M · High
 - **eidos#55** — feat: Capability sub-specialization metadata — learned from DECLINE/FAIL patterns · M · High
+- **casehubio/parent#273** — sync PLATFORM.md and casehub-platform.md deep-dive for invoke() one-shot split
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| — | Re-run `evaluateRealWorldScenarios` with briefings | XS | Low | Compare vs pre-briefing baseline |
+| — | Re-run `evaluateRealWorldScenarios` with briefings | XS | Low | Compare vs pre-briefing baseline; zombie fix now in place |
 | — | `evaluateWithIndependentJudge` (Qwen 8B) after | XS | Low | Check if briefing lifts FACTUAL_FIDELITY |
 | #28 | casehub-engine: Belbin-based agent composition | L | High | casehubio/eidos repo |
 
 ## References
 
-- Garden entry: GE-20260617-f3ea4e — inverse self-evaluation bias (tools/GE-20260617-f3ea4e.md)
-- Protocol: PP-20260617-bfc66f — briefing from vocabularyGap:FULL (docs/protocols/eval/)
-- Blog: 2026-06-17-mdp01-judging-the-judge.md
-- Ollama: qwen3:8b confirmed working for independent judge
-- Renders cache: /tmp/eidos-renders-cache.json (survives mvn clean — use -Dcasehub.eval.renders-cache.path)
-- ARC42STORIES.MD: now in project repo root (promoted this session); covers all 6 chapters through Knowledge Graph
+- Platform commit: casehub-platform cc08daa — `ClaudeOneShotProcess` + `ClaudeAgentClient` changes
+- Platform branch: `issue-52-subprocess-destroy-on-cancel` (open — needs PR to casehubio/platform)
+- Spec: `docs/superpowers/specs/2026-06-17-subprocess-destroy-on-cancel-design.md`
+- Garden entries: GE-20260618-03a482 (parse null), GE-20260618-a0f1e0 (--verbose), GE-20260618-c4f95a (close() blocks elastic), GE-20260618-268aab (cat subprocess test)
+- parent#273: PLATFORM.md sync needed
+- Renders cache: `/tmp/eidos-renders-cache.json` (survives `mvn clean`)
