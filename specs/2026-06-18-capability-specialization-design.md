@@ -139,7 +139,7 @@ Inject `Instance<PreferenceProvider>` alongside `AgentStateStore` and `Capabilit
 
 1. `AgentStateStore.query()` → `Degraded` if present
 2. Capability not declared → `Unavailable`
-3. `taskDomain != null` AND `taskDomain ∈ capability.excludedDomains()` → `Excluded(domain, DECLARED, 0)`
+3. `taskDomain != null` AND `capability.excludedDomains() != null` AND `taskDomain ∈ capability.excludedDomains()` → `Excluded(domain, DECLARED, 0)`
 4. `taskDomain != null` AND `store.declineCount(descriptor.agentId(), descriptor.tenancyId(), capabilityTag, taskDomain) >= excludeThreshold` → `Excluded(taskDomain, LEARNED, count)`
 5. `taskDomain != null` AND `epistemicDomains.get(taskDomain) < weakThreshold` → `EpistemicallyWeak`
 6. `Ready`
@@ -250,6 +250,7 @@ e.excludedDomains = writeJson(c.excludedDomains());
 
 ### `DefaultCapabilityHealthTest`
 - `taskDomain` in `excludedDomains` → `Excluded(domain, DECLARED, 0)`, store not consulted
+- `excludedDomains` is null → step 3 skipped, no NPE, probe continues normally
 - `declineCount` below threshold → continues to `Ready`
 - `declineCount` at threshold → `Excluded(domain, LEARNED, count)`, count captured in single call
 - Threshold resolved via `Instance<PreferenceProvider>` returning per-tenancy value via `resolve(SettingsScope.of(tenancyId))`
