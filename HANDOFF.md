@@ -18,7 +18,6 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
 ## What's Left
 
 - **eidos#55** — feat: Capability sub-specialization metadata — learned from DECLINE/FAIL patterns · M · High
-- **casehubio/parent#273** — sync PLATFORM.md and casehub-platform.md deep-dive for invoke() one-shot split
 
 ## What's Next
 
@@ -27,6 +26,10 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
 | — | Re-run `evaluateRealWorldScenarios` with briefings | XS | Low | Compare vs pre-briefing baseline; zombie fix now in place |
 | — | `evaluateWithIndependentJudge` (Qwen 8B) after | XS | Low | Check if briefing lifts FACTUAL_FIDELITY |
 | #28 | casehub-engine: Belbin-based agent composition | L | High | casehubio/eidos repo |
+
+## Cleaned up
+
+- `casehubio/parent#273` — closed (PLATFORM.md sync shipped), removed from backlog
 
 ## References
 
