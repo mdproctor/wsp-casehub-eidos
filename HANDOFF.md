@@ -1,12 +1,12 @@
-# eidos Session Handover — 2026-06-18
+# eidos Session Handover — 2026-06-19
 
 ## Last Session
 
-Fixed eidos#52: Claude CLI subprocesses accumulate when parallel `AgentProviderChatModel` enrichment calls all timeout simultaneously. Root cause was `buildEventStream()` using the SDK's session mode (bidirectional subprocess, 5-second graceful close) for single-turn `invoke()` calls. Built `ClaudeOneShotProcess` in casehub-platform: one-shot subprocess (`-p "prompt" --output-format stream-json`), direct `Process` ownership, immediate `destroyForcibly()` on cancellation. 22 unit tests, 4 garden entries. Branch closed; platform commit cc08daa on `issue-52-subprocess-destroy-on-cancel`.
+Implemented eidos#55: capability sub-specialization metadata. `AgentCapability` now has `excludedDomains: Set<String>` for declared negative specialization and a `Builder` inner class. `CapabilitySpecializationStore` SPI accumulates learned DECLINE-based exclusions with store-owned 30-day TTL. `CapabilityStatus` gained an `Excluded(domain, ExclusionSource, declineCount)` sealed variant. `DefaultCapabilityHealth.probe()` checks declared then learned exclusions (using `Instance<PreferenceProvider>` for per-tenancy threshold). `InMemoryCapabilitySpecializationStore @Alternative @Priority(1)` in persistence-memory. A2A_CARD renderer includes `excludedDomains` in capability JSON. Schema, entity, and mapper updated. Branch squashed 14→7 commits, pushed to casehubio/eidos main.
 
 ## Immediate Next Step
 
-Re-run `evaluateRealWorldScenarios` with briefings — the zombie accumulation that was hanging ProximityJudge is now fixed. Compare proximity scores against pre-briefing baseline:
+Re-run `evaluateRealWorldScenarios` with briefings — eidos#52 zombie fix is in main; briefings are in all 8 eval profiles. Compare proximity scores against baseline:
 
 ```bash
 JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
@@ -17,25 +17,24 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
 
 ## What's Left
 
-- **eidos#55** — feat: Capability sub-specialization metadata — learned from DECLINE/FAIL patterns · M · High
+- **eidos#61** — `AgentQuery.taskDomain` pre-filter at registry level · M · Med
+- **eidos#62** — JPA-backed `CapabilitySpecializationStore` for production persistence · S · Low
+- **eidos#63** — `AgentDescriptorMapper.toCapability()` must revert to positional constructor (protocol violation found in sweep) · XS · Low
+- **parent#281** — PLATFORM.md capability ownership sync (CapabilitySpecializationStore) · XS · Low
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| — | Re-run `evaluateRealWorldScenarios` with briefings | XS | Low | Compare vs pre-briefing baseline; zombie fix now in place |
-| — | `evaluateWithIndependentJudge` (Qwen 8B) after | XS | Low | Check if briefing lifts FACTUAL_FIDELITY |
+| — | Re-run `evaluateRealWorldScenarios` with briefings | XS | Low | Zombie fix now in main; compare vs pre-briefing baseline |
+| — | `evaluateWithIndependentJudge` (Qwen) after | XS | Low | Check if briefing lifts FACTUAL_FIDELITY |
+| #63 | Revert AgentDescriptorMapper to positional constructor | XS | Low | Protocol violation found in sweep; immediate fix |
 | #28 | casehub-engine: Belbin-based agent composition | L | High | casehubio/eidos repo |
-
-## Cleaned up
-
-- `casehubio/parent#273` — closed (PLATFORM.md sync shipped), removed from backlog
 
 ## References
 
-- Platform commit: casehub-platform cc08daa — `ClaudeOneShotProcess` + `ClaudeAgentClient` changes
-- Platform branch: `issue-52-subprocess-destroy-on-cancel` (open — needs PR to casehubio/platform)
-- Spec: `docs/superpowers/specs/2026-06-17-subprocess-destroy-on-cancel-design.md`
-- Garden entries: GE-20260618-03a482 (parse null), GE-20260618-a0f1e0 (--verbose), GE-20260618-c4f95a (close() blocks elastic), GE-20260618-268aab (cat subprocess test)
-- parent#273: PLATFORM.md sync needed
+- Blog entry: `blog/2026-06-19-mdp01-teaching-an-agent-what-it-cannot-do.md`
+- Spec: `docs/specs/2026-06-18-capability-specialization-design.md` (eidos project repo)
 - Renders cache: `/tmp/eidos-renders-cache.json` (survives `mvn clean`)
+- Protocols added: PP-20260619-409a36 (optional-platform-spi-instance-injection), PP-20260619-eee0fd (store-owned-ttl-vs-spi-ttl)
+- Garden revision: GE-20260601-fcf0d9 — added Instance<T> isUnsatisfied() alternative
