@@ -343,10 +343,13 @@ drives registration at startup via `ClasspathYamlDescriptorRegistrar` → `Agent
 - Descriptor with all optional fields omitted → registered with nulls for optional fields
 - `axisVocabularies` keys deserialised to `DispositionAxis` enum values correctly
 - Invalid `axisVocabularies` key → `IllegalArgumentException` (fast-fail)
-- Vocabulary resolution: descriptor with `conflictMode: collaborating` and
-  `axisVocabularies.CONFLICT_MODE: urn:casehub:vocab:thomas-kilmann` → after registration,
-  `VocabularyRegistry.resolve(ThomasKilmannTerm.URI, "collaborating")` returns
-  `ThomasKilmannTerm.COLLABORATING`
+- `epistemicDomains` and `excludedDomains` map correctly from YAML capability config
+
+Note: vocabulary resolution is tested at the integration level in `DraftHouseReviewerScenarioTest`
+(e.g. `structural_reviewer_shows_thomas_kilmann_label` asserts rendered output contains
+`"Collaborating (Thomas-Kilmann Conflict Modes)"`), not in the YAML unit tests. This keeps the
+unit tests CDI-free (pure parsing) and tests resolution where the `VocabularyRegistry` is
+available.
 
 ---
 
