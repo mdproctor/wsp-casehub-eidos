@@ -1,5 +1,5 @@
-# Branch Closed: issue-55-capability-specialization-metadata
+# Branch Closed: issue-64-drafthouse-reviewer-descriptors
 
-**Date:** 2026-06-19
-**Issues:** 55
+**Date:** 2026-06-23
+**Issues:** 64
 **Status:** merged to main
