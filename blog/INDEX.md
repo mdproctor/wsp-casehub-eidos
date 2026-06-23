@@ -2,6 +2,7 @@
 
 | File | Date | Title |
 |------|------|-------|
+| [2026-06-23-mdp01-personas-from-yaml.md](2026-06-23-mdp01-personas-from-yaml.md) | 2026-06-23 | Declarative AgentDescriptorRegistrar SPI, YAML persona loading, CDI displacement fix, DraftHouse reviewer descriptors |
 | [2026-06-18-mdp01-sixteen-zombies.md](2026-06-18-mdp01-sixteen-zombies.md) | 2026-06-18 | One-shot subprocess replaces SDK session mode in invoke() path; fixing zombie accumulation from parallel timeouts |
 | [2026-06-13-mdp01-a2a-card-needed-more.md](2026-06-13-mdp01-a2a-card-needed-more.md) | 2026-06-13 | Format-discriminated descriptor payload, A2A_CARD completeness, cache trap in the two-path renderer |
 | [2026-06-17-mdp01-judging-the-judge.md](2026-06-17-mdp01-judging-the-judge.md) | 2026-06-17 | Enrichment confirmed working; inverse self-evaluation bias discovery (Claude 1.88 vs Qwen 5.00 factual fidelity); enriched RenderedPrompt flag; eval profile briefings |
