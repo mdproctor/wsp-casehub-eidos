@@ -1,0 +1,9 @@
+branch: issue-64-drafthouse-reviewer-descriptors
+project-sha: b47e479f135fb9e4875dd2404504b12eff209bb1
+date: 2026-06-23
+issue: 64
+issue-repo: casehubio/eidos
+covers: 64
+flyway-next-v: none
+design-repo: project
+design-section-hashes: 
