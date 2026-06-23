@@ -95,16 +95,38 @@ Consumers (DraftHouse, devtown, claudony) either:
 **Location:** `runtime/src/main/java/io/casehub/eidos/runtime/registrar/AgentDescriptorBootstrap.java`
 
 ```java
+@IfBuildProperty(name = "casehub.eidos.reactive.enabled",
+                 stringValue = "false", enableIfMissing = true)
 @ApplicationScoped
 public class AgentDescriptorBootstrap {
     @Inject AgentRegistry registry;
     @Inject @Any Instance<AgentDescriptorRegistrar> registrars;
 
     void onStartup(@Observes StartupEvent ev) {
-        registrars.forEach(r -> r.descriptors().forEach(registry::register));
+        final var all = new java.util.ArrayList<AgentDescriptor>();
+        registrars.forEach(r -> all.addAll(r.descriptors()));
+
+        // Fail-fast on duplicate (agentId, tenancyId) pairs across registrars
+        final var seen = new java.util.HashSet<String>();
+        for (final var d : all) {
+            final var key = d.agentId() + "\0" + d.tenancyId();
+            if (!seen.add(key)) {
+                throw new IllegalStateException(
+                    "Duplicate descriptor: agentId=" + d.agentId()
+                    + ", tenancyId=" + d.tenancyId());
+            }
+        }
+
+        all.forEach(registry::register);
     }
 }
 ```
+
+**Build-property gated for blocking mode.** `AgentRegistry` (blocking) is only available when
+reactive mode is off — `JpaAgentRegistry` is gated by the same `@IfBuildProperty`, and
+`InMemoryAgentRegistry` is an `@Alternative`. In reactive-only mode without `casehub-eidos-memory`,
+no `AgentRegistry` bean exists — an ungated bootstrap would cause `UnsatisfiedResolutionException`
+at build time. This follows `reactive-service-build-gating` (PP-20260519-39a9a5).
 
 **Discovery is in a separate bootstrap bean, not inside any registry implementation.**
 
@@ -115,8 +137,15 @@ path gets nothing. `JpaAgentRegistry` has `@Transactional` on `register()`, so
 
 The bootstrap bean in `runtime/` solves both:
 - Works with whichever `AgentRegistry` CDI resolves (InMemory or JPA)
-- `@Observes StartupEvent` means CDI interceptors (`@Transactional`) are live
+- `@Observes StartupEvent` means CDI interceptors (`@Transactional`) are live — this is a new
+  lifecycle pattern in eidos (existing init uses `@PostConstruct` on the bean itself, e.g.
+  `CdiVocabularyRegistry.init()`), correct here because the bootstrap is a third-party bean
 - Both registry implementations stay pure storage — no discovery logic
+
+**Duplicate detection:** the bootstrap collects all descriptors from all registrars before
+registration and fails at startup on duplicate `(agentId, tenancyId)` pairs. The dedup key is the
+composite, not just `agentId` — the same persona in different tenancies is legitimate
+(PP-20260603-9918e6).
 
 No JPA deferral issue needed. No `InMemoryAgentRegistry` changes needed.
 
@@ -179,6 +208,11 @@ Parsing errors from Jackson and validation errors from the `AgentDescriptor` com
 (`AgentValidationException`) propagate through `@Observes StartupEvent`. This is intentional —
 YAML-driven descriptors are validated eagerly, not lazily. Consumers must fix their YAML before
 the app starts.
+
+When iterating multiple YAML sources via `getResources()`, `loadFrom()` wraps any exception with
+the source URL before rethrowing — e.g. `"Failed to load descriptors from
+jar:file:/path/to/app.jar!/META-INF/eidos/descriptors.yaml: agentId must not be null"`. Without
+per-URL context, operators cannot determine which JAR's YAML is broken.
 
 **YAML format — top level:**
 ```yaml
@@ -321,7 +355,8 @@ drives registration at startup via `ClasspathYamlDescriptorRegistrar` → `Agent
 | # | What | Why deferred |
 |---|------|-------------|
 | TBD | `CdiVocabularyRegistry` `@DefaultBean` fix | Same pattern as renderer fix; separate concern |
-| TBD | ARC42STORIES line 709 stale `VocabularyRegistrar` description | Says `void register(VocabularyRegistry registry)` — actual source is `Class<...> vocabulary()` |
+| TBD | ARC42STORIES stale `VocabularyRegistrar` descriptions (lines 709, 714, 724) | Line 709: says `void register(VocabularyRegistry registry)` — actual source is `Class<...> vocabulary()`. Line 714: says `registrar.register(this)` — actual code is `registerRaw(r.vocabulary())`. Line 724: says `domain apps write registry.register(MyVocab.class)` — domain apps implement `VocabularyRegistrar` and return the class; no registry interaction. |
+| TBD | Reactive-mode `AgentDescriptorBootstrap` | Bootstrap is gated to blocking mode; reactive-mode registration via `ReactiveAgentRegistry.register()` (returns `Uni<Void>`) needs a separate reactive bootstrap |
 
 ---
 
@@ -337,3 +372,4 @@ drives registration at startup via `ClasspathYamlDescriptorRegistrar` → `Agent
 | `render-format-structure-naming` | No new `RenderFormat` values |
 | `alternative-extension-patterns` | Section 5 changes `EidosSystemPromptRenderer` from `@DefaultBean` to plain `@ApplicationScoped` — Pattern B: base is `@ApplicationScoped`, fallback is `@DefaultBean` |
 | `agent-descriptor-compact-constructor-validation` (PP-20260530-2d6dbd) | YAML loader introduces a new ingestion path; strings validated via `AgentDescriptor` compact constructor. No bypass — all validation rules enforced at construction time |
+| `reactive-service-build-gating` (PP-20260519-39a9a5) | `AgentDescriptorBootstrap` gated with `@IfBuildProperty(name = "casehub.eidos.reactive.enabled", stringValue = "false", enableIfMissing = true)` — matches `JpaAgentRegistry` gating; prevents `UnsatisfiedResolutionException` in reactive-only mode |
