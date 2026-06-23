@@ -8,9 +8,13 @@ No eidos implementation work. Session was CI support: casehub-ops CI was failing
 
 *Unchanged — git show HEAD~1:HANDOFF.md*
 
+*Updated: parent#281 closed — removed from backlog.*
+
 ## What's Left
 
-*Unchanged — git show HEAD~1:HANDOFF.md*
+- **eidos#61** — `AgentQuery.taskDomain` pre-filter at registry level · M · Med
+- **eidos#62** — JPA-backed `CapabilitySpecializationStore` for production persistence · S · Low
+- **eidos#63** — `AgentDescriptorMapper.toCapability()` must revert to positional constructor (protocol violation found in sweep) · XS · Low
 
 ## What's Next
 
