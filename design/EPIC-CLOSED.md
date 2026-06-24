@@ -1,5 +1,5 @@
-# Branch Closed: issue-55-capability-specialization-metadata
+# Branch Closed: issue-66-arc42-vocab-registrar
 
-**Date:** 2026-06-19
-**Issues:** 55
+**Date:** 2026-06-24
+**Issues:** 66
 **Status:** merged to main
