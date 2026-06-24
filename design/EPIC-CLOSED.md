@@ -1,5 +1,5 @@
-# Branch Closed: issue-55-capability-specialization-metadata
+# Branch Closed: issue-62-jpa-specialization-store
 
-**Date:** 2026-06-19
-**Issues:** 55
+**Date:** 2026-06-24
+**Issues:** 62
 **Status:** merged to main
