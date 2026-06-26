@@ -1,5 +1,5 @@
-# Branch Closed: issue-55-capability-specialization-metadata
+# Branch Closed: issue-060-desiredstate-bridge
 
-**Date:** 2026-06-19
-**Issues:** 55
+**Date:** 2026-06-26
+**Issues:** 60
 **Status:** merged to main
