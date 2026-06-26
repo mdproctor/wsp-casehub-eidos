@@ -2,6 +2,7 @@
 
 | File | Date | Title |
 |------|------|-------|
+| [2026-06-26-mdp01-when-the-bridge-module-died.md](2026-06-26-mdp01-when-the-bridge-module-died.md) | 2026-06-26 | Three spec reviews killed the bridge module — @DefaultBean/Instance<T> incompatibility, comparator in eidos-api instead |
 | [2026-06-24-mdp01-seven-fixes-schema-decision.md](2026-06-24-mdp01-seven-fixes-schema-decision.md) | 2026-06-24 | Seven issues cleared — validator allowedCodePoints, reactive bootstrap, JPA specialization store, excludedDomains denormalized to @ElementCollection |
 | [2026-06-18-mdp01-sixteen-zombies.md](2026-06-18-mdp01-sixteen-zombies.md) | 2026-06-18 | One-shot subprocess replaces SDK session mode in invoke() path; fixing zombie accumulation from parallel timeouts |
 | [2026-06-13-mdp01-a2a-card-needed-more.md](2026-06-13-mdp01-a2a-card-needed-more.md) | 2026-06-13 | Format-discriminated descriptor payload, A2A_CARD completeness, cache trap in the two-path renderer |
