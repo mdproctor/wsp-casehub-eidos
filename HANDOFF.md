@@ -1,12 +1,12 @@
-# eidos Session Handover — 2026-06-24
+# eidos Session Handover — 2026-06-26
 
 ## Last Session
 
-Cleared 7 issues in one pass: 3 XS (#65 CDI scope, #63 positional constructor, #66 ARC42 stale descriptions), 3 S (#68 briefing newlines, #67 reactive bootstrap, #62 JPA specialization store), 1 M (#61 AgentQuery.taskDomain pre-filter). All pushed to casehubio/eidos main. Key design decisions: `allowedCodePoints` vararg on validator for per-field control char exemptions; `excludedDomains` denormalized from JSON TEXT to `@ElementCollection` join table for clean SQL filtering via `NOT MEMBER OF`.
+Designed and implemented `AgentDescriptorComparator` for eidos#60 — content equality utility for `AgentDescriptor`. Three rounds of spec review pivoted the design from a bridge module (`casehub-eidos-desiredstate`) to a pure-Java comparator in eidos-api + enriched ops drift checker. Key discovery: `@DefaultBean` is incompatible with `Instance<T>` multi-bean injection — suppressed by any peer implementing the same interface. Two garden entries submitted (gotcha + technique). Cross-repo ops changes committed but ops deployment module has a pre-existing compile error (unrelated `ActualStateAdapter.readActual` signature mismatch).
 
 ## Immediate Next Step
 
-Re-run `evaluateRealWorldScenarios` with briefings — the eval baseline command from last session is still valid, and the schema change (V1 modified, V4 added) requires `mvn clean`:
+Re-run eval baseline — the prior session's eval command is still valid and hasn't been run yet:
 
 ```bash
 JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
@@ -15,13 +15,19 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
   -f /Users/mdproctor/claude/casehub/eidos/pom.xml
 ```
 
+## Cross-Module
+
+**We delivered** (ops waiting on eidos-api install):
+- `casehub-ops` — ops commits `71e5181` (toDescriptor) and `f5cf98e` (enriched drift checker) depend on the newly installed `casehub-eidos-api:0.2-SNAPSHOT`. The ops deployment module has a pre-existing compile error in `DeploymentActualStateAdapter.java` that must be fixed before ops tests can run.
+
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #60 | Optional casehub-eidos-desiredstate bridge module | M | Med | NodeDriftChecker for agents |
-| #28 | casehub-engine: Belbin-based agent composition | L | High | Separate repo |
+| #28 | casehub-engine: Belbin-based agent composition | L | High | Separate repo; deps on eidos#26 (shipped), eidos#27 (shipped) |
 
 ## References
 
-- Blog entry: `blog/2026-06-24-mdp01-seven-fixes-schema-decision.md`
+- Blog entry: `blog/2026-06-26-mdp01-when-the-bridge-module-died.md`
+- Spec: `docs/specs/issue-060-desiredstate-bridge/2026-06-25-desiredstate-bridge-design.md`
+- Garden: `GE-20260626-c21b02` (@DefaultBean + Instance<T> gotcha), `GE-20260626-f0b274` (structural sync technique)
