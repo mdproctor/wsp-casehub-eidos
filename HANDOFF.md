@@ -1,12 +1,17 @@
-# eidos Session Handover — 2026-06-26
+# eidos Session Handover — 2026-06-29
 
-## Last Session
+**Previous handover:** `git show HEAD~1:HANDOFF.md` | diff: `git diff HEAD~1 HEAD -- HANDOFF.md`
 
-Designed and implemented `AgentDescriptorComparator` for eidos#60 — content equality utility for `AgentDescriptor`. Three rounds of spec review pivoted the design from a bridge module (`casehub-eidos-desiredstate`) to a pure-Java comparator in eidos-api + enriched ops drift checker. Key discovery: `@DefaultBean` is incompatible with `Instance<T>` multi-bean injection — suppressed by any peer implementing the same interface. Two garden entries submitted (gotcha + technique). Cross-repo ops changes committed but ops deployment module has a pre-existing compile error (unrelated `ActualStateAdapter.readActual` signature mismatch).
+## What Changed This Session
+
+- Closed eidos#28 (Belbin composition) — eidos prerequisites shipped; filed engine#577 for engine-side work
+- Fixed eidos#69 — exhaustive switch in eval `AgentProviderChatModel` (sealed `AgentEvent` gained subtypes; `-pl` hid the error)
+- Eidos backlog is now empty — all remaining work lives in other repos (engine#505, engine#577)
+- Discussed roadmap: positive specialization learning, semantic capability matching, behavioral contracts
 
 ## Immediate Next Step
 
-Re-run eval baseline — the prior session's eval command is still valid and hasn't been run yet:
+Re-run eval baseline — the command from the prior session is still valid:
 
 ```bash
 JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
@@ -15,19 +20,15 @@ JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn clean test -pl eval -Peval \
   -f /Users/mdproctor/claude/casehub/eidos/pom.xml
 ```
 
-## Cross-Module
-
-**We delivered** (ops waiting on eidos-api install):
-- `casehub-ops` — ops commits `71e5181` (toDescriptor) and `f5cf98e` (enriched drift checker) depend on the newly installed `casehub-eidos-api:0.2-SNAPSHOT`. The ops deployment module has a pre-existing compile error in `DeploymentActualStateAdapter.java` that must be fixed before ops tests can run.
-
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #28 | casehub-engine: Belbin-based agent composition | L | High | Separate repo; deps on eidos#26 (shipped), eidos#27 (shipped) |
+| — | Positive specialization learning (symmetric to DECLINE exclusions) | M | Med | No issue filed yet; builds on CapabilitySpecializationStore |
+| — | Semantic capability matching (subsumption in VocabularyRegistry) | L | High | No issue filed yet; taxonomy design required |
+| — | Behavioral contracts / runtime validation | L | High | No issue filed yet; bridges eidos and ledger |
 
 ## References
 
-- Blog entry: `blog/2026-06-26-mdp01-when-the-bridge-module-died.md`
-- Spec: `docs/specs/issue-060-desiredstate-bridge/2026-06-25-desiredstate-bridge-design.md`
-- Garden: `GE-20260626-c21b02` (@DefaultBean + Instance<T> gotcha), `GE-20260626-f0b274` (structural sync technique)
+- Blog entry: `blog/2026-06-29-mdp01-backlog-zero.md`
+- Garden: `GE-20260629-5d23ca` (Maven `-pl` skips test-compile on sealed interface subtypes)
