@@ -134,7 +134,12 @@ public record AgentCapability(
 
 **Per-capability, not per-descriptor.** An agent may declare capabilities from different vocabularies.
 
-**Validation:** Format validation in compact constructor (optional string length). Existence validation (name is a valid term in the declared vocabulary) at registration time in `AgentRegistry.register()`, which has `VocabularyRegistry` access via CDI injection. Both JPA and InMemory registries validate before persisting. `DescriptorCollector` is unchanged — it validates duplicate agentId+tenancyId pairs only and has no VocabularyRegistry access.
+**Validation:** Format validation in compact constructor (optional string length). Vocabulary validation at registration time in `AgentRegistry.register()`, which has `VocabularyRegistry` access via CDI injection:
+
+1. If `capabilityVocabulary` is non-null, `VocabularyRegistry.isRegistered(uri)` must return `true` — unknown vocabulary URI throws `AgentValidationException`. A `capabilityVocabulary` that doesn't resolve to a registered vocabulary is a configuration error; silently treating it as ungrounded would disable subsumption without any signal.
+2. If the vocabulary is registered, `VocabularyRegistry.resolve(vocabUri, name)` must return a value — unknown term throws `AgentValidationException`.
+
+Both JPA and InMemory registries validate before persisting. `DescriptorCollector` is unchanged — it validates duplicate agentId+tenancyId pairs only and has no VocabularyRegistry access.
 
 **Builder:** gains `capabilityVocabulary(String v)`.
 
@@ -209,17 +214,29 @@ private AgentCapability findCapability(List<AgentCapability> capabilities,
     for (var c : capabilities) {
         if (c.name().equals(capabilityTag)) return c;
     }
-    // Subsumption match — find declared capability that covers the requested one
+    // Subsumption match — prefer closest (lowest depth)
+    AgentCapability bestMatch = null;
+    int bestDepth = Integer.MAX_VALUE;
     for (var c : capabilities) {
         if (c.capabilityVocabulary() != null) {
             MatchDegree degree = vocabularyRegistry.match(
                 c.capabilityVocabulary(), c.name(), capabilityTag);
-            if (!(degree instanceof MatchDegree.None)) return c;
+            int depth = switch (degree) {
+                case MatchDegree.Plugin p -> p.depth();
+                case MatchDegree.Specialization s -> s.depth();
+                default -> -1;
+            };
+            if (depth > 0 && depth < bestDepth) {
+                bestDepth = depth;
+                bestMatch = c;
+            }
         }
     }
-    return null;
+    return bestMatch;
 }
 ```
+
+**Match selection:** When multiple declared capabilities subsume the query term, the probe uses the structurally closest match (lowest depth in the DAG). This prevents order-dependent probe results — an agent declaring `[analysis, code-review]` produces the same result regardless of list order. When depths are equal (no structural basis to prefer one), the first-encountered match wins.
 
 Once the matching capability is found, all downstream probe steps (degradation, exclusion, epistemic check) apply to it unchanged. `DefaultReactiveCapabilityHealth` delegates to the imperative implementation — no separate change needed.
 
