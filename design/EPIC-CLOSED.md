@@ -1,5 +1,5 @@
-# Branch Closed: issue-55-capability-specialization-metadata
+# Branch Closed: issue-71-semantic-capability-matching
 
-**Date:** 2026-06-19
-**Issues:** 55
+**Date:** 2026-06-30
+**Issues:** 71
 **Status:** merged to main
