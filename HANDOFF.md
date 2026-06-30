@@ -1,3 +1,5 @@
+*Updated: parent#329 closed — removed from backlog.*
+
 # eidos Session Handover — 2026-06-30
 
 **Previous handover:** `git show HEAD~1:HANDOFF.md` | diff: `git diff HEAD~1 HEAD -- HANDOFF.md`
@@ -7,7 +9,7 @@
 - Shipped eidos#71 — semantic capability matching with XKOS-style subsumption in VocabularyRegistry. VocabularyTerm.specializes() for DAG hierarchy, MatchDegree (Exact/Plugin/Specialization/None) with depth, AgentCapability.capabilityVocabulary for optional grounding, subsumption-aware find() and probe(). CasehubCapabilityTerm starter vocabulary. 32 files, 2377 insertions.
 - Design-reviewed via adversarial 5-round process (14 issues raised, 13 verified, 1 accepted). $15.59 review cost.
 - Deep research on capability matching: OWLS-MX, XKOS, SkillNet, A2A — 105 agents, 23 sources, 21 confirmed claims.
-- Filed parent#329 (platform doc sync, still open from previous session), eidos#72 (probe integration — done in-scope), eidos#73 (cross-vocab subsumption), eidos#74 (minor hardening), engine#609 (AgentCandidateFactory subsumption)
+- Filed eidos#72 (probe integration — done in-scope), eidos#73 (cross-vocab subsumption), eidos#74 (minor hardening), engine#609 (AgentCandidateFactory subsumption)
 
 ## Immediate Next Step
 
