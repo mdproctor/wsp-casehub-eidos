@@ -6,7 +6,7 @@
 
 ## Problem
 
-AgentRegistry.find(AgentQuery) and the engine's AgentCandidateFactory both do exact string matching on capability names. An agent declaring `code-review` does not match a query for `security-code-review`, even though code-review structurally subsumes security-code-review. The epistemic domain, exclusion, and semantic routing layers never fire because the candidate set is empty.
+`AgentRegistry.find(AgentQuery)` does exact string matching on capability names. An agent declaring `code-review` does not match a query for `security-code-review`, even though code-review structurally subsumes security-code-review. Direct registry callers (claudony, application-tier consumers) get empty results for semantically valid queries. `CapabilityHealth.probe()` has the same exact-match limitation — subsumption-discovered agents would be rejected at health probe time without a coordinated fix. The engine's `AgentCandidateFactory` has a separate exact-match path that bypasses `AgentRegistry` entirely — engine integration is a follow-up against casehub-engine.
 
 Modern agent frameworks (A2A, AutoGen, CrewAI) have the same limitation — flat string tags with no hierarchy. The richest prior art is OWLS-MX (Klusch/Sycara, 2002-2012), which defines graded match degrees over OWL-DL concept subsumption hierarchies. Pure subsumption proved insufficient in practice; hybrid approaches (subsumption + IR similarity) are the consensus. CaseHub already has the hybrid fallback via SemanticAgentRoutingStrategy — this design adds the structural subsumption layer.
 
@@ -57,7 +57,7 @@ public sealed interface MatchDegree
 }
 ```
 
-**OWLS-MX mapping:** Exact = Exact. Plugin(n) unifies Plug-in (n=1) and Subsumes (n>1) with depth as discriminator. Specialization(n) = Subsumed-by. None = the boundary where structural matching stops and SemanticAgentRoutingStrategy takes over.
+**OWLS-MX mapping:** Exact = Exact. Plugin(n) = Plug-in at depth n (agent capability is an ancestor of requested — more general, can handle it). Specialization(n) = Subsumes at depth n (agent capability is a descendant of requested — more specific than needed). None = the boundary where structural matching stops and SemanticAgentRoutingStrategy takes over.
 
 **Depth is information, not a cutoff.** The consumer decides what to accept. `Plugin(1)` is high-confidence. `Plugin(5)` is sketchy. No threshold baked in.
 
@@ -74,7 +74,7 @@ List<? extends VocabularyTerm> ancestors(String vocabUri, String value);
 
 List<? extends VocabularyTerm> descendants(String vocabUri, String value);
 
-Set<String> expandForMatching(String value);
+Map<String, Set<String>> expandForMatchingByVocabulary(String value);
 ```
 
 **`subsumes()`** — true if generalValue is an ancestor of specificValue, or they are equal.
@@ -83,7 +83,7 @@ Set<String> expandForMatching(String value);
 
 **`ancestors()`** / **`descendants()`** — transitive navigation, ordered by depth (immediate first). Empty list for unknown terms.
 
-**`expandForMatching()`** — given a term, returns {term} ∪ ancestors ∪ descendants across all registered vocabularies that contain it. This is the bridge to the SQL query layer — the JPA registry uses it to expand `c.name IN :expanded`.
+**`expandForMatchingByVocabulary()`** — given a term, returns a map from vocabulary URI to {term} ∪ ancestors ∪ descendants within that vocabulary. Scoped per-vocabulary to prevent hierarchy conflation across unrelated vocabularies. The JPA registry uses this to build vocabulary-scoped conditions: `(c.capability_vocabulary = :vocab AND c.name IN :expanded)` per vocabulary.
 
 **Error handling:** unknown vocabulary or unknown term returns false / None / empty. No exceptions. Consistent with `resolve()` returning `Optional.empty()`.
 
@@ -94,7 +94,7 @@ All hierarchy data is precomputed at registration time. Lookups are O(1) map acc
 **New internal data structures:**
 
 ```java
-// value → set of vocabUris containing this value (reverse index for expandForMatching)
+// value → set of vocabUris containing this value (reverse index for expandForMatchingByVocabulary)
 ConcurrentHashMap<String, Set<String>> valueToVocabs;
 
 // vocabUri → (value → list of ancestors with depth, ordered depth-first)
@@ -134,11 +134,11 @@ public record AgentCapability(
 
 **Per-capability, not per-descriptor.** An agent may declare capabilities from different vocabularies.
 
-**Validation:** Format validation in compact constructor (optional string length). Existence validation (name is a valid term in the declared vocabulary) at registration time in `DescriptorCollector`, which has VocabularyRegistry access.
+**Validation:** Format validation in compact constructor (optional string length). Existence validation (name is a valid term in the declared vocabulary) at registration time in `AgentRegistry.register()`, which has `VocabularyRegistry` access via CDI injection. Both JPA and InMemory registries validate before persisting. `DescriptorCollector` is unchanged — it validates duplicate agentId+tenancyId pairs only and has no VocabularyRegistry access.
 
 **Builder:** gains `capabilityVocabulary(String v)`.
 
-**JPA:** `AgentCapabilityEntity` gains nullable `capability_vocabulary` column. Mapper maps it through.
+**JPA:** `AgentCapabilityEntity` gains nullable `capability_vocabulary` column, added directly to `V1__initial_schema.sql` (no deployed instances — ARC42STORIES §7). No V6 migration. Mapper maps it through.
 
 **YAML:**
 
@@ -165,28 +165,65 @@ private boolean matchesCapability(AgentCapability capability, String requestedNa
 }
 ```
 
-**JpaAgentRegistry:** Injects `VocabularyRegistry`. Before building JPQL, expands the capability name via `expandForMatching()`:
+**JpaAgentRegistry:** Injects `VocabularyRegistry`. Before building JPQL, expands the capability name per vocabulary via `expandForMatchingByVocabulary()`:
 
 ```java
-Set<String> capabilityNames = query.capabilityName() != null
-    ? vocabularyRegistry.expandForMatching(query.capabilityName())
-    : Set.of();
+Map<String, Set<String>> vocabExpansions = query.capabilityName() != null
+    ? vocabularyRegistry.expandForMatchingByVocabulary(query.capabilityName())
+    : Map.of();
 
-// JPQL uses IN clause when expanded, = when not
-if (capabilityNames.size() > 1) {
-    jpql.append(" AND c.name IN :capabilityNames");
-} else {
+if (vocabExpansions.isEmpty()) {
+    // No vocabulary knows this term — exact match only
     jpql.append(" AND c.name = :capabilityName");
+} else {
+    // Exact match for ungrounded capabilities + vocabulary-scoped subsumption
+    jpql.append(" AND (c.name = :capabilityName");
+    int idx = 0;
+    for (var entry : vocabExpansions.entrySet()) {
+        jpql.append(" OR (c.capabilityVocabulary = :vocab" + idx
+            + " AND c.name IN :expanded" + idx + ")");
+        idx++;
+    }
+    jpql.append(")");
 }
 ```
 
-**AgentQuery unchanged.** No new fields. Vocabulary context comes from registered capabilities, not from the query.
+**Behavioral equivalence with InMemoryAgentRegistry:** Both paths produce identical results:
+- Ungrounded capabilities (`capabilityVocabulary == null`) match by exact name only — no subsumption
+- Grounded capabilities match by exact name OR by subsumption within the agent's declared vocabulary
+
+**AgentQuery unchanged.** No new fields. Vocabulary context comes from registered capabilities, not from the query. Subsumption is always scoped by the agent's declared `capabilityVocabulary`, not by the query.
 
 **Reactive registries** get the same changes, wrapped in Uni.
 
 **Match degree for ranking:** consumers call `VocabularyRegistry.match()` directly when they need degrees. The registry does discovery; routing does ranking.
 
-### 7. Starter Capability Vocabulary
+### 7. CapabilityHealth.probe() Integration
+
+`DefaultCapabilityHealth` gains `VocabularyRegistry` injection. The capability lookup in step 2 becomes subsumption-aware:
+
+```java
+private AgentCapability findCapability(List<AgentCapability> capabilities,
+                                        String capabilityTag) {
+    // Exact match first
+    for (var c : capabilities) {
+        if (c.name().equals(capabilityTag)) return c;
+    }
+    // Subsumption match — find declared capability that covers the requested one
+    for (var c : capabilities) {
+        if (c.capabilityVocabulary() != null) {
+            MatchDegree degree = vocabularyRegistry.match(
+                c.capabilityVocabulary(), c.name(), capabilityTag);
+            if (!(degree instanceof MatchDegree.None)) return c;
+        }
+    }
+    return null;
+}
+```
+
+Once the matching capability is found, all downstream probe steps (degradation, exclusion, epistemic check) apply to it unchanged. `DefaultReactiveCapabilityHealth` delegates to the imperative implementation — no separate change needed.
+
+### 8. Starter Capability Vocabulary
 
 `CasehubCapabilityTerm` in `casehub-eidos-vocab`:
 
@@ -211,18 +248,24 @@ URI: `urn:casehub:vocab:capability`.
 
 ## Out of Scope
 
-- **Engine integration** — `AgentCandidateFactory.buildCandidates()` in casehub-engine does its own exact match (`w.capabilityNames().contains(capabilityName)`). Changing it to use subsumption is a separate issue against casehub-engine.
-- **CapabilityHealth.probe() integration** — probe step 2 checks `c.name().equals(capabilityTag)`. Updating to use subsumption is a follow-up.
-- **Cross-vocabulary subsumption** — terms specializing terms in different vocabularies. Future extension; `exactMatch()` handles cross-vocabulary equivalence for now.
+- **Engine integration** — `AgentCandidateFactory.buildCandidates()` in casehub-engine does its own exact match (`w.capabilityNames().contains(capabilityName)`), bypassing `AgentRegistry.find()` entirely. Changing it to use subsumption is tracked as a casehub-engine issue (see Follow-Up Issues below). This spec delivers subsumption for direct `AgentRegistry.find()` callers (claudony, application-tier consumers) and for `CapabilityHealth.probe()`.
+- **Cross-vocabulary subsumption** — terms specializing terms in different vocabularies. `specializes()` is intra-vocabulary only by design. Applications can define their own vocabulary with internal hierarchies; subsumption works within each vocabulary independently. Cross-vocabulary subsumption (e.g., application term specializing a foundation term) is a future extension tracked as a casehub-eidos issue. `exactMatch()` handles cross-vocabulary equivalence (not subsumption) for now.
 - **I/O concept matching** — matching on inputTypes/outputTypes (the OWLS-MX I/O matching model). AgentCapability already carries these; subsumption over them is a separate concern.
 - **Match degree in AgentQuery results** — returning `List<MatchedDescriptor>` instead of `List<AgentDescriptor>`. Deferred; match degree is computed via `VocabularyRegistry.match()` by consumers.
+
+## Follow-Up Issues
+
+| Issue | Repo | Blocks |
+|-------|------|--------|
+| [engine#611](https://github.com/casehubio/engine/issues/611) — AgentCandidateFactory subsumption support | casehub-engine | End-to-end engine dispatch via subsumption |
+| [eidos#73](https://github.com/casehubio/eidos/issues/73) — Cross-vocabulary subsumption | casehub-eidos | Application-tier capability hierarchies extending foundation terms |
 
 ## Module Impact
 
 | Module | Changes |
 |--------|---------|
 | `casehub-eidos-api` | VocabularyTerm.specializes(), MatchDegree sealed interface, VocabularyRegistry new methods, AgentCapability.capabilityVocabulary |
-| `casehub-eidos` (runtime) | CdiVocabularyRegistry DAG index, JpaAgentRegistry subsumption expansion, JpaReactiveAgentRegistry, AgentCapabilityEntity column, DescriptorCollector validation |
+| `casehub-eidos` (runtime) | CdiVocabularyRegistry DAG index, JpaAgentRegistry vocabulary-scoped subsumption, JpaReactiveAgentRegistry, AgentCapabilityEntity column (in V1), DefaultCapabilityHealth subsumption-aware probe, AgentRegistry.register() vocabulary validation |
 | `casehub-eidos-memory` | InMemoryAgentRegistry subsumption matching, InMemoryReactiveAgentRegistry |
 | `casehub-eidos-vocab` | CasehubCapabilityTerm enum, CasehubCapabilityRegistrar |
 
