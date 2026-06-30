@@ -63,7 +63,7 @@ public sealed interface MatchDegree
 
 ### 3. VocabularyRegistry Extensions
 
-Four new methods:
+Five new methods:
 
 ```java
 boolean subsumes(String vocabUri, String generalValue, String specificValue);
