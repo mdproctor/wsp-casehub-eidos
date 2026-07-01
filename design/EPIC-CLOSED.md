@@ -1,5 +1,5 @@
-# Branch Closed: issue-55-capability-specialization-metadata
+# Branch Closed: issue-73-cross-vocab-subsumption
 
-**Date:** 2026-06-19
-**Issues:** 55
+**Date:** 2026-07-01
+**Issues:** 73
 **Status:** merged to main
