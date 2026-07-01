@@ -61,7 +61,7 @@ The conservativity principle is satisfied: injected terms are new to the target 
 
 ### `AncestorEntry` / `DescendantEntry`
 
-Add `vocabUri` field to record which vocabulary declared the term:
+Add `vocabUri` field to record the term's **declaring vocabulary** — the vocabulary whose enum class declares this constant. This is a fixed property of the term (derivable via `((Enum<?>) term).getDeclaringClass()` → reverse lookup in `byUri`), not the vocabulary through which the ancestor was reached during traversal. In diamond inheritance cases where a term is reachable through multiple paths, `vocabUri` is always the same — the term's own declaring vocabulary.
 
 ```java
 private record AncestorEntry(VocabularyTerm term, int depth, String vocabUri) {}
@@ -92,23 +92,46 @@ buildAllHierarchyIndexes()
 4. **Compute global ancestor and descendant maps.** For each term, BFS through the global DAG. Each entry records `(VocabularyTerm, depth, declaringVocabUri)`.
 
 5. **Populate per-vocabulary indexes:**
-   - **Ancestor index for V:** entries for every term declared in V (full global ancestor list) + entries for every term from other vocabularies that has at least one ancestor in V (injection — full global ancestor list).
+   - **Ancestor index for V:** entries for every term declared in V (full global ancestor list) + entries for every term from other vocabularies that has at least one **transitive** ancestor in V (injection — full global ancestor list). "Transitive" means: if Foundation → Mid → App are three vocabularies where App specializes Mid and Mid specializes Foundation, then Foundation's ancestor index includes App terms even though App doesn't directly specialize Foundation.
    - **Descendant index for V:** entries for every term declared in V (full global descendant list including cross-vocabulary descendants).
    - **`valueToVocabs`:** only the declaring vocabulary for each term (no injection).
 
-**`register()` (public API):** When called after `@PostConstruct`, calls `registerTerms()` then `buildAllHierarchyIndexes()`. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies.
+**`register()` (public API):** When called after `@PostConstruct`, calls `registerTerms()` then `buildAllHierarchyIndexes()`. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case.
 
 ### `expandForMatchingByVocabulary()` implementation change
 
-When iterating ancestor and descendant entries, group each by its `vocabUri` field (from the augmented records). Cross-vocabulary terms land under their declaring vocabulary's key in the result map.
+**Mechanism:** The method starts from `valueToVocabs.get(value)` (declaring vocabularies only). For each vocabulary, it iterates ancestor and descendant entries from the augmented indexes. Each entry is grouped into the result map by its `vocabUri` field (the entry's declaring vocabulary), NOT by the vocabulary whose index it was read from. This is the key mechanism: cross-vocabulary entries in the index are routed to their own vocabulary's key in the result map.
 
-Example — expanding `"documentation"`:
+**Example A — expanding `"documentation"` (foundation term, query finds app-tier agents):**
+
+`valueToVocabs.get("documentation")` → `{"urn:casehub:vocab:capability"}`. Iterating the casehub vocab's descendant index for `"documentation"`, entries include `{clinical-documentation-review, 1, "urn:clinical:vocab:capability"}`. Grouping by entry `vocabUri`:
 ```
 "urn:casehub:vocab:capability" → {"documentation", "security-code-review", ...}
 "urn:clinical:vocab:capability" → {"clinical-documentation-review"}
 ```
 
-Each term appears under its declaring vocabulary URI because that is how agent capabilities are qualified. Any registry implementation matching capabilities by (vocabulary, name) pairs gets correct cross-vocabulary matching.
+**Example B — expanding `"clinical-documentation-review"` (app term, query finds foundation agents):**
+
+`valueToVocabs.get("clinical-documentation-review")` → `{"urn:clinical:vocab:capability"}`. Iterating the clinical vocab's ancestor index for `"clinical-documentation-review"`, entries include `{documentation, 1, "urn:casehub:vocab:capability"}`. Grouping by entry `vocabUri`:
+```
+"urn:clinical:vocab:capability" → {"clinical-documentation-review"}
+"urn:casehub:vocab:capability" → {"documentation"}
+```
+
+Both directions produce result maps spanning multiple vocabulary URIs. Any registry implementation matching capabilities by (vocabulary, name) pairs gets correct cross-vocabulary matching — the `InMemoryAgentRegistry` (per-agent `match()`) and JPA registry (`expandForMatchingByVocabulary` → query) paths produce identical results.
+
+**Three-vocabulary example — Foundation → Mid → App:**
+
+Foundation vocab defines `engineering`. Mid vocab defines `software-engineering` specializing `engineering`. App vocab defines `frontend-engineering` specializing `software-engineering`.
+
+Expanding `"engineering"`:
+```
+"urn:foundation" → {"engineering"}
+"urn:mid"        → {"software-engineering"}
+"urn:app"        → {"frontend-engineering"}
+```
+
+The transitive chain ensures App terms appear even though App doesn't directly specialize Foundation.
 
 ## Validation Rules
 
@@ -148,6 +171,7 @@ Each term appears under its declaring vocabulary URI because that is how agent c
 
 **Integration tests:**
 - `CapabilityVocabularyIntegrationTest` — cross-vocabulary subsumption scenario with `CasehubCapabilityTerm` as foundation and a test vocabulary as application tier
+- `JpaAgentRegistryTest` — cross-vocabulary capability match via `find(AgentQuery)`: agent registered with foundation capability (`documentation`), query for app-tier term (`clinical-documentation-review`) finds the agent via Plugin match; and the reverse direction (agent with app-tier capability found by foundation-tier query via Specialization match). Verifies JPA query path parity with InMemoryAgentRegistry.
 
 ## Out of Scope
 
