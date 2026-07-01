@@ -51,8 +51,8 @@ The conservativity principle is satisfied: injected terms are new to the target 
 | `VocabularyTerm.specializes()` | None | Can now return terms from other vocabularies (was rejected at registration; type was always compatible) |
 | `VocabularyRegistry.match()` | None | Traverses cross-vocabulary hierarchy transparently |
 | `VocabularyRegistry.subsumes()` | None | Traverses cross-vocabulary hierarchy transparently |
-| `VocabularyRegistry.ancestors()` | None | Returns cross-vocabulary ancestors |
-| `VocabularyRegistry.descendants()` | None | Returns cross-vocabulary descendants |
+| `VocabularyRegistry.ancestors()` | None | Returns cross-vocabulary ancestors; accepts injected terms (a value may have non-empty ancestors in a vocabulary where `resolve()` returns empty — the term is injected for hierarchy traversal, not natively declared) |
+| `VocabularyRegistry.descendants()` | None | Returns cross-vocabulary descendants; includes descendants from other vocabularies via injected hierarchy edges |
 | `VocabularyRegistry.expandForMatchingByVocabulary()` | None | Return map may contain additional vocabulary keys for cross-vocabulary terms |
 | `VocabularyRegistry.register()` | None | After `@PostConstruct`, triggers full hierarchy rebuild |
 | `VocabularyRegistry.resolve()` | None | Unchanged — resolution stays per-vocabulary |
@@ -96,11 +96,18 @@ buildAllHierarchyIndexes()
    - **Descendant index for V:** entries for every term declared in V (full global descendant list including cross-vocabulary descendants).
    - **`valueToVocabs`:** only the declaring vocabulary for each term (no injection).
 
-6. **Validate all computed indexes (collision check).** Iterate every computed per-vocabulary index. For each vocabulary V, verify no injected term has the same string value as any term already in V's index (native or previously injected). The per-vocabulary index is keyed by term value (string), so a collision would overwrite existing entries and corrupt subsumption semantics. Example: if Foundation defines `review` (no ancestors) and Clinical defines `review` specializing Foundation's `documentation`, injecting Clinical's `review` into Foundation's index would overwrite Foundation's native `review` entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity. Fail fast with an error identifying both terms and their declaring vocabularies. This validation runs across ALL vocabularies before any class-level maps are written — partial failure cannot corrupt previously-valid state.
+6. **Validate all computed indexes (collision check).** Iterate every computed per-vocabulary index, processing vocabularies in deterministic order (sorted by vocabulary URI). For each vocabulary V, verify no injected term has the same string value as any term already in V's index (native or previously injected from another vocabulary). This covers two collision scenarios:
+
+   - **Native-vs-injected:** Foundation defines `review` (no ancestors); Clinical defines `review` specializing Foundation's `documentation`. Injecting Clinical's `review` into Foundation's index would overwrite Foundation's native entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity.
+   - **Injected-vs-injected:** Clinical defines `review` specializing Foundation's `documentation`; Legal defines `review` specializing Foundation's `analysis`. Both require injection into Foundation's index under the same key. This is a global uniqueness constraint: across all vocabularies injecting terms into a target vocabulary's index, no two injected terms may share the same string value.
+
+   Fail fast with an error identifying both colliding terms and their declaring vocabularies, e.g.: `"Value collision in index for 'urn:casehub:vocab:capability': 'review' from 'urn:clinical:vocab:capability' collides with 'review' from 'urn:legal:vocab:capability'"`. Deterministic vocabulary processing order ensures stable, reproducible error messages. This validation runs across ALL vocabularies before any class-level maps are written — partial failure cannot corrupt previously-valid state.
 
 7. **Write indexes to class-level maps.** Only after all validation in steps 2–6 passes, swap the computed local maps into the class-level `ancestorIndex`, `descendantIndex`, and `valueToVocabs`. This ensures atomicity: either all indexes are updated consistently, or none are.
 
-**`register()` (public API):** When called after `@PostConstruct`, calls `registerTerms()` then `buildAllHierarchyIndexes()`. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case. If `buildAllHierarchyIndexes()` fails (cycle, unresolved reference, or value collision), the new vocabulary's terms are rolled back from `byUri`, `byClass`, and `byClassOrdered` — no partial registration state is visible to concurrent readers.
+**`register()` (public API):** When called after `@PostConstruct`, validates the vocabulary and builds term maps locally (metadata, constants, lookup index) without writing to class-level `byUri`, `byClass`, or `byClassOrdered`. Then calls `buildAllHierarchyIndexes()` with the pending vocabulary included in computation. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case. Only after all validation in `buildAllHierarchyIndexes()` passes (no cycles, no unresolved references, no value collisions) are the term maps and hierarchy indexes written to class-level fields together. This eliminates the inconsistency window: concurrent readers never see a vocabulary's terms without its hierarchy, and a failed validation leaves no partial state visible.
+
+**Mutual cross-vocabulary late registration:** If two vocabularies have mutual cross-references (A has a term specializing B and B has a term specializing A — not a term-level cycle, but a vocabulary-level bidirectional dependency), neither can be late-registered individually because each requires the other's vocabulary to be registered for cross-vocabulary edge resolution. This is a known limitation: mutually dependent vocabularies must be registered during `@PostConstruct` (via `VocabularyRegistrar`), not via late `register()` calls. Mutual dependencies across vocabulary tiers would be architecturally unusual — the convention is one-directional (app → foundation).
 
 ### `expandForMatchingByVocabulary()` implementation change
 
@@ -153,6 +160,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 |--------|---------|
 | `api` | None — `VocabularyTerm.specializes()` already returns `List<VocabularyTerm>` |
 | `runtime` | `CdiVocabularyRegistry` — two-pass registration, `AncestorEntry`/`DescendantEntry` augmentation, `expandForMatchingByVocabulary` grouping |
+| `runtime` (JPA registries) | None — `JpaAgentRegistry` and `JpaReactiveAgentRegistry` consume `expandForMatchingByVocabulary()` which now returns multi-vocabulary maps. Verified: JPQL building already creates per-vocabulary `OR (c.capabilityVocabulary = :vocabN AND c.name IN :expandedN)` clauses per map entry, handling multi-vocabulary expansion without code changes |
 | `persistence-memory` | None — `InMemoryAgentRegistry` calls `match()` which is transparently augmented |
 | `vocab` | None — `CasehubCapabilityTerm` is unchanged; application vocabularies add cross-vocabulary `specializes()` |
 | `eval` | None |
@@ -161,7 +169,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 ## Test Strategy
 
 **Unit tests in `CdiVocabularyRegistryTest`:**
-- Cross-vocabulary `specializes()` edge accepted (was previously rejected)
+- Cross-vocabulary `specializes()` edge accepted — replaces existing `register_cross_vocab_specializes_throws` test (`CdiVocabularyRegistryTest.java:618`), which asserts cross-vocabulary `specializes()` throws `IllegalArgumentException`. That test validates the exact behavior being removed; the inline `CrossRefTerm` enum is repurposed for the success case. The validation check at `CdiVocabularyRegistry.java:140` (`"Cross-vocabulary specializes() not allowed"`) is also removed.
 - Cycle detection across vocabulary boundaries
 - `ancestors()` returns cross-vocabulary ancestors
 - `descendants()` returns cross-vocabulary descendants
@@ -172,7 +180,8 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 - Registration order independence (register app vocab before foundation, then foundation — same result)
 - Validation: cross-vocabulary reference to unregistered vocabulary fails
 - Validation: cross-vocabulary reference to nonexistent term fails
-- Validation: injected term value colliding with native term value in target vocabulary fails (e.g., both vocabularies define `review`, one specializing a term from the other)
+- Validation: injected term value colliding with native term value in target vocabulary fails (e.g., Foundation defines `review` and Clinical defines `review` specializing a Foundation term)
+- Validation: injected-vs-injected collision fails (e.g., Clinical and Legal both define `review` specializing different Foundation terms — both attempt injection into Foundation's index under the same key)
 - Late `register()` failure atomicity: register a vocabulary with a value collision, verify the exception, then verify existing vocabularies' indexes are unchanged (no corruption from partial rebuild)
 - Dynamic `register()` after init triggers hierarchy rebuild with cross-vocabulary edges
 
@@ -187,3 +196,4 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 - **Schema/migration changes** — no persistence changes needed; hierarchy is computed at startup from enum declarations
 - **Reactive registry parity** — `DefaultReactiveCapabilityHealth` delegates to the blocking `VocabularyRegistry`; no separate changes needed
 - **ARC42STORIES.MD update** — the subsumption hierarchy (intra-vocabulary from eidos#71 and cross-vocabulary from eidos#73) is not documented in ARC42STORIES.MD. Filed as eidos#75; broader than this spec's scope
+- **Learned exclusion tag semantics** — `DefaultCapabilityHealth.probe()` uses the requested capability tag (not the agent's declared capability) for `CapabilitySpecializationStore` lookups. This is a pre-existing design: recording and lookup both use the same query tag, so behavior is internally consistent. Cross-vocabulary matching makes the mismatch between query-tag and declared-capability more visible but does not introduce it — the same issue exists with intra-vocabulary subsumption (eidos#71). Filed as eidos#76
