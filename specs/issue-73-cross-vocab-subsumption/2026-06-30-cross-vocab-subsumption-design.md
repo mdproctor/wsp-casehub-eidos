@@ -144,7 +144,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 | Parent term's vocabulary must be registered | Hierarchy build (pass 2) | Error — fail fast |
 | Parent term must exist in its vocabulary | Hierarchy build (pass 2) | Error — fail fast |
 | No cycles in the global DAG | Hierarchy build (pass 2) | Error — fail fast with involved terms |
-| Injected term value must not collide with existing term value in target vocabulary index | Hierarchy build (pass 2, step 5) | Error — fail fast with both terms and declaring vocabularies |
+| Injected term value must not collide with existing term value in target vocabulary index | Hierarchy build (pass 2, step 6) | Error — fail fast with both terms and declaring vocabularies |
 | Cross-vocabulary edge logged | Hierarchy build (pass 2) | Info — for observability |
 
 ## Modules Affected
