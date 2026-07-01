@@ -76,14 +76,16 @@ Used by `expandForMatchingByVocabulary()` to group cross-vocabulary terms under 
 ```
 for each registrar:
     registerTerms(registrar.vocabulary())
-buildAllHierarchyIndexes()
+buildAllHierarchyIndexes(Map.copyOf(byUri))
 ```
 
 **`registerTerms()`:** Current `register()` up to the `byUri.put()` call. No hierarchy work.
 
-**`buildAllHierarchyIndexes()`:**
+**`buildAllHierarchyIndexes(Map<String, Class<? extends Enum<?>>> vocabSnapshot)`:**
 
-1. **Build global edge map.** For every term T in every registered vocabulary, collect `T.specializes()` edges. For cross-vocabulary edges, resolve the parent term's vocabulary URI via `((Enum<?>) parent).getDeclaringClass()` → reverse lookup in `byUri`.
+Takes an immutable snapshot of all vocabularies to include in computation (URI → enum class). For `@PostConstruct`, this is `Map.copyOf(byUri)`. For late `register()`, this is `Map.copyOf(byUri)` merged with the pending vocabulary's URI→class entry. The method is a pure function of its input — no reads from class-level `byUri`, `byClass`, or `byClassOrdered` during computation. This ensures the pending vocabulary mechanism (R1-02's deferred term registration) has a clean data path without side-channel dependencies on class-level state.
+
+1. **Build global edge map.** For every term T in every vocabulary in `vocabSnapshot`, collect `T.specializes()` edges. For cross-vocabulary edges, resolve the parent term's vocabulary URI via `((Enum<?>) parent).getDeclaringClass()` → reverse lookup in `vocabSnapshot`.
 
 2. **Validate cross-vocabulary references.** For each cross-vocabulary edge, verify the parent term's vocabulary is registered. Fail fast if not.
 
@@ -91,21 +93,21 @@ buildAllHierarchyIndexes()
 
 4. **Compute global ancestor and descendant maps.** For each term, BFS through the global DAG. Each entry records `(VocabularyTerm, depth, declaringVocabUri)`.
 
-5. **Compute per-vocabulary indexes into local maps:**
-   - **Ancestor index for V:** entries for every term declared in V (full global ancestor list) + entries for every term from other vocabularies that has at least one **transitive** ancestor in V (injection — full global ancestor list). "Transitive" means: if Foundation → Mid → App are three vocabularies where App specializes Mid and Mid specializes Foundation, then Foundation's ancestor index includes App terms even though App doesn't directly specialize Foundation.
+5. **Compute per-vocabulary indexes into local maps (with inline collision detection).** Process vocabularies in deterministic order (sorted by vocabulary URI). For each vocabulary V:
+
+   - **Native terms:** insert entries for every term declared in V, keyed by term value, with its full global ancestor/descendant list.
+   - **Injection phase:** for every term from other vocabularies that has at least one **transitive** ancestor in V, inject it into V's index. "Transitive" means: if Foundation → Mid → App are three vocabularies where App specializes Mid and Mid specializes Foundation, then Foundation's ancestor index includes App terms even though App doesn't directly specialize Foundation. Process source vocabularies in deterministic order (sorted by URI). **Before each injection, check if the key already exists in V's index:**
+     - Key exists with a native entry → **native-vs-injected collision.** Example: Foundation defines `review` (no ancestors); Clinical defines `review` specializing Foundation's `documentation`. Injecting Clinical's `review` would overwrite Foundation's native entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity.
+     - Key exists with a previously injected entry → **injected-vs-injected collision.** Example: Clinical defines `review` specializing Foundation's `documentation`; Legal defines `review` specializing Foundation's `analysis`. Both attempt injection into Foundation's index under the same key. This is a global uniqueness constraint: across all vocabularies injecting terms into a target vocabulary's index, no two injected terms may share the same string value.
+     - On collision, fail fast with an error identifying both colliding terms and their declaring vocabularies, e.g.: `"Value collision in index for 'urn:casehub:vocab:capability': 'review' from 'urn:clinical:vocab:capability' collides with 'review' from 'urn:legal:vocab:capability'"`.
    - **Descendant index for V:** entries for every term declared in V (full global descendant list including cross-vocabulary descendants).
    - **`valueToVocabs`:** only the declaring vocabulary for each term (no injection).
 
-6. **Validate all computed indexes (collision check).** Iterate every computed per-vocabulary index, processing vocabularies in deterministic order (sorted by vocabulary URI). For each vocabulary V, verify no injected term has the same string value as any term already in V's index (native or previously injected from another vocabulary). This covers two collision scenarios:
+   Collision detection is inline during construction — not a separate post-hoc validation pass. This ensures collisions are caught at insertion time, before a second `put()` could silently overwrite the first entry. Deterministic vocabulary processing order ensures stable, reproducible error messages.
 
-   - **Native-vs-injected:** Foundation defines `review` (no ancestors); Clinical defines `review` specializing Foundation's `documentation`. Injecting Clinical's `review` into Foundation's index would overwrite Foundation's native entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity.
-   - **Injected-vs-injected:** Clinical defines `review` specializing Foundation's `documentation`; Legal defines `review` specializing Foundation's `analysis`. Both require injection into Foundation's index under the same key. This is a global uniqueness constraint: across all vocabularies injecting terms into a target vocabulary's index, no two injected terms may share the same string value.
+6. **Write indexes to class-level maps.** Only after all validation in steps 2–5 passes, swap the computed local maps into the class-level `ancestorIndex`, `descendantIndex`, and `valueToVocabs`. This ensures atomicity: either all indexes are updated consistently, or none are.
 
-   Fail fast with an error identifying both colliding terms and their declaring vocabularies, e.g.: `"Value collision in index for 'urn:casehub:vocab:capability': 'review' from 'urn:clinical:vocab:capability' collides with 'review' from 'urn:legal:vocab:capability'"`. Deterministic vocabulary processing order ensures stable, reproducible error messages. This validation runs across ALL vocabularies before any class-level maps are written — partial failure cannot corrupt previously-valid state.
-
-7. **Write indexes to class-level maps.** Only after all validation in steps 2–6 passes, swap the computed local maps into the class-level `ancestorIndex`, `descendantIndex`, and `valueToVocabs`. This ensures atomicity: either all indexes are updated consistently, or none are.
-
-**`register()` (public API):** When called after `@PostConstruct`, validates the vocabulary and builds term maps locally (metadata, constants, lookup index) without writing to class-level `byUri`, `byClass`, or `byClassOrdered`. Then calls `buildAllHierarchyIndexes()` with the pending vocabulary included in computation. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case. Only after all validation in `buildAllHierarchyIndexes()` passes (no cycles, no unresolved references, no value collisions) are the term maps and hierarchy indexes written to class-level fields together. This eliminates the inconsistency window: concurrent readers never see a vocabulary's terms without its hierarchy, and a failed validation leaves no partial state visible.
+**`register()` (public API):** When called after `@PostConstruct`, validates the vocabulary and builds term maps locally (metadata, constants, lookup index) without writing to class-level `byUri`, `byClass`, or `byClassOrdered`. Constructs a snapshot by merging `Map.copyOf(byUri)` with the pending vocabulary's URI→class entry, then calls `buildAllHierarchyIndexes(snapshot)`. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case. Only after all validation in `buildAllHierarchyIndexes()` passes (no cycles, no unresolved references, no value collisions) are the term maps and hierarchy indexes written to class-level fields together. This eliminates the inconsistency window: concurrent readers never see a vocabulary's terms without its hierarchy, and a failed validation leaves no partial state visible.
 
 **Mutual cross-vocabulary late registration:** If two vocabularies have mutual cross-references (A has a term specializing B and B has a term specializing A — not a term-level cycle, but a vocabulary-level bidirectional dependency), neither can be late-registered individually because each requires the other's vocabulary to be registered for cross-vocabulary edge resolution. This is a known limitation: mutually dependent vocabularies must be registered during `@PostConstruct` (via `VocabularyRegistrar`), not via late `register()` calls. Mutual dependencies across vocabulary tiers would be architecturally unusual — the convention is one-directional (app → foundation).
 
@@ -151,7 +153,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 | Parent term's vocabulary must be registered | Hierarchy build (pass 2) | Error — fail fast |
 | Parent term must exist in its vocabulary | Hierarchy build (pass 2) | Error — fail fast |
 | No cycles in the global DAG | Hierarchy build (pass 2) | Error — fail fast with involved terms |
-| Injected term value must not collide with existing term value in target vocabulary index | Hierarchy build (pass 2, step 6) | Error — fail fast with both terms and declaring vocabularies |
+| Injected term value must not collide with existing term value in target vocabulary index | Hierarchy build (pass 2, step 5 — inline during injection) | Error — fail fast with both terms and declaring vocabularies |
 | Cross-vocabulary edge logged | Hierarchy build (pass 2) | Info — for observability |
 
 ## Modules Affected
