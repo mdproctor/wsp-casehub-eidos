@@ -91,13 +91,16 @@ buildAllHierarchyIndexes()
 
 4. **Compute global ancestor and descendant maps.** For each term, BFS through the global DAG. Each entry records `(VocabularyTerm, depth, declaringVocabUri)`.
 
-5. **Populate per-vocabulary indexes:**
+5. **Compute per-vocabulary indexes into local maps:**
    - **Ancestor index for V:** entries for every term declared in V (full global ancestor list) + entries for every term from other vocabularies that has at least one **transitive** ancestor in V (injection — full global ancestor list). "Transitive" means: if Foundation → Mid → App are three vocabularies where App specializes Mid and Mid specializes Foundation, then Foundation's ancestor index includes App terms even though App doesn't directly specialize Foundation.
-   - **Value collision check:** Before injecting a foreign term into V's index, verify its string value does not collide with any term already in V's index (native or previously injected). The per-vocabulary index is keyed by term value (string), so a collision would overwrite existing entries and corrupt subsumption semantics. Example: if Foundation defines `review` (no ancestors) and Clinical defines `review` specializing Foundation's `documentation`, injecting Clinical's `review` into Foundation's index would overwrite Foundation's native `review` entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity. Fail fast with an error identifying both terms and their declaring vocabularies.
    - **Descendant index for V:** entries for every term declared in V (full global descendant list including cross-vocabulary descendants).
    - **`valueToVocabs`:** only the declaring vocabulary for each term (no injection).
 
-**`register()` (public API):** When called after `@PostConstruct`, calls `registerTerms()` then `buildAllHierarchyIndexes()`. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case.
+6. **Validate all computed indexes (collision check).** Iterate every computed per-vocabulary index. For each vocabulary V, verify no injected term has the same string value as any term already in V's index (native or previously injected). The per-vocabulary index is keyed by term value (string), so a collision would overwrite existing entries and corrupt subsumption semantics. Example: if Foundation defines `review` (no ancestors) and Clinical defines `review` specializing Foundation's `documentation`, injecting Clinical's `review` into Foundation's index would overwrite Foundation's native `review` entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity. Fail fast with an error identifying both terms and their declaring vocabularies. This validation runs across ALL vocabularies before any class-level maps are written — partial failure cannot corrupt previously-valid state.
+
+7. **Write indexes to class-level maps.** Only after all validation in steps 2–6 passes, swap the computed local maps into the class-level `ancestorIndex`, `descendantIndex`, and `valueToVocabs`. This ensures atomicity: either all indexes are updated consistently, or none are.
+
+**`register()` (public API):** When called after `@PostConstruct`, calls `registerTerms()` then `buildAllHierarchyIndexes()`. Rebuilding all indexes is necessary because a new vocabulary might introduce cross-vocabulary edges affecting existing vocabularies. The cost is O(V × T) where V is the number of registered vocabularies and T is the total term count across all vocabularies. This is acceptable because vocabulary hierarchies are small (CasehubCapabilityTerm has 8 terms) and late registration is rare — CDI discovery during `@PostConstruct` covers the common case. If `buildAllHierarchyIndexes()` fails (cycle, unresolved reference, or value collision), the new vocabulary's terms are rolled back from `byUri`, `byClass`, and `byClassOrdered` — no partial registration state is visible to concurrent readers.
 
 ### `expandForMatchingByVocabulary()` implementation change
 
@@ -170,6 +173,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 - Validation: cross-vocabulary reference to unregistered vocabulary fails
 - Validation: cross-vocabulary reference to nonexistent term fails
 - Validation: injected term value colliding with native term value in target vocabulary fails (e.g., both vocabularies define `review`, one specializing a term from the other)
+- Late `register()` failure atomicity: register a vocabulary with a value collision, verify the exception, then verify existing vocabularies' indexes are unchanged (no corruption from partial rebuild)
 - Dynamic `register()` after init triggers hierarchy rebuild with cross-vocabulary edges
 
 **Integration tests:**
