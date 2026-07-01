@@ -93,6 +93,7 @@ buildAllHierarchyIndexes()
 
 5. **Populate per-vocabulary indexes:**
    - **Ancestor index for V:** entries for every term declared in V (full global ancestor list) + entries for every term from other vocabularies that has at least one **transitive** ancestor in V (injection — full global ancestor list). "Transitive" means: if Foundation → Mid → App are three vocabularies where App specializes Mid and Mid specializes Foundation, then Foundation's ancestor index includes App terms even though App doesn't directly specialize Foundation.
+   - **Value collision check:** Before injecting a foreign term into V's index, verify its string value does not collide with any term already in V's index (native or previously injected). The per-vocabulary index is keyed by term value (string), so a collision would overwrite existing entries and corrupt subsumption semantics. Example: if Foundation defines `review` (no ancestors) and Clinical defines `review` specializing Foundation's `documentation`, injecting Clinical's `review` into Foundation's index would overwrite Foundation's native `review` entry — causing `subsumes("foundation-uri", "documentation", "review")` to spuriously return `true` for Foundation's own unrelated `review` term, violating conservativity. Fail fast with an error identifying both terms and their declaring vocabularies.
    - **Descendant index for V:** entries for every term declared in V (full global descendant list including cross-vocabulary descendants).
    - **`valueToVocabs`:** only the declaring vocabulary for each term (no injection).
 
@@ -140,6 +141,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 | Parent term's vocabulary must be registered | Hierarchy build (pass 2) | Error — fail fast |
 | Parent term must exist in its vocabulary | Hierarchy build (pass 2) | Error — fail fast |
 | No cycles in the global DAG | Hierarchy build (pass 2) | Error — fail fast with involved terms |
+| Injected term value must not collide with existing term value in target vocabulary index | Hierarchy build (pass 2, step 5) | Error — fail fast with both terms and declaring vocabularies |
 | Cross-vocabulary edge logged | Hierarchy build (pass 2) | Info — for observability |
 
 ## Modules Affected
@@ -167,6 +169,7 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 - Registration order independence (register app vocab before foundation, then foundation — same result)
 - Validation: cross-vocabulary reference to unregistered vocabulary fails
 - Validation: cross-vocabulary reference to nonexistent term fails
+- Validation: injected term value colliding with native term value in target vocabulary fails (e.g., both vocabularies define `review`, one specializing a term from the other)
 - Dynamic `register()` after init triggers hierarchy rebuild with cross-vocabulary edges
 
 **Integration tests:**
@@ -179,3 +182,4 @@ The transitive chain ensures App terms appear even though App doesn't directly s
 - **`CapabilityVocabularyValidator` changes** — validates that a capability's name exists in its declared vocabulary. Cross-vocabulary subsumption doesn't change this — the capability is still grounded in its declaring vocabulary.
 - **Schema/migration changes** — no persistence changes needed; hierarchy is computed at startup from enum declarations
 - **Reactive registry parity** — `DefaultReactiveCapabilityHealth` delegates to the blocking `VocabularyRegistry`; no separate changes needed
+- **ARC42STORIES.MD update** — the subsumption hierarchy (intra-vocabulary from eidos#71 and cross-vocabulary from eidos#73) is not documented in ARC42STORIES.MD. Filed as eidos#75; broader than this spec's scope
