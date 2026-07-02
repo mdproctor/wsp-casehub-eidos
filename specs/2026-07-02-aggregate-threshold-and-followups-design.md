@@ -61,13 +61,17 @@ Default: 5. Resolved per-tenancy via `PreferenceProvider`.
 
 **Default rationale:** The aggregate fires only when per-dimension hasn't — every dimension's count is below the per-dimension threshold (default 3, so max individual count = 2). With aggregate threshold 5, at least ⌈5/2⌉ = 3 dimensions must have violations to trigger. The invariant: **the aggregate detects broad behavioral drift across multiple dimensions, not spikes in any single dimension.**
 
-**Co-tuning guidance:** The aggregate threshold should be meaningfully higher than the per-dimension threshold. If aggregate ≤ per-dimension, a single dimension at count = per-dimension − 1 plus one other dimension can trigger the aggregate, making it function as a lowered per-dimension threshold rather than a breadth detector. Recommended invariant: `aggregate ≥ per-dimension + 2` ensures at least 3 dimensions must contribute.
+**Co-tuning guidance:** When the aggregate fires, every dimension has at most `per_dimension − 1` violations. The minimum dimensions to trigger is `⌈aggregate / (per_dimension − 1)⌉`. To ensure at least K dimensions must contribute, set:
 
-| Per-dimension | Aggregate | Min dimensions to trigger | Character |
-|---------------|-----------|--------------------------|-----------|
-| 3 | 5 (default) | 3 | Standard: broad drift detection |
-| 3 | 8 | 4 | Conservative: tolerates wider spread |
-| 5 | 8 | 3 | Higher per-dim tolerance, same breadth |
+`aggregate ≥ (K − 1) × (per_dimension − 1) + 1`
+
+For K = 3 (at least 3 dimensions): `aggregate ≥ 2 × (per_dimension − 1) + 1`. At the default per-dimension = 3, this gives aggregate ≥ 5.
+
+| Per-dimension | Aggregate | Min dimensions | Formula | Character |
+|---------------|-----------|----------------|---------|-----------|
+| 3 | 5 (default) | ⌈5/2⌉ = 3 | 2(2)+1 | Standard: 3-dimension breadth |
+| 3 | 8 | ⌈8/2⌉ = 4 | 3(2)+1 | Conservative: 4+ dimensions |
+| 5 | 9 | ⌈9/4⌉ = 3 | 2(4)+1 | Higher per-dim, same 3-dim breadth |
 
 `AggregateViolationThresholdPreference` record in `runtime/preferences/`, same pattern as `ComplianceViolationThresholdPreference`. Validation: value >= 1.
 
