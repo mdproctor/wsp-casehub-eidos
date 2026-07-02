@@ -8,7 +8,7 @@
 
 ## Scope
 
-Seven issues from the eidos#85 behavioral contracts design review and code review, handled in one branch. Two require design (#88, #86); five are mechanical.
+Seven of the follow-up issues from the eidos#85 behavioral contracts design review and code review, handled in one branch. Two require design (#88, #86); five are mechanical. Two sibling issues (#87, #89) are independent design efforts tracked separately — see Related Issues.
 
 ---
 
@@ -44,6 +44,8 @@ record BehavioralViolation(Map<String, Integer> violations, ViolationKind kind) 
 
 Breaking change to record constructor. No external consumers — engine doesn't reference `BehavioralViolation`.
 
+**Downstream note:** Engine issue #89 contains routing guidance that predates ViolationKind: "The `violations` map provides all violated dimensions." This is now only accurate for `AGGREGATE`. For `PER_DIMENSION`, the map contains only dimensions exceeding the per-dimension threshold. Issue #89's implementation must handle both ViolationKind semantics when building dimension-aware routing fallback.
+
 ### Preference
 
 New `PreferenceKey<AggregateViolationThresholdPreference>` in `EidosPreferenceKeys`:
@@ -56,6 +58,16 @@ public static final PreferenceKey<AggregateViolationThresholdPreference> AGGREGA
 ```
 
 Default: 5. Resolved per-tenancy via `PreferenceProvider`.
+
+**Default rationale:** The aggregate fires only when per-dimension hasn't — every dimension's count is below the per-dimension threshold (default 3, so max individual count = 2). With aggregate threshold 5, at least ⌈5/2⌉ = 3 dimensions must have violations to trigger. The invariant: **the aggregate detects broad behavioral drift across multiple dimensions, not spikes in any single dimension.**
+
+**Co-tuning guidance:** The aggregate threshold should be meaningfully higher than the per-dimension threshold. If aggregate ≤ per-dimension, a single dimension at count = per-dimension − 1 plus one other dimension can trigger the aggregate, making it function as a lowered per-dimension threshold rather than a breadth detector. Recommended invariant: `aggregate ≥ per-dimension + 2` ensures at least 3 dimensions must contribute.
+
+| Per-dimension | Aggregate | Min dimensions to trigger | Character |
+|---------------|-----------|--------------------------|-----------|
+| 3 | 5 (default) | 3 | Standard: broad drift detection |
+| 3 | 8 | 4 | Conservative: tolerates wider spread |
+| 5 | 8 | 3 | Higher per-dim tolerance, same breadth |
 
 `AggregateViolationThresholdPreference` record in `runtime/preferences/`, same pattern as `ComplianceViolationThresholdPreference`. Validation: value >= 1.
 
@@ -85,7 +97,27 @@ Recorded as ADR 0006. Rationale summary:
 
 ## #83 — CapabilityResolver Unification
 
-Replace `InMemoryAgentRegistry.matchesCapability()` body with `CapabilityResolver.match()`. The method duplicates identical logic: exact name check → vocabulary grounding check → `registry.match()`. Single-line change.
+Replace `InMemoryAgentRegistry.matchesCapability()` body with a delegation to `CapabilityResolver.match()`.
+
+The methods share the same algorithm (exact name match → vocabulary guard → `registry.match()`) but differ in two concrete ways:
+
+1. **Vocabulary guard divergence:** `CapabilityResolver.match()` checks `capabilityVocabulary().isBlank()` (string content). `matchesCapability()` checks `!vocabularyRegistry.isResolvable()` (CDI bean availability). The CDI availability check moves to the call site as a pre-guard.
+
+2. **CDI Instance resolution:** `InMemoryAgentRegistry` holds `Instance<VocabularyRegistry>` requiring `.isResolvable()` guard and `.get()` resolution before calling the static `CapabilityResolver.match()`.
+
+**Latent bug fix:** `matchesCapability()` does not check `isBlank()` on the vocabulary string — a capability with a blank (non-null, whitespace-only) vocabulary passes through to `registry.match()` with a blank URI. `CapabilityResolver.match()` correctly returns `MatchDegree.None` for blank vocabularies. The unification fixes this.
+
+**Replacement body (~4 lines):**
+
+```java
+private boolean matchesCapability(AgentCapability capability, String requestedName) {
+    if (!vocabularyRegistry.isResolvable()) {
+        return capability.name().equals(requestedName);
+    }
+    return !(CapabilityResolver.match(capability, requestedName,
+                                      vocabularyRegistry.get()) instanceof MatchDegree.None);
+}
+```
 
 Reactive registry delegates to blocking, inherits fix automatically.
 
@@ -98,6 +130,7 @@ Reactive registry delegates to blocking, inherits fix automatically.
 3. Rename field `specializationStore` → `signalStore` in `DefaultCapabilityHealthExclusionTest`
 4. Replace FQ `java.util.LinkedHashMap` with import in `DefaultCapabilityHealth.java:95`
 5. Add validation tests for `ComplianceViolationThresholdPreference(0)` and `ExcludeThresholdPreference(0)` throwing
+6. **Item 4 — SOUND evidence convention affirmed:** `ComplianceAttestations.compliance()` hardcodes `null` evidence for SOUND verdicts. This is the correct convention: SOUND means "normal operation observed" — `dimensionScore` captures the quantitative measurement. No evidence string is needed. If positive compliance observations need structured evidence in future, adding an optional `evidence` parameter is a mechanical API change, not a design concern.
 
 ---
 
@@ -133,10 +166,17 @@ Update `docs/PLATFORM.md` and `docs/repos/casehub-eidos.md`:
 6. **parent#338** — PLATFORM.md sync (cross-repo, after eidos work is complete)
 7. **engine#631** — Close issue (no code changes)
 
+## Related Issues
+
+Open issues from the same eidos#85 review, not addressed by this spec:
+
+- **#87** — Delegation and escalation compliance dimension design. Requires observation window semantics (delegation) and vocabulary-aware interpretation (escalation). Independent design effort.
+- **#89** — Engine integration with behavioral contracts (CapabilityStatus handling, observation recording). Directly affected by the ViolationKind change in #88 — see §#88 API Change downstream note.
+
 ## Platform Coherence
 
 - `ViolationKind` in api/ (Tier 1, pure Java) — correct
 - `AggregateViolationThresholdPreference` in runtime/preferences — follows established pattern
 - Breaking `BehavioralViolation` record change — zero downstream consumers
 - ADR for #86 aligns with PP-20260611-228599
-- No deferred concerns requiring new issues
+- No new deferred concerns — sibling issues #87 and #89 are pre-existing (see Related Issues)
