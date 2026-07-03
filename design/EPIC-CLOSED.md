@@ -1,5 +1,5 @@
-# Branch Closed: issue-85-behavioral-contracts
+# Branch Closed: issue-84-find-returns-match-metadata
 
-**Date:** 2026-07-02
-**Issues:** 85
+**Date:** 2026-07-03
+**Issues:** 84
 **Status:** merged to main
