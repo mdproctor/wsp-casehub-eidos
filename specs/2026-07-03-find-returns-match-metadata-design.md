@@ -28,7 +28,7 @@ public record ResolvedCapability(AgentCapability capability, MatchDegree degree)
 public record AgentMatch(AgentDescriptor descriptor, ResolvedCapability resolvedCapability) {}
 ```
 
-`resolvedCapability` is null when the query has no `capabilityName` (slot-only or `all()` queries). Both fields are non-null when `query.capabilityName() != null`.
+`resolvedCapability` is null when the query has no `capabilityName` (slot-only or `all()` queries). Non-null for all capability-bearing queries, including combined slot-and-capability. The nesting (vs issue #84's flat shape) exists because `ResolvedCapability` serves double duty as `resolve()`'s return type — a flat `AgentMatch` would require a one-off pair for resolve's return or duplicate fields.
 
 ### CapabilityResolver changes
 
@@ -39,7 +39,7 @@ public static ResolvedCapability resolve(
     List<AgentCapability> capabilities, String capabilityTag, VocabularyRegistry registry)
 ```
 
-Returns null when no match (same contract as today). The internal loop already computes `MatchDegree` — it now carries it in the return value instead of discarding it.
+Returns null when no match (same contract as today). The selection loop changes from tracking raw `int bestDepth` to tracking `MatchDegree bestDegree` and using `compareTo()`. This fixes the existing bug where Plugin and Specialization compete on the same depth variable — a Specialization(depth=1) incorrectly beats Plugin(depth=2) under the current logic. With Comparable-based selection, the instanceof cascade for Plugin/Specialization collapses to a single `compareTo()` check.
 
 `match()` is unchanged — it already returns `MatchDegree`.
 
@@ -51,6 +51,8 @@ Returns null when no match (same contract as today). The internal loop already c
 - `Plugin(depth)` — lower depth is better; Plugin at any depth beats Specialization
 - `Specialization(depth)` — lower depth is better
 - `None` (worst)
+
+Plugin ranks above Specialization because a Plugin match means the agent's declared capability subsumes the request — the agent is guaranteed to cover it. A Specialization match means the agent's capability is narrower than the request — it covers only a subset. This is standard OWLS-MX semantics, not a policy choice.
 
 ### AgentRegistry.find() changes
 
@@ -70,7 +72,7 @@ Uni<List<AgentMatch>> find(AgentQuery query);
 
 ### Implementation changes
 
-**InMemoryAgentRegistry:** Replace boolean `matchesCapability()` with `CapabilityResolver.resolve()` per agent. Capture `ResolvedCapability`, build `AgentMatch`, sort by degree.
+**InMemoryAgentRegistry:** Replace boolean `matchesCapability()` with `CapabilityResolver.resolve()` per agent. Capture `ResolvedCapability`, build `AgentMatch`, sort by degree. When `VocabularyRegistry` is unavailable (`Instance.isResolvable()` is false), fall back to exact name comparison and wrap matches as `ResolvedCapability(capability, new MatchDegree.Exact())`.
 
 **JpaAgentRegistry:** JPQL vocabulary-expansion query stays as-is (DB-level filtering is efficient). Post-process results: for each returned entity, call `CapabilityResolver.resolve()` to compute match metadata. Build `AgentMatch`, sort by degree. The post-processing cost is negligible — result sets are typically single-digit, vocabulary lookups are in-memory.
 
@@ -80,6 +82,8 @@ Uni<List<AgentMatch>> find(AgentQuery query);
 
 **DefaultCapabilityHealth.probe():** Extract `.capability()` from the `ResolvedCapability` returned by `resolve()`. Probe logic is otherwise unchanged — it doesn't need the degree for its own decisions.
 
+**DefaultReactiveCapabilityHealth:** Pure delegation to `DefaultCapabilityHealth` — change propagates automatically. No code changes needed.
+
 ### Test impact
 
 42 callers of `find()` across eidos tests. All are mechanical updates: extract `.descriptor()` from `AgentMatch` or use the new match fields. The subsumption scenario test (`multiple_agents_ranked_by_match_degree`) can now assert ordering instead of just presence.
@@ -87,8 +91,8 @@ Uni<List<AgentMatch>> find(AgentQuery query);
 ### Out of scope
 
 - Engine `AgentCandidateFactory` — benefits from `ResolvedCapability` but is engine#632's concern.
-- Adding match degree to `AgentCandidate` — engine-side change.
-- Ranking strategies beyond OWLS-MX default ordering — dispatch-specific ranking is the engine's domain.
+- Adding match degree to `AgentCandidate` — engine-side change (engine#638).
+- Ranking strategies beyond OWLS-MX default ordering — dispatch-specific ranking is the engine's domain (engine#639).
 
 ## Platform coherence
 
