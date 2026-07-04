@@ -124,11 +124,36 @@ three-step resolution (axisVocabularies → dispositionVocabulary →
 domainVocabulary). This keeps `BehavioralExpectations` decoupled from
 `AgentDescriptor`'s vocabulary resolution logic.
 
+**Convenience overload** for callers with a full descriptor:
+
+```java
+public static boolean escalationExpected(
+        final AgentDescriptor descriptor,
+        final VocabularyRegistry registry) {
+    if (descriptor == null || descriptor.disposition() == null) return false;
+    return descriptor.vocabUriForAxis(DispositionAxis.AUTONOMY)
+            .map(uri -> escalationExpected(descriptor.disposition(), uri, registry))
+            .orElse(false);
+}
+```
+
+This internalizes the `vocabUriForAxis` call and Optional handling, matching
+`delegationExpected(AgentDisposition)` in ergonomics. The 3-param overload
+remains for callers with pre-resolved vocabulary URIs (engine observation
+paths, unit tests).
+
 **`delegationExpected(AgentDisposition)` is unchanged** — it already returns
-the correct boolean from the disposition flag. "Reinstated with observation
-context" is satisfied by connecting it to the compliance framework via the
-new `ComplianceDimension.DELEGATION` constant and the observation contract
-documented below.
+the correct boolean from the disposition flag.
+
+**Issue #87 acceptance criterion 2** — "reinstated with observation context":
+The "observation context" is not a parameter on the method itself. It is the
+compliance framework that `delegationExpected()` feeds into:
+`ComplianceDimension.DELEGATION` provides the dimension key, the engine
+records `VIOLATED`/`COMPLIANT` signals via `BehavioralSignalStore`, and probe
+Step 6 evaluates those signals against the TTL + threshold window (90 days
+default, 3 violations per-dimension). The method was never removed — it was
+deferred from #85 because the surrounding observation infrastructure was not
+yet designed. This spec completes that infrastructure.
 
 ### 4. Observation Contract
 
@@ -158,6 +183,15 @@ dimensions without modification.
 | Compliance signal | `record(agentId, tenancyId, capabilityName, ESCALATION, COMPLIANT)` |
 | Window | TTL (90 days default) + threshold (3 per-dimension default) |
 
+**Signal consumption asymmetry:**
+- **VIOLATED signals** drive probe Step 6 (capability health) — counted
+  against per-dimension and aggregate thresholds to determine
+  `BehavioralViolation` status
+- **COMPLIANT signals** drive positive trust attestation via
+  `ComplianceAttestations.compliance()` (ledger impact) — the trust system
+  learns about consistent good behavior, not just failures
+- Both MUST be recorded by the engine for the system to function correctly
+
 **What eidos does NOT define:**
 - Delegation eligibility criteria — engine policy based on task characteristics
 - Escalation trigger conditions — engine policy based on task context
@@ -173,11 +207,20 @@ string. No changes needed.
 **eidos-api (Tier 1, pure Java):**
 - `VocabularyTerm` — add `default boolean impliesSupervision() { return false; }`
 - `ComplianceDimension` — add `DELEGATION` and `ESCALATION` constants
-- `BehavioralExpectations` — add `escalationExpected(AgentDisposition, String, VocabularyRegistry)`
+- `BehavioralExpectations` — add `escalationExpected(AgentDisposition, String, VocabularyRegistry)` and convenience overload `escalationExpected(AgentDescriptor, VocabularyRegistry)`
 
 **casehub-eidos-vocab:**
 - `ConscientiousnessTerm.DIRECTED` — override `impliesSupervision()` → `true`
 - `ConscientiousnessTerm.SEMI_AUTONOMOUS` — override `impliesSupervision()` → `true`
+- `DiscTerm.STEADINESS` — override `impliesSupervision()` → `true` (AUTONOMY axis equivalent: DIRECTED)
+- `DiscTerm.INFLUENCE` — override `impliesSupervision()` → `true` (AUTONOMY axis equivalent: SEMI_AUTONOMOUS)
+- `DiscTerm.CONSCIENTIOUSNESS_DISC` — override `impliesSupervision()` → `true` (AUTONOMY axis equivalent: SEMI_AUTONOMOUS)
+
+**ARC42STORIES.MD:**
+- §1 description — add DELEGATION, ESCALATION to `ComplianceDimension` constant list
+- L1 and L4 layer entries — add `escalationExpected()` to `BehavioralExpectations` method list
+- `ComplianceDimension.java` file entry — add DELEGATION, ESCALATION constants
+- `BehavioralExpectations.java` file entry — add `escalationExpected` signatures
 
 **No changes to:**
 - `BehavioralSignalStore` — existing API handles new dimensions
@@ -201,8 +244,24 @@ string. No changes needed.
   - Unresolvable autonomy value → `false`
 
 **Unit tests (casehub-eidos-vocab):**
-- `ConscientiousnessTermTest` — `impliesSupervision()` for all three
-  AUTONOMY terms
+- `ConscientiousnessTermTest` — `impliesSupervision()` for ALL 12 terms:
+  - DIRECTED → `true`, SEMI_AUTONOMOUS → `true`, AUTONOMOUS → `false`
+  - STRICT, PRINCIPLED, FLEXIBLE → `false` (RULE_FOLLOWING axis)
+  - CONSERVATIVE, MEASURED, BOLD → `false` (RISK_APPETITE axis)
+  - COLLABORATIVE, INDEPENDENT, FACILITATIVE → `false` (SOCIAL_ORIENTATION axis)
+- `DiscTermTest` — `impliesSupervision()` for all four terms:
+  - STEADINESS → `true`, INFLUENCE → `true`, CONSCIENTIOUSNESS_DISC → `true`
+  - DOMINANCE → `false`
+- Cross-vocabulary consistency test: for every DISC term that has an
+  AUTONOMY `axisExactMatch` to a ConscientiousnessTerm, assert that both
+  terms return the same value from `impliesSupervision()`. This catches
+  future vocabulary additions where the override is forgotten.
+
+**Cross-vocabulary escalation test (eidos-api):**
+- `BehavioralExpectationsTest` — `escalationExpected()` with DISC autonomy
+  vocabulary:
+  - DISC `steadiness` with registered DISC vocab → `true`
+  - DISC `dominance` with registered DISC vocab → `false`
 
 **Integration test (runtime):**
 - Probe pipeline with DELEGATION VIOLATED signals — verify Step 6 fires
@@ -213,12 +272,14 @@ string. No changes needed.
 
 ### 7. Cross-Repo Impact
 
-**Engine #89** already tracks compliance signal recording for latency and
-attestation-rate. This design extends the scope to delegation and escalation —
-update #89's description to include both new dimensions.
+**Engine #89** tracks compliance signal recording for latency and
+attestation-rate — measurement-based observations with straightforward
+recording logic. Its acceptance criteria and scope are unchanged.
 
-**No new issues needed.** The engine observation implementation is already
-scoped to #89.
+**Engine #92** (filed) covers delegation and escalation observation — these
+are policy-based judgments (task complexity for delegation, uncertainty
+detection for escalation) that require independent design work in the engine.
+See acceptance criteria on the issue.
 
 ## What This Design Does NOT Do
 
