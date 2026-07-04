@@ -298,7 +298,7 @@ string. No changes needed.
 attestation-rate — measurement-based observations with straightforward
 recording logic. Its acceptance criteria and scope are unchanged.
 
-**Engine #92** (filed) covers delegation and escalation observation — these
+**Engine #645** (filed) covers delegation and escalation observation — these
 are policy-based judgments (task complexity for delegation, uncertainty
 detection for escalation) that require independent design work in the engine.
 See acceptance criteria on the issue.
