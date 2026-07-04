@@ -88,6 +88,21 @@ participate in behavioral compliance.
 | `SEMI_AUTONOMOUS` | `true` | "Acts within defined boundaries" — bounded supervision |
 | `AUTONOMOUS` | `false` (default) | "Acts on own judgment" — no supervision implied |
 
+**DiscTerm overrides:**
+
+| Term | `impliesSupervision()` | Rationale |
+|------|------------------------|-----------|
+| `STEADINESS` | `true` | AUTONOMY axis equivalent: DIRECTED (supervised) |
+| `INFLUENCE` | `true` | AUTONOMY axis equivalent: SEMI_AUTONOMOUS (bounded supervision) |
+| `CONSCIENTIOUSNESS_DISC` | `true` | AUTONOMY axis equivalent: SEMI_AUTONOMOUS (bounded supervision) |
+| `DOMINANCE` | `false` (default) | AUTONOMY axis equivalent: AUTONOMOUS (no supervision) |
+
+DISC terms override `impliesSupervision()` independently — each vocabulary
+declares the behavioral properties of its own terms. The cross-vocabulary
+`axisExactMatch` bridge declares term equivalence, not behavioral property
+inheritance. A cross-vocabulary consistency test (§6) validates that AUTONOMY
+axis equivalents have consistent `impliesSupervision()` values.
+
 Domain vocabulary authors who create AUTONOMY axis terms override this method
 for terms that imply supervised behavior. The platform treats false as "no
 escalation expectation" — fail open.
@@ -233,7 +248,7 @@ string. No changes needed.
 ### 6. Test Plan
 
 **Unit tests (eidos-api):**
-- `BehavioralExpectationsTest` — `escalationExpected()`:
+- `BehavioralExpectationsTest` — `escalationExpected()` 3-param overload:
   - DIRECTED autonomy with registered vocab → `true`
   - SEMI_AUTONOMOUS autonomy with registered vocab → `true`
   - AUTONOMOUS autonomy with registered vocab → `false`
@@ -242,6 +257,13 @@ string. No changes needed.
   - Null vocabUri → `false`
   - Null registry → `false`
   - Unresolvable autonomy value → `false`
+- `BehavioralExpectationsTest` — `escalationExpected()` convenience overload:
+  - Null descriptor → `false`
+  - Descriptor with null disposition → `false`
+  - Descriptor with no vocabulary URI for AUTONOMY axis (no axisVocabularies,
+    no dispositionVocabulary, no domainVocabulary) → `false`
+  - Descriptor with DIRECTED autonomy and registered vocab → `true`
+  - Descriptor with AUTONOMOUS autonomy and registered vocab → `false`
 
 **Unit tests (casehub-eidos-vocab):**
 - `ConscientiousnessTermTest` — `impliesSupervision()` for ALL 12 terms:
