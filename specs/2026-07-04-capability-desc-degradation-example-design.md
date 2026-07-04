@@ -30,7 +30,7 @@ public record AgentCapability(
 )
 ```
 
-Validated with `AgentDescriptorValidator.validateOptional("description", description, 500)`.
+Validated with `AgentDescriptorValidator.validateOptional("description", description, MAX_DESCRIPTION)`. New constant `static final int MAX_DESCRIPTION = 500` in `AgentDescriptorValidator`, consistent with the existing named-constant convention.
 
 Builder: add `.description(String)` method. Update `build()` to pass through.
 
@@ -53,7 +53,7 @@ ALTER TABLE agent_capability ADD COLUMN description TEXT;
 
 ### Rendering
 
-**Protocol PP-20260611-228599 compliance:** `description` is human-readable text, not a numeric routing signal. It renders in all formats — same treatment as `inputTypes`/`outputTypes`.
+**Protocol PP-20260611-228599 compliance:** `description` is human-readable text, not a numeric routing signal — it renders in all formats, like capability names.
 
 **LLM payload** (`buildDescriptorPayload`): include `description` in the capability node for all formats (not gated behind `format == A2A_CARD`).
 
@@ -61,7 +61,9 @@ ALTER TABLE agent_capability ADD COLUMN description TEXT;
 
 **PROSE** (`assembleProse`): for each capability, append description in parentheses when present; capabilities without a description render name only. E.g. `"code-review (reviews code for quality and correctness), test-writing."`.
 
-**A2A_CARD** (`assembleA2aCard`): declared `description` is the fallback. LLM-enriched `A2AEnrichment.CapabilityNarrative.description()` wins when available (current behaviour — enriched description already writes to the `description` field in the JSON). When no enrichment exists but declared description is present, use the declared description.
+**A2A_CARD** (`assembleA2aCard`): declared `description` is the fallback. LLM-enriched `A2AEnrichment.CapabilityNarrative.description()` wins when **non-blank** (current behaviour — enriched description already writes to the `description` field in the JSON). When enrichment is absent, or the enriched description is blank, fall through to the declared description. This matches the `addIfNonBlank` pattern used elsewhere in the pipeline.
+
+**Protocol PP-20260613-608684 (a2a-structural-assembly-hash-coverage):** satisfied because `description` is included in `buildDescriptorPayload` output for all formats including A2A_CARD. Changing the declared description changes the `descriptorHash` in the cache key, forcing a cache miss.
 
 ### Test updates
 
@@ -77,7 +79,8 @@ New tests:
 - Validate `description` rejects strings > 500 chars
 - Validate `description` passes through builder
 - Verify MARKDOWN/PROSE/A2A_CARD rendering includes description when present
-- Verify A2A_CARD prefers enriched description over declared
+- Verify A2A_CARD prefers enriched description over declared when non-blank
+- Verify A2A_CARD falls through to declared description when enriched description is blank
 
 ---
 
@@ -98,37 +101,42 @@ DegradationAndRecoveryTest
 
 Setup:
   Register one agent ("worker-1") with capability "data-processing"
+  descriptor = registry.findById("worker-1", tenancyId)
+  ctx = ProbeContext.of(null)   // null taskDomain avoids epistemic/exclusion checks
 
 Test 1 — probe_returns_ready_when_no_degradation:
-  probe("data-processing") → Ready
+  health.probe(descriptor, "data-processing", ctx) → Ready
 
 Test 2 — probe_returns_degraded_after_recording:
   stateStore.record("worker-1", tenancyId, RATE_LIMITED, futureExpiry)
-  probe("data-processing") → Degraded(RATE_LIMITED, ...)
+  health.probe(descriptor, "data-processing", ctx) → Degraded(RATE_LIMITED, ...)
 
 Test 3 — probe_returns_ready_after_clear:
   stateStore.record("worker-1", tenancyId, RATE_LIMITED, futureExpiry)
-  probe → Degraded
+  health.probe(descriptor, "data-processing", ctx) → Degraded
   stateStore.clear("worker-1", tenancyId)
-  probe → Ready
+  health.probe(descriptor, "data-processing", ctx) → Ready
 
 Test 4 — probe_returns_ready_after_ttl_expires:
   stateStore.record("worker-1", tenancyId, CONTEXT_EXHAUSTED, pastExpiry)
-  probe → Ready  (TTL already expired, store returns empty)
+  health.probe(descriptor, "data-processing", ctx) → Ready  (TTL already expired, store returns empty)
 
 Test 5 — degradation_reasons_are_distinguishable:
-  Record with OVERLOADED, probe → Degraded(OVERLOADED, ...)
-  Clear, record with DOMAIN_MISMATCH, probe → Degraded(DOMAIN_MISMATCH, ...)
+  Record with OVERLOADED, health.probe(descriptor, "data-processing", ctx) → Degraded(OVERLOADED, ...)
+  Clear, record with DOMAIN_MISMATCH, health.probe(descriptor, "data-processing", ctx) → Degraded(DOMAIN_MISMATCH, ...)
 ```
 
 ### Pattern
 
 Follows existing examples (`MultiAgentTeamTest`): `@BeforeEach` registers agent(s), individual `@Test` methods demonstrate specific behaviours. Assertions use AssertJ pattern matching on the sealed `CapabilityStatus` hierarchy.
 
+### Eval impact
+
+`PromptJudge.computeA2aMissingDescriptions()` checks whether each capability in the A2A card JSON has a non-blank `description` field. Currently descriptions come only from A2A enrichment. With declared `description` as fallback in `assembleA2aCard()`, capabilities that previously scored as "missing description" when enrichment was absent or failed will now pass this check. This improves scores — it is the intended effect of the feature, not a regression. Existing eval baselines should be re-computed after this change lands.
+
 ---
 
 ## Out of scope
 
-- Changes to `ReactiveAgentStateStore` or reactive probe path (parity maintained but no new reactive-specific tests in examples)
-- New eval profiles for description (description is optional — existing profiles continue to work with null)
-- A2A hash coverage update for description (description is enrichment-derived in A2A path, not a direct descriptor field read — protocol PP a2a-structural-assembly-hash-coverage does not apply)
+- Changes to `ReactiveAgentStateStore` or reactive probe path (parity maintained but no new reactive-specific tests in examples) — tracked as #94
+- New eval profiles for description (description is optional — existing profiles continue to work with null) — tracked as #95
