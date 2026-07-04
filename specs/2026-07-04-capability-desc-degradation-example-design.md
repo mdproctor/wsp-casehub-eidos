@@ -99,7 +99,8 @@ The test injects the SPI interfaces (`AgentStateStore`, `CapabilityHealth`, `Age
 ```
 DegradationAndRecoveryTest
 
-Setup:
+Setup (@BeforeEach):
+  stateStore.clear("worker-1", tenancyId)  // reset — InMemoryAgentStateStore is @ApplicationScoped
   Register one agent ("worker-1") with capability "data-processing"
   descriptor = registry.findById("worker-1", tenancyId)
   ctx = ProbeContext.of(null)   // null taskDomain avoids epistemic/exclusion checks
