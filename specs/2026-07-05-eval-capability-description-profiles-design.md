@@ -78,7 +78,14 @@ Two new profiles in `eval/src/test/resources/profiles/`, forming a variant pair 
   - pipeline-orchestration: `{data-engineering: 0.92, streaming: 0.78, batch-processing: 0.88}`
   - data-quality-assessment: `{data-profiling: 0.90, schema-validation: 0.85}`
   - schema-evolution: `{data-modeling: 0.88, migration-tooling: 0.80, api-versioning: 0.72}`
+- **inputTypes / outputTypes / tags:**
+  - pipeline-orchestration: [data-source, pipeline-config] → [pipeline-run, monitoring-report], tags: []
+  - data-quality-assessment: [dataset, schema-contract] → [quality-report, remediation-plan], tags: []
+  - schema-evolution: [schema-definition, consumer-contract] → [migration-plan, compatibility-report], tags: []
 - **Other disposition axes:** socialOrient=collaborative, ruleFollowing=adaptive, riskAppetite=moderate, conflictMode=null (all shared with directed variant)
+- **vocabularyGaps:**
+  - `proactive-remediation-initiative`: Independently identifying and acting on data quality issues before being asked, based on personal judgment of urgency. No disposition axis captures the proactive-vs-reactive dimension. **loss: FULL**
+  - `architectural-ownership`: Authority to make pipeline architecture and technology decisions without external approval. AUTONOMY=autonomous approximates independence but loses the domain-specific architectural scope. **loss: PARTIAL**
 
 #### `data-engineer-directed.yaml`
 
@@ -101,15 +108,20 @@ Identical to autonomous except:
   > of well-defined processes and thorough documentation of pipeline behaviour.
 
 - **notes:** Derived from O*NET 15-2051.01 tasks. Autonomy-axis variant, directed pole. Stage 0 pair partner: data-engineer-autonomous (differs only on AUTONOMY). All other disposition axes identical: socialOrient=collaborative, ruleFollowing=adaptive, riskAppetite=moderate, conflictMode=null, delegation=false.
+- **vocabularyGaps:**
+  - `scope-bounded-execution`: Operating within a defined decision mandate, where exceeding scope triggers escalation rather than independent judgment. This concept has surface overlap with ruleFollowing (both constrain action) but is fundamentally about decision authority, not rule adherence. The variant pair constrains ruleFollowing=adaptive, so this scope-bounding cannot be expressed through any axis. **loss: FULL**
+  - `approval-gated-design`: Design decisions require explicit approval from designated authority (data architecture team), not just delayed action. AUTONOMY=directed captures "waits for instruction" but loses the "actively seeks approval" dimension. **loss: PARTIAL**
 
-Same capabilities, same descriptions, same hints, same epistemic domains. Only AUTONOMY differs — required by `AgentProfileLoader.validateVariantPairs()` and protocol PP-20260602-64fde8.
+Same capabilities, same descriptions, same hints, same epistemic domains, same inputTypes/outputTypes/tags. Only AUTONOMY differs — required by `AgentProfileLoader.validateVariantPairs()` and protocol PP-20260602-64fde8.
 
 #### Briefings (per protocol PP-20260617-bfc66f)
 
-Both profiles have `vocabularyGaps` entries. Briefings derive from `loss: FULL` entries:
+Briefings are derived from `loss: FULL` vocabulary gap entries (see `vocabularyGaps` in each profile above). Under 500 chars, second person, 2–3 sentences.
 
-- **Autonomous:** Emphasises architectural decision-making authority — pipeline design choices, schema migration timing, and technology selection are within scope without escalation.
-- **Directed:** Emphasises runbook adherence and escalation discipline — design decisions and schema changes require approval; execution follows documented patterns.
+- **Autonomous** (from `proactive-remediation-initiative`): "You initiate remediation when you judge quality thresholds are at risk — you do not wait for a ticket or escalation to act. Pipeline design, schema migration timing, and technology selection are decisions you make based on your own assessment of the data."
+- **Directed** (from `scope-bounded-execution`): "Design decisions and schema changes are outside your mandate — you prepare impact assessments and compatibility reports but defer final judgment to the data architecture team. When pipeline failures require changes beyond your established scope, you escalate rather than improvise."
+
+Note: the directed briefing deliberately avoids rule-following language ("runbook adherence", "follows documented patterns") to prevent confounding the AUTONOMY effect measured by `PairContrastJudge`. The `scope-bounded-execution` vocabulary gap documents this tension — the persona wants to express process-adherence, but the briefing must stay in the autonomy lane because the variant pair constrains `ruleFollowing=adaptive` on both sides.
 
 #### Expected Traits
 
