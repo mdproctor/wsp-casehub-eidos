@@ -1,5 +1,5 @@
-# Branch Closed: issue-85-behavioral-contracts
+# Branch Closed: issue-95-eval-capability-description
 
-**Date:** 2026-07-02
-**Issues:** 85
+**Date:** 2026-07-05
+**Issues:** 95
 **Status:** merged to main
