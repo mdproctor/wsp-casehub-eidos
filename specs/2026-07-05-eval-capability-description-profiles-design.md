@@ -163,7 +163,7 @@ This exercises:
 - COMPLETENESS judge dimension with capabilities that have declared descriptions (enrichment will produce the rendered descriptions; declared descriptions serve as fallback if enrichment fails)
 - The A2A card rendering path with description-bearing capabilities — note that `EidosRenderPipeline` gives enriched descriptions priority over declared `cap.description()` (line ~644-649), so the fallback path is only exercised when enrichment is absent or fails
 
-**Gap acknowledged:** The fallback path where enrichment is absent and `cap.description()` provides the sole A2A description is not isolated by this case or any existing case. Deferred to eidos#96.
+**Gap acknowledged:** The fallback path where enrichment is absent and `cap.description()` provides the sole A2A description is not isolated by this case or any existing case. Deferred to eidos#97.
 
 ### What We Don't Change
 
