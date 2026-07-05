@@ -25,15 +25,47 @@ Zero of the 8 existing eval profiles populate `description` on any capability. T
 
 Two new profiles in `eval/src/test/resources/profiles/`, forming a variant pair on the **AUTONOMY** axis in the **data engineering** domain.
 
-**Domain grounding:** O*NET 15-2051.01 (Business Intelligence Analysts) — tasks include designing data pipelines, assessing data quality, managing schema evolution, and producing analytical outputs.
+**Domain grounding:** O*NET 15-2051.01 (Business Intelligence Analysts) — tasks include designing data pipelines, assessing data quality, managing schema evolution, and producing analytical outputs. Data engineering is a cross-cutting role without a dedicated O*NET code; 15-2051.01 covers the closest task cluster (pipeline management, data quality, schema design). The `sourceCitation` acknowledges this approximation.
+
+**Shared profile metadata** (identical for both profiles unless noted):
+
+| Field | Value |
+|-------|-------|
+| `domain` | `data-engineering` |
+| `sourceUrl` | `https://www.onetonline.org/link/summary/15-2051.01` |
+| `sourceCitation` | `O*NET Online, Business Intelligence Analysts (15-2051.01), 2024; synthesised data-engineer system prompt` |
+| `sourceType` | `ONET_SYNTHESISED` |
+
+**`evalGoal`** (shared):
+
+- **description:** `"Manage a data pipeline failure affecting a production analytics dashboard"`
+- **subGoals:** Diagnose root cause of pipeline failure · Assess impact on downstream consumers and SLAs · Implement or recommend a fix based on urgency and schema impact
+- **caseRef:** `~`
 
 #### `data-engineer-autonomous.yaml`
 
+- **name:** data-engineer-autonomous
+- **role:** Data Engineer — Pipeline Orchestration (Autonomous)
 - **slot:** data-engineer
 - **AUTONOMY:** autonomous
-- **delegation:** true
+- **delegation:** false
 - **Belbin:** plant (creative, independent problem-solver)
 - **DISC:** D (dominant, decisive)
+- **originalProse:**
+
+  > You are a senior data engineer responsible for the organisation's analytical data
+  > infrastructure. You independently design and operate data pipelines, choosing
+  > extraction strategies, transformation logic, and load targets based on your
+  > assessment of data volume, latency requirements, and downstream consumer needs.
+  > When pipeline failures occur, you diagnose root causes and implement fixes
+  > without waiting for approval, escalating only when changes affect cross-team
+  > schema contracts. You evaluate dataset quality against business rules and
+  > schema contracts, and you proactively initiate remediation when quality
+  > thresholds are breached. Schema evolution is within your authority — you assess
+  > backward compatibility, migration impact, and downstream contracts, then apply
+  > changes when you judge the risk acceptable.
+
+- **notes:** Derived from O*NET 15-2051.01 tasks. Autonomy-axis variant, autonomous pole. Stage 0 pair partner: data-engineer-directed (differs only on AUTONOMY). All other disposition axes identical: socialOrient=collaborative, ruleFollowing=adaptive, riskAppetite=moderate, conflictMode=null, delegation=false.
 - **Capabilities (all with descriptions):**
 
 | Name | Description | qualityHint | latencyHintP50Ms | costHint |
@@ -46,17 +78,31 @@ Two new profiles in `eval/src/test/resources/profiles/`, forming a variant pair 
   - pipeline-orchestration: `{data-engineering: 0.92, streaming: 0.78, batch-processing: 0.88}`
   - data-quality-assessment: `{data-profiling: 0.90, schema-validation: 0.85}`
   - schema-evolution: `{data-modeling: 0.88, migration-tooling: 0.80, api-versioning: 0.72}`
-- **Other disposition axes:** socialOrient=collaborative, ruleFollowing=adaptive, riskAppetite=moderate (shared with directed variant)
+- **Other disposition axes:** socialOrient=collaborative, ruleFollowing=adaptive, riskAppetite=moderate, conflictMode=null (all shared with directed variant)
 
 #### `data-engineer-directed.yaml`
 
 Identical to autonomous except:
+- **name:** data-engineer-directed
+- **role:** Data Engineer — Pipeline Orchestration (Directed)
 - **AUTONOMY:** directed
-- **delegation:** false
 - **Belbin:** implementer (systematic, follows established patterns)
 - **DISC:** C (conscientious, detail-oriented)
+- **originalProse:**
 
-Same capabilities, same descriptions, same hints, same epistemic domains. Only AUTONOMY and delegation differ — required by `AgentProfileLoader.validateVariantPairs()`.
+  > You are a senior data engineer responsible for the organisation's analytical data
+  > infrastructure. You operate data pipelines following documented runbooks and
+  > established patterns. When pipeline failures occur, you follow the incident
+  > response playbook and escalate design decisions to the team lead. You evaluate
+  > dataset quality against predefined thresholds and report breaches through the
+  > standard escalation process. Schema changes require approval from the data
+  > architecture team — you prepare impact assessments and compatibility reports
+  > but do not apply changes independently. Your strength is reliable execution
+  > of well-defined processes and thorough documentation of pipeline behaviour.
+
+- **notes:** Derived from O*NET 15-2051.01 tasks. Autonomy-axis variant, directed pole. Stage 0 pair partner: data-engineer-autonomous (differs only on AUTONOMY). All other disposition axes identical: socialOrient=collaborative, ruleFollowing=adaptive, riskAppetite=moderate, conflictMode=null, delegation=false.
+
+Same capabilities, same descriptions, same hints, same epistemic domains. Only AUTONOMY differs — required by `AgentProfileLoader.validateVariantPairs()` and protocol PP-20260602-64fde8.
 
 #### Briefings (per protocol PP-20260617-bfc66f)
 
@@ -73,6 +119,9 @@ Both profiles have `vocabularyGaps` entries. Briefings derive from `loss: FULL` 
 | SOCIAL_ORIENTATION | NEUTRAL | NEUTRAL |
 | RULE_FOLLOWING | NEUTRAL | NEUTRAL |
 | RISK_APPETITE | NEUTRAL | NEUTRAL |
+| CONFLICT_MODE | — | — |
+
+CONFLICT_MODE is intentionally omitted from both profiles (null on both sides). No polarity is expected — the data-engineer persona does not exercise conflict-handling behaviour. This matches existing profiles (sw-engineer, security-analyst) where `conflictMode` is null.
 
 ### index.yaml Updates
 
@@ -98,9 +147,11 @@ variants:
 New method `dataEngineerA2a()` added to `EvalDataset.java`. Builds an `AgentDescriptor` with the same three capabilities and descriptions as the YAML profiles, format `A2A_CARD`. Added to `EvalDataset.all()`.
 
 This exercises:
-- `computeA2aMissingDescriptions()` with declared descriptions present
-- COMPLETENESS judge dimension with declared descriptions as the data source
-- The A2A card rendering path where `cap.description()` provides fallback content
+- `computeA2aMissingDescriptions()` with declared descriptions present — validates the A2A JSON contains description entries for all capabilities
+- COMPLETENESS judge dimension with capabilities that have declared descriptions (enrichment will produce the rendered descriptions; declared descriptions serve as fallback if enrichment fails)
+- The A2A card rendering path with description-bearing capabilities — note that `EidosRenderPipeline` gives enriched descriptions priority over declared `cap.description()` (line ~644-649), so the fallback path is only exercised when enrichment is absent or fails
+
+**Gap acknowledged:** The fallback path where enrichment is absent and `cap.description()` provides the sole A2A description is not isolated by this case or any existing case. Deferred to eidos#96.
 
 ### What We Don't Change
 
@@ -121,6 +172,8 @@ This exercises:
 
 ## Protocols Checked
 
+- **PP-20260602-64fde8** (eval-variant-pair-single-axis-isolation): Variant pair differs on exactly one axis (AUTONOMY); all other disposition fields — socialOrient, ruleFollowing, riskAppetite, conflictMode, delegation — identical between profiles
+- **PP-20260605-1000ad** (delegation-platform-semantic): `delegation=false` on both profiles; delegation is a platform capability, not correlated with autonomy axis
 - **PP-20260617-bfc66f** (eval-profile-briefing-from-vocabulary-gaps): Briefings derived from `vocabularyGap: FULL` entries
 - **PP-20260611-228599** (capability-metadata-rendering): Descriptions render in all formats; numeric routing signals (qualityHint, latencyHintP50Ms, etc.) appear in A2A_CARD only
 
