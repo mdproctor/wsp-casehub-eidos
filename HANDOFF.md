@@ -1,3 +1,5 @@
+*Updated: #97 closed — removed from backlog.*
+
 # eidos Session Handover — 2026-07-06
 
 **Previous handover:** `git show HEAD~1:HANDOFF.md` | diff: `git diff HEAD~1 HEAD -- HANDOFF.md`
