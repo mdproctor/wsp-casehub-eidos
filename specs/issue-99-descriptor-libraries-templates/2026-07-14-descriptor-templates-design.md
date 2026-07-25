@@ -221,7 +221,9 @@ In `casehub-eidos-memory`. `@Alternative @Priority(1)`. For tests — programmat
 
 ### Variable substitution
 
-Simple `String.replace()` loop over declared parameters. `${variable}` → literal value. No expression engine, no escaping, no recursion.
+Single-pass regex replacement using `Pattern.compile("\\$\\{([^}]+)\\}")` with `Matcher.replaceAll(matchResult -> ...)`. Each `${variable}` in the template content is matched once and replaced with the corresponding arg value from the `TemplateRef`. Unmatched placeholders are left as-is (caught earlier by Layer 3 validation).
+
+Single-pass guarantees no cross-parameter injection: if an arg value itself contains `${...}` patterns, those are never expanded because they are inserted as replacement text, not re-scanned as template content. No expression engine, no escaping, no recursion.
 
 ### Template resolution
 
@@ -275,7 +277,7 @@ Resolved template content is included in the descriptor hash for `RenderedPrompt
 ### Existing files modified
 
 - `AgentDescriptor` — new `templates` field (`List<TemplateRef>`, nullable) + builder method
-- `AgentDescriptorValidator` — new validation constants (`MAX_TEMPLATE_ID`, `MAX_TEMPLATE_NAME`, `MAX_TEMPLATE_CONTENT`, `MAX_PARAMETER_NAME`); structural field validation for `DescriptorTemplate` and `TemplateRef` compact constructors (character-set, length). Does NOT perform template ref resolution — that requires a live `TemplateRegistry` and belongs in `DescriptorCollector`.
+- `AgentDescriptorValidator` — new validation constants (`MAX_TEMPLATE_ID`, `MAX_TEMPLATE_NAME`, `MAX_TEMPLATE_CONTENT`, `MAX_PARAMETER_NAME`); new `validateRequired(String, String, int, int...)` overload (mirrors existing `validateOptional` varargs overload, delegates to `validateField`); structural field validation for `DescriptorTemplate` and `TemplateRef` compact constructors (character-set, length). Does NOT perform template ref resolution — that requires a live `TemplateRegistry` and belongs in `DescriptorCollector`.
 - `DescriptorCollector` — template ref validation against `TemplateRegistry` (ref resolution, parameter completeness). New parameter: `TemplateRegistry`. Signature changes from `collectAndValidate(Iterable<AgentDescriptorRegistrar>)` to `collectAndValidate(Iterable<AgentDescriptorRegistrar>, TemplateRegistry)`.
 - `AgentDescriptorBootstrap` — inject `TemplateRegistry`, pass to `DescriptorCollector`
 - `ClasspathYamlDescriptorRegistrar` — parse `templates:` refs from descriptor YAML
