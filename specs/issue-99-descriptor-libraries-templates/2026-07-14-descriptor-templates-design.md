@@ -257,11 +257,28 @@ Templates do not appear in the A2A card JSON. They are behavioural prose, not ma
 
 `buildEnrichmentPayload()` must include the resolved template content so the LLM enricher sees genre/style conventions when writing disposition narratives. Without it, an agent with a "Hanna-Barbera cartoon style" template and a formal disposition gets a straight-faced enriched narrative that ignores the cartoon conventions. Addition: `copyIfPresent(payload, descriptorNode, "templates")`.
 
+**`PROMPT_TEMPLATE` update:** The enrichment prompt must tell the LLM enricher about the new field. Two changes to `PROMPT_TEMPLATE` in `EidosRenderPipeline`:
+
+1. Add to the "payload may contain" list:
+   ```
+   - templates: shared behavioral conventions — genre/style guides that frame
+     the agent's personality (when present)
+   ```
+
+2. Extend the `dispositionNarrative` field instruction:
+   ```
+   Weave briefing principles and template conventions naturally when present
+   — do not quote verbatim.
+   ```
+   (Previously: "Weave briefing principles naturally when present")
+
 ### Cache key
 
 Resolved template content is included in the descriptor hash for `RenderedPromptCache`. Template content changes → cache invalidation via `descriptorHash`.
 
-**Naming clarification:** `TEMPLATE_HASH` in the `EidosRenderPipeline` cache key formula refers to the LLM prompt template hash (`PROMPT_TEMPLATE` + `A2A_PROMPT_TEMPLATE` strings) — unchanged by this design. Descriptor template content enters the cache key through `descriptorHash` (because `buildDescriptorPayload()` includes the resolved `templates` field). These are two unrelated uses of the word "template" — the existing `TEMPLATE_HASH` constant is not affected.
+**Naming clarification:** `TEMPLATE_HASH` in the `EidosRenderPipeline` cache key formula is derived from `PROMPT_TEMPLATE` + `A2A_PROMPT_TEMPLATE` + schema descriptions. Descriptor template content enters the cache key through `descriptorHash` (because `buildDescriptorPayload()` includes the resolved `templates` field). These are two unrelated uses of the word "template."
+
+**`TEMPLATE_HASH` does change** as a consequence of the `PROMPT_TEMPLATE` update (adding the `templates` field description and enrichment instruction). This correctly invalidates all cached renders — the enrichment contract has changed, so previously cached enrichments must be regenerated with template-aware instructions.
 
 ---
 
