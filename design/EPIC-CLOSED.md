@@ -1,5 +1,5 @@
-# Branch Closed: issue-85-behavioral-contracts
+# Branch Closed: issue-99-descriptor-libraries-templates
 
-**Date:** 2026-07-02
-**Issues:** 85
+**Date:** 2026-07-26
+**Issues:** 99
 **Status:** merged to main
