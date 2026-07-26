@@ -41,7 +41,7 @@ if (capabilities.size() > 1) {
 }
 ```
 
-**Flyway V9** — `UNIQUE (descriptor_id, name)` constraint on `agent_capability`.
+**Flyway V1** — add `UNIQUE (descriptor_id, name)` to `agent_capability` CREATE TABLE.
 
 **Tests** — unit test in `api/` confirming validation throws on duplicate capability names.
 
@@ -101,12 +101,7 @@ Add `severity` to constraint objects in `buildDescriptorPayload()` for all forma
 
 ### JPA
 
-`severity VARCHAR(20) NOT NULL` column on `agent_constraint` in Flyway V9:
-
-```sql
-ALTER TABLE agent_constraint ADD COLUMN severity VARCHAR(20) NOT NULL DEFAULT 'HARD';
-ALTER TABLE agent_constraint ALTER COLUMN severity DROP DEFAULT;
-```
+`severity VARCHAR(20) NOT NULL` added to `agent_constraint` CREATE TABLE in `V8__goals_constraints.sql`. No ALTER TABLE — severity is part of the table design from the start (base-migration rewrite per ARC42STORIES §7).
 
 ### YAML descriptors
 
@@ -132,7 +127,7 @@ The five use cases from the #100 design spec map as follows:
 |----------|-------|-------------|
 | Goal-based querying | Eidos | Yes — `goalName` on `AgentQuery` |
 | `hasGoal()` / `hasConstraint()` | Eidos | Yes — convenience methods |
-| Cross-agent goal awareness | Eidos (renderer) | Yes — public goals/constraints in A2A_CARD |
+| Cross-agent goal awareness | Eidos (renderer) | Already done — no change needed |
 | Goal-based routing | Engine | No — file engine issue |
 | Goal-based termination | Engine | No — file engine issue |
 
