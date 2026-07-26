@@ -24,7 +24,9 @@ Goals and constraints validate name uniqueness in `AgentDescriptor`'s compact co
 
 ### Changes
 
-**`AgentDescriptor` compact constructor** — add duplicate capability name check after the existing goals/constraints checks. Same pattern:
+**`AgentDescriptorValidator`** — add `MAX_CAPABILITIES = 20`. Goals have `MAX_GOALS = 10` and constraints have `MAX_CONSTRAINTS = 10`; capabilities are the primary matching dimension so a higher limit is appropriate, but unbounded is a validation gap.
+
+**`AgentDescriptor` compact constructor** — add capability count limit check (same pattern as goals/constraints), then duplicate capability name check:
 
 ```java
 if (capabilities.size() > 1) {
@@ -78,11 +80,24 @@ Compact constructor adds: `Objects.requireNonNull(severity, "constraint.severity
 
 ### Renderer
 
-**MARKDOWN/PROSE** — severity-discriminated language:
-- `HARD` → "You MUST..." / "You must never..."
-- `SOFT` → "You should..." / "Prefer..."
+**MARKDOWN** — label prefix, paralleling the goals `[PRIMARY]`/`[SECONDARY]` pattern:
+- `- **[HARD]** description`
+- `- **[SOFT]** description`
+- Sorted: HARD before SOFT, then alphabetically by name within each severity
 
-**A2A_CARD** — include `severity` field on each constraint object in the JSON structure.
+**PROSE** — grouped by severity, paralleling the goals primary/secondary split:
+- `Hard constraints: desc1. desc2.`
+- If soft constraints present: ` Also: desc3. desc4.`
+- Same sentence structure as the existing goals prose rendering
+
+**A2A_CARD** — include `severity` field on each constraint object:
+```json
+{"name": "no-pii-exposure", "description": "...", "severity": "HARD"}
+```
+
+### Hash coverage
+
+Add `severity` to constraint objects in `buildDescriptorPayload()` for all formats. Per `a2a-structural-assembly-hash-coverage` protocol (PP-20260613-608684), any field rendered in `assembleA2aCard()` must appear in `buildDescriptorPayload()` for A2A_CARD format. Since severity also affects MARKDOWN/PROSE rendering, including it in all formats ensures any severity change invalidates the cache across all render paths.
 
 ### JPA
 
@@ -142,17 +157,16 @@ public record AgentQuery(
 - Existing factories unchanged — `goalName` defaults to null
 
 **JpaAgentRegistry.find():**
-- When `goalName` non-null: `LEFT JOIN FETCH a.goals g` + `AND g.name = :goalName`
+- When `goalName` non-null: `AND EXISTS (SELECT 1 FROM AgentGoalEntity g WHERE g.descriptor = a AND g.name = :goalName)`
+- EXISTS subquery — avoids `MultipleBagFetchException`. The existing query already fetches `capabilities` as a bag (`JOIN FETCH a.capabilities c`); adding a second bag fetch for `goals` is rejected by Hibernate 6. Goals are loaded lazily by `AgentDescriptorMapper.toRecord()` — no fetch needed, just a filter.
 - No vocabulary subsumption — goals are identity-level standing objectives, not vocabulary-grounded terms. Exact name match only.
 
 **InMemoryAgentRegistry:**
 - Stream filter on `descriptor.goals()` matching by name
 
-**Reactive registries:**
-- Mirror blocking implementations
-
 **AgentMatch:**
 - When querying by `goalName`, `resolvedCapability` stays null. Goals are not capabilities — no match degree ranking. The query is a filter, not a ranked match.
+- Goal query result ordering is unspecified, following the existing contract for non-capability queries (e.g., slot-only queries).
 
 ### 101b. Convenience methods on `AgentDescriptor`
 
@@ -168,26 +182,9 @@ public boolean hasConstraint(String name) {
 
 ### 101c. Public goals and constraints in A2A_CARD
 
-Currently goals and constraints render in MARKDOWN/PROSE only. A2A_CARD should include them for machine-to-machine negotiation.
+Already implemented. `EidosRenderPipeline.assembleA2aCard()` renders `publicGoals()` and `publicConstraints()` into the A2A JSON. `buildDescriptorPayload()` includes them in the hash payload with visibility filtering for A2A_CARD format. No work needed.
 
-**A2A_CARD JSON structure additions:**
-
-```json
-{
-  "goals": [
-    {"name": "quality-review", "description": "...", "priority": "PRIMARY"}
-  ],
-  "constraints": [
-    {"name": "no-pii-exposure", "description": "...", "severity": "HARD"}
-  ]
-}
-```
-
-Rules:
-- Only `Visibility.PUBLIC` items — use existing `publicGoals()` and `publicConstraints()`
-- `visibility` field excluded from the card (everything in the card is public by definition)
-- Goals sorted by priority then name; constraints sorted alphabetically (same as MARKDOWN/PROSE)
-- Add goals and constraints to the A2A_CARD hash payload (per `a2a-structural-assembly-hash-coverage` protocol)
+The addition of `severity` to A2A constraint output is covered by §103.
 
 ### 101d. Engine follow-on issues
 
@@ -218,40 +215,34 @@ A template defined in `META-INF/eidos/templates.yaml` (classpath registrar). Ver
 
 ## Flyway Migration Plan
 
-| Version | File | Content |
-|---------|------|---------|
-| V1–V6 | Unchanged | — |
-| V7 | `V7__descriptor_templates.sql` | Unchanged content |
-| V8 | `V8__goals_constraints.sql` | Renamed from V7, unchanged content |
-| V9 | `V9__capability_uniqueness_constraint_severity.sql` | Capability UNIQUE constraint + constraint severity column |
+No deployed instances — all schema changes rewrite base migration files (ARC42STORIES §7, CLAUDE.md).
 
-V9 content:
+| Version | File | Change |
+|---------|------|--------|
+| V1 | `V1__initial_schema.sql` | Add `UNIQUE (descriptor_id, name)` to `agent_capability` CREATE TABLE |
+| V7 | `V7__descriptor_templates.sql` | Unchanged |
+| V8 | `V8__goals_constraints.sql` | Add `severity VARCHAR(20) NOT NULL` to `agent_constraint` CREATE TABLE |
 
-```sql
-ALTER TABLE agent_capability ADD CONSTRAINT uq_capability_name
-    UNIQUE (descriptor_id, name);
-
-ALTER TABLE agent_constraint ADD COLUMN severity VARCHAR(20) NOT NULL DEFAULT 'HARD';
-ALTER TABLE agent_constraint ALTER COLUMN severity DROP DEFAULT;
-```
+No V9 migration. Severity is part of the table design from the start. Capability uniqueness belongs in V1 where the table was created. Developers drop and recreate local databases on schema changes — this is the established convention.
 
 ## Files Touched
 
 ### api/
 - `ConstraintSeverity.java` — new enum
 - `AgentConstraint.java` — add `severity` field
-- `AgentDescriptor.java` — capability name uniqueness check; `hasGoal()`; `hasConstraint()`
+- `AgentDescriptor.java` — capability count limit check; capability name uniqueness check; `hasGoal()`; `hasConstraint()`
+- `AgentDescriptorValidator.java` — add `MAX_CAPABILITIES = 20`
 - `AgentQuery.java` — add `goalName` field + factory methods
 - `AgentDescriptorComparator.java` — severity in constraint comparison
-- `AgentDescriptorValidator.java` — no changes expected
 
 ### runtime/
-- `JpaAgentRegistry.java` — goal-based query filter
-- `JpaReactiveAgentRegistry.java` — mirror goal filter
-- JPA entity + mapper — `severity` column mapping
-- `EidosSystemPromptRenderer.java` — severity-discriminated constraint rendering; A2A_CARD goals/constraints
-- `ClasspathYamlDescriptorRegistrar.java` — `severity` in YAML schema
-- Flyway: rename V7→V8, new V9
+- `JpaAgentRegistry.java` — goal-based EXISTS subquery filter
+- `AgentDescriptorMapper.java` — severity mapping in `toConstraint()`/`toConstraintEntity()`
+- `AgentConstraintEntity.java` — add `severity` field
+- `AgentCapabilityEntity.java` — add `@UniqueConstraint(columnNames = {"descriptor_id", "name"})` to `@Table`
+- `EidosRenderPipeline.java` — severity-discriminated constraint rendering (MARKDOWN, PROSE, A2A_CARD); severity in `buildDescriptorPayload()` hash payload
+- `ClasspathYamlDescriptorRegistrar.java` — `severity` in `ConstraintConfig` and `toDescriptor()`
+- Flyway: rewrite V1 (capability uniqueness), rewrite V8 (severity column)
 
 ### persistence-memory/
 - `InMemoryAgentRegistry.java` — goal-based query filter
