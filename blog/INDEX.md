@@ -39,3 +39,4 @@
 | [2026-07-25-mdp01-composable-prose-templates.md](2026-07-25-mdp01-composable-prose-templates.md) | 2026-07-25 | Composable prose templates for agent personalities |
 | [2026-07-27-mdp01-fields-a-descriptor-doesnt-ask-about.md](2026-07-27-mdp01-fields-a-descriptor-doesnt-ask-about.md) | 2026-07-27 | Fields a descriptor doesn't ask about |
 | [2026-07-28-mdp01-personality-from-cognitive-functions.md](2026-07-28-mdp01-personality-from-cognitive-functions.md) | 2026-07-28 | Jungian cognitive functions — why function-level personality specification works for LLM agents, JPAF findings, weighted disposition profiles, cross-vocabulary projection |
+| [2026-07-28-mdp02-wiring-the-disposition-layer.md](2026-07-28-mdp02-wiring-the-disposition-layer.md) | 2026-07-28 | Wiring the disposition layer — DispositionSignalStore SPI, vocabulary-generic shadow probing via opposite(), auto-derivation of axes from cognitive profiles |
