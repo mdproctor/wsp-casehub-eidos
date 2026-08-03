@@ -1,34 +1,39 @@
-# HANDOFF — eidos
+# eidos Session Handover - 2026-08-03
 
-**Date:** 2026-07-30
-**Branch:** main (issue-122-vocab-imbue-verify closed)
-**Issues closed:** #122, #123, #124
+**Previous handover:** git show HEAD~1:HANDOFF.md
 
-## Last Session
+## What Changed This Session
 
-eidos#122 — vocabulary imbue-and-verify test suite. Two-layer test suite proving each personality framework (Jungian, Belbin, DISC, Conscientiousness) produces expected behavioral signal independently and in pairwise composition. 16 structural CI tests + 11 LLM eval tests + new DispositionPresenceJudge.
+- Closed eidos#101, #102, #103, #105 (previous branch this session) -- ConstraintSeverity, capability uniqueness, goal-based querying, template examples. Design-reviewed (3 rounds, 14 issues). Garden entry GE-20260726-756909.
+- Closed eidos#121, #125, #127, #131, #132 -- vocabulary completeness: Belbin axisExactMatch (9 roles x 5 axes), BigFiveTerm (O/E/A/N), EnneagramTerm (9 types), SdiTerm (4 types). Full build green. Landed as 2c81fcd.
+- Created engine#784 (goal-aware routing), engine#785 (goal-based termination).
+- Created eidos epic #107 (Jungian personality framework, 10 issues -- all closed).
+- Created engine epic #790 (personality-adaptive routing, 6 issues -- all closed).
+- Filed 5 gap issues from composition paper Section 9: #128 (coherence validation), #129 (minimal briefing), #130 (stronger integration), #131 (Enneagram), #132 (SDI).
+- Filed 3 landscape gaps: engine#857 (multi-agent personality dynamics), engine#858 (GM plausibility checking), examples#16 (scale testing).
+- Created slot 43 for epic #107 (completed and merged in parallel sessions).
+- Closed stale PRs #104, #106; deleted orphan fork branches.
 
-Discovered and fixed two rendering pipeline gaps (eidos#124):
-- **E/I orientation hint** — Conscientiousness axes lose energy direction. Fixed by deriving orientation from dominant function attitude. EI: 0.00 → 1.00.
-- **S/N perception hint** — Conscientiousness axes lose perception style. Fixed by deriving perception from the perceiving function in dom/aux pair. SN: 0.00 → 1.00.
+## Immediate Next Step
 
-Also fixed inverted `aIsPole` on MBTI SN questions Q4 and Q6 — two-character bug that penalized correct N-type answers. Five iterations of rendering pipeline improvements undertaken for the wrong reason turned out to be independently load-bearing.
+Pick from remaining open work: #128 (briefing-framework coherence validation -- highest value), #129 (minimal briefing experiment), #130 (stronger integration), #126 (Ni/Ne judge calibration), or epic #82 examples (#78, #80, #81). Run /work to start.
 
-All 4 MBTI dimensions score 1.00. Landed as a7103bd on main.
-
-Key architectural insight: cross-vocabulary projection is lossy by design. Conscientiousness has 5 axes, MBTI has 4 dimensions. They overlap on TF and JP but diverge on EI (energy direction) and SN (perception style). The rendering pipeline now compensates for the loss rather than trying to force more information through the projection.
-
-## What's Next
+## What is Next
 
 | # | Description | Scale | Complexity | Notes |
-|---|---|---|---|---|
-| examples#2 | Staged layer comparison (baseline/jungian/belbin/composite) | M | Med | eidos#122 unblocks this; 12 scenario runs with eval judges |
-| — | Phase 2.6: ObservationAccumulator + AffordanceRenderer | S | Med | AffordanceRenderer issue draft ready to file |
-| — | Phase 2.7: Live LLM narrator — wire NarratorAgent | S | Low | NarratorAgent class exists, not wired |
+|---|-------------|-------|------------|-------|
+| #128 | Briefing-framework coherence validation | M | High | Highest value per composition paper |
+| #129 | Minimal briefing experiment | M | Med | Isolates framework contribution |
+| #130 | Stronger personality integration mechanisms | M | High | Function-specific prompt constraints |
+| #126 | FunctionActivationJudge Ni/Ne calibration | M | Med | Judge accuracy |
+| #78 | Example: learned specialization lifecycle | M | Med | Epic #82 |
+| #80 | Example: full probe pipeline | M | Med | Epic #82 |
+| #81 | Example: cost-aware multi-agent routing | M | Med | Epic #82 |
+| #120 | Goal priority evolution | M | Med | |
+| #118 | Refactor: move API coverage tests out of examples | S | Low | |
 
 ## References
 
-- Spec: `specs/2026-07-30-vocabulary-imbue-verify-test-suite-design.md`
-- Plan: `plans/2026-07-30-vocabulary-imbue-verify-test-suite.md`
-- Blog: `blog/2026-07-30-mdp01-when-the-test-passes-for-the-wrong-reason.md`
-- Phase 2.5b spec: `/Users/mdproctor/claude/casehub/work/specs/2026-07-29-phase-2.5b-structured-personality-composition-design.md`
+- Composition paper: examples/wacky-manor/docs/structured-personality-composition-in-llm-agents.md
+- Landscape analysis: examples/wacky-manor/docs/llm-autonomy-landscape-2026.md
+- JPAF paper: https://arxiv.org/abs/2601.10025
