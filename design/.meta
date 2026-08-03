@@ -1,0 +1,9 @@
+branch: issue-129-minimal-briefing-experiment
+project-sha: c6aef6aaeddfb1a1012d0a9b66f8111fe381d162
+date: 2026-08-03
+issue: 129
+issue-repo: casehubio/eidos
+covers: 129
+flyway-next-v: none
+design-repo: project
+design-section-hashes: 4d2cc5ab:##
