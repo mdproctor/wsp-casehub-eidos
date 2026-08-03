@@ -42,7 +42,7 @@ record JungianProfile(
     String name,
     String role,
     String domain,
-    SourceType sourceType,
+    String sourceType,
     String mbtiType,
     String dominantFunction,
     String auxiliaryFunction,
@@ -50,7 +50,7 @@ record JungianProfile(
 ) {}
 ```
 
-Rich briefing accessed via `descriptor.briefing()`. The `dispositionProfile` and `dispositionVocabulary` are on the descriptor's disposition.
+Rich briefing accessed via `descriptor.briefing()`. The `dispositionProfile` is on the descriptor's disposition; `dispositionVocabulary` is on the descriptor itself. `sourceType` is a plain String field (not the `SourceType` enum from `AgentProfile` — Jungian profiles use `"JPAF_DERIVED"` which is not in that enum).
 
 ### JungianProfileLoader (test scope)
 
@@ -64,12 +64,12 @@ Reads `function-scenarios/scenarios.yaml`. Returns `Map<String, List<FunctionSce
 
 Four conditions with `apply(JungianProfile) → AgentDescriptor`:
 
-- **BASELINE_MINIMAL** — strips `dispositionProfile` and `dispositionVocabulary`, replaces briefing with `"You are an agent named {name}"`
-- **BASELINE_RICH** — strips `dispositionProfile` and `dispositionVocabulary`, keeps original briefing
-- **JUNGIAN_MINIMAL** — keeps `dispositionProfile`, replaces briefing with `"You are an agent named {name}"`
+- **BASELINE_MINIMAL** — strips `dispositionProfile`, `dispositionVocabulary`, and all derived disposition axes; replaces briefing with `"You are an agent named {role}"` (uses `role` not `name` to avoid MBTI type leaking into the minimal condition — e.g. "Systems Analyst" not "Systems Analyst (INTP)")
+- **BASELINE_RICH** — strips `dispositionProfile`, `dispositionVocabulary`, and all derived disposition axes; keeps original briefing
+- **JUNGIAN_MINIMAL** — keeps `dispositionProfile` AND `dispositionVocabulary` (both required for `deriveDispositionAxes` to produce axes); replaces briefing with `"You are an agent named {role}"`
 - **JUNGIAN_RICH** — returns original descriptor unchanged
 
-Each `apply()` copies the original descriptor's fields (agentId, name, slot, tenancyId, capabilities, etc.) and replaces only the varied fields. Baseline conditions build an empty `AgentDisposition` (delegation only, no profile or vocabulary).
+Each `apply()` copies the original descriptor's fields (agentId, name, slot, tenancyId, capabilities, etc.) and replaces only the varied fields. Baseline conditions build an empty `AgentDisposition` (delegation only, no profile, no vocabulary, no axes). `deriveDispositionAxes()` is a no-op for baseline conditions (no dispositionProfile to project) — this is intentional; the baseline must have zero structured personality signal.
 
 ## Test Structure
 
