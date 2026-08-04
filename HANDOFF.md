@@ -1,17 +1,20 @@
-# eidos Session Handover - 2026-08-03
+# eidos Session Handover - 2026-08-04
 
 **Previous handover:** git show HEAD~1:HANDOFF.md
 
 ## What Changed This Session
 
-- Closed eidos#129 — minimal briefing experiment: 2×2 factorial eval isolating framework vs briefing contribution to cognitive function activation. Landed as 524392e on main.
-- Created JungianProfileLoader (loads 8 Jungian YAML profiles), FunctionScenarioLoader (loads 24 function activation scenarios), BriefingCondition enum (4 experimental conditions with descriptor variant construction), MinimalBriefingEvalTest (the experiment), BriefingExperimentReport (JSON + console output).
-- Design-reviewed (light, 3 dimensions + cross-cutting). Key fix from review: minimal briefing uses `role` not `name` to prevent MBTI type leaking into the control condition.
-- Blog entry: "Is Your Personality Framework Actually Doing Anything?" — uses Wacky Manor's Hooded Claw to demonstrate the briefing override problem.
+- Closed eidos#135 — added `List<String> capabilities` to `AgentGoal` record for goal-capability mapping. Landed as 3d47268 on main.
+- `AgentGoal` now has 5 fields: name, description, priority, visibility, capabilities. Null→empty, null-element filtering, duplicate rejection.
+- Cross-validation in `AgentDescriptor` compact constructor: every capability name in a goal's list must match a declared `AgentCapability.name()` on the same descriptor.
+- YAML parsing (`GoalConfig.capabilities`), JPA persistence (JSON column in `agent_goal`), `DefaultGoalEvolution` carries capabilities through promotion/demotion, `AgentDescriptorComparator` updated.
+- V8 migration updated with `capabilities TEXT` column (no deployed instances — direct base file edit).
+- CLAUDE.md and consumer-guide.md updated with new field documentation.
+- Design spec: docs/specs/issue-135-goal-capability-mapping/2026-08-04-goal-capability-mapping-design.md
 
 ## Immediate Next Step
 
-Run the experiment when ready: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl eval -Peval -Dtest=MinimalBriefingEvalTest#compareBriefingContribution`. Results will determine whether the framework or the briefing text drives function activation, guiding next steps on #128 (coherence validation) or stronger integration mechanisms.
+engine#860 depends on this — `GoalFailureRecorder` needs updating to filter goals by `goal.capabilities().contains(failedCapabilityName)` before recording DECLINE signals. Engine construction sites (`GoalAbandonmentEvaluator`, `GoalFailureRecorderTest`, `GoalAbandonmentEvaluatorTest`, `GoalSignalProviderTest`, `AgentGoalCompletionMarkerTest`) all need the 5th arg added.
 
 ## What is Next
 
@@ -21,10 +24,9 @@ Run the experiment when ready: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn te
 | #78 | Example: learned specialization lifecycle | M | Med | Epic #82 |
 | #80 | Example: full probe pipeline | M | Med | Epic #82 |
 | #81 | Example: cost-aware multi-agent routing | M | Med | Epic #82 |
-| #120 | Goal priority evolution | M | Med | |
 | #118 | Refactor: move API coverage tests out of examples | S | Low | |
 
 ## References
 
-- Design spec: docs/specs/issue-129-minimal-briefing-experiment/2026-08-03-minimal-briefing-experiment-design.md
-- Blog entry: blog/2026-08-03-mdp02-briefing-override-problem.md
+- Design spec: docs/specs/issue-135-goal-capability-mapping/2026-08-04-goal-capability-mapping-design.md
+- Downstream: casehubio/engine#860 (GoalFailureRecorder per-goal discrimination)
