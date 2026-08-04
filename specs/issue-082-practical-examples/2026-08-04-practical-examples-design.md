@@ -1,7 +1,7 @@
 # Practical Examples — Operational Features End-to-End
 
 **Issue:** casehubio/eidos#82 (epic)
-**Children:** #78 (Learned specialization), #80 (Full probe pipeline), #81 (Cost-aware routing)
+**Children:** #78 (Learned specialization), #79 (Degradation/recovery — CLOSED, implemented separately), #80 (Full probe pipeline), #81 (Cost-aware routing)
 **Date:** 2026-08-04
 
 ## Overview
@@ -23,9 +23,17 @@ All tests use `casehub-eidos-memory` (in-memory stores) and `casehub-eidos-vocab
 
 ### Scenario
 
-A code-review agent accumulates DECLINE signals for security tasks, gets excluded
-from security dispatch, but continues serving code-review tasks. SUCCESS signals on
-core competency are recorded. Signal clearing restores eligibility.
+A code-review agent accumulates DECLINE signals scoped by task domain. When probed
+for security-domain work, the agent is excluded (learned exclusion). When probed for
+general code-review (no task domain), the agent remains Ready — the learned exclusion
+check is skipped when `taskDomain` is null. SUCCESS signals on core competency are
+recorded. Signal clearing restores eligibility.
+
+**Key mechanism:** Learned exclusion is keyed on `(capabilityName, qualifier)` where
+the qualifier is the task domain string. Both `security-code-review` and `code-review`
+query tags resolve to the same declared capability `code-review` via subsumption. The
+differentiator is `ProbeContext.taskDomain`, not the capability query tag. When
+`taskDomain` is null, the probe pipeline skips the learned exclusion check entirely.
 
 ### Agent
 
@@ -33,26 +41,26 @@ Single agent `specialization-agent` in tenancy `specialization-lifecycle`:
 - Capability: `code-review` grounded via `CasehubCapabilityTerm.URI`
 - `epistemicDomains: {"java": 0.95}`
 
-Security-code-review is reachable via subsumption (CasehubCapabilityTerm hierarchy:
-`security-code-review` specializes `code-review`).
-
 ### Test Methods
 
-| Method | What it demonstrates |
-|--------|---------------------|
-| `agent_starts_ready_for_all_capabilities` | Baseline: probe returns `Ready` for both `code-review` and `security-code-review` (via subsumption) |
-| `decline_signals_accumulate_toward_exclusion` | Record 2 DECLINE signals for security work; probe still returns `Ready` (below default threshold of 3) |
-| `third_decline_triggers_learned_exclusion` | Record 3rd DECLINE; probe returns `Excluded(LEARNED)` for `security-code-review` |
-| `core_capability_unaffected_by_specialization_exclusion` | Same agent, same moment: probe returns `Ready` for `code-review` |
-| `success_signals_recorded_on_core_capability` | Record SUCCESS signals on `code-review`; verify `count()` reflects them |
-| `clear_resets_learned_exclusion` | `clear()` DECLINE signals; probe returns `Ready` again for security work |
+Each test method is self-contained — uses a unique tenancy ID, registers its own
+agent, records signals, and cleans up. No dependency on test execution order.
+
+| Method | Qualifier for record() | ProbeContext taskDomain | What it demonstrates |
+|--------|----------------------|------------------------|---------------------|
+| `agent_starts_ready_for_security_domain` | — | `"security"` | Baseline: probe with `taskDomain="security"` returns `Ready` (no signals yet) |
+| `decline_signals_below_threshold_still_ready` | `"security"` | `"security"` | Record 2 DECLINE signals with qualifier `"security"`; probe still returns `Ready` (below threshold of 3) |
+| `third_decline_triggers_learned_exclusion` | `"security"` | `"security"` | Record 3 DECLINE signals; probe returns `Excluded(LEARNED, "security", 3)` |
+| `null_task_domain_skips_learned_exclusion` | `"security"` | `null` | Same agent with 3 DECLINE signals for `"security"`, but probe with `taskDomain=null` returns `Ready` — learned exclusion check is skipped |
+| `success_signals_recorded_on_core_capability` | `"java"` (SUCCESS) | — | Record SUCCESS signals with qualifier `"java"`; verify `count()` reflects them |
+| `clear_resets_learned_exclusion` | `"security"` | `"security"` | Record 3 DECLINE, then `clear()` DECLINE signals; probe returns `Ready` again |
 
 ### APIs Exercised
 
-- `BehavioralSignalStore.record()` with `BehavioralSignal.DECLINE` and `SUCCESS`
+- `BehavioralSignalStore.record(agentId, tenancyId, capabilityName, qualifier, signal)` — qualifier is the task domain string for DECLINE/SUCCESS
 - `BehavioralSignalStore.learned()`, `.count()`, `.clear()`
-- `CapabilityHealth.probe()` → `Excluded(LEARNED)` and `Ready`
-- Subsumption interaction: exclusion applies to subsumption-resolved capability
+- `CapabilityHealth.probe(descriptor, capabilityTag, ProbeContext.of(taskDomain))` — `taskDomain` must match the qualifier used in `record()`
+- Subsumption: both `"security-code-review"` and `"code-review"` resolve to declared capability `"code-review"`
 
 ### TTL Note
 
@@ -70,44 +78,51 @@ reset path. Test javadoc notes that TTL expiry happens automatically in producti
 
 ### Scenario
 
-A cast of seven agents, each crafted to trigger a specific probe outcome. Demonstrates
-the complete six-step decision cascade and its precedence.
+A cast of eight agents, each crafted to trigger a specific probe outcome. Demonstrates
+all six check categories in the probe pipeline, plus both behavioral violation modes
+(per-dimension and aggregate). Each test method is self-contained with its own tenancy ID.
 
-### Agents (tenancy `probe-pipeline`)
+### Agents
 
-| Agent ID | Setup | Expected Probe Result |
-|----------|-------|-----------------------|
-| `degraded-agent` | Active degradation via `AgentStateStore.record()` with future expiry | `Degraded(RATE_LIMITED)` |
-| `undeclared-agent` | Declares `code-review` only, probed for `testing` (no subsumption path) | `Unavailable` |
-| `domain-excluded-agent` | Declares `code-review` with `excludedDomains: {"rust"}`, probed with `taskDomain: "rust"` | `Excluded(DECLARED)` |
-| `learned-excluded-agent` | Declares `code-review`, 3+ DECLINE signals recorded | `Excluded(LEARNED)` |
-| `weak-agent` | Declares `code-review` with `epistemicDomains: {"rust": 0.15}`, probed with `taskDomain: "rust"` | `EpistemicallyWeak("rust", 0.15)` |
-| `violated-agent` | Declares `code-review`, 3+ VIOLATED signals on a single `ComplianceDimension` | `BehavioralViolation(violations, PER_DIMENSION)` |
-| `healthy-agent` | Declares `code-review`, no degradation/exclusion/weakness/violations | `Ready` |
+Each agent uses a unique tenancy ID (e.g., `probe-degraded`, `probe-unavailable`) for
+test isolation. All agents declare `code-review` capability grounded via `CasehubCapabilityTerm.URI`
+unless noted otherwise.
+
+| Agent ID | Setup | ProbeContext | Qualifier for record() | Expected Probe Result |
+|----------|-------|-------------|----------------------|----------------------|
+| `degraded-agent` | `AgentStateStore.record()` with `RATE_LIMITED`, future expiry | `of("java")` | — | `Degraded(RATE_LIMITED, ...)` |
+| `undeclared-agent` | Declares `code-review` only, probed for `testing` | `of(null)` | — | `Unavailable("testing")` |
+| `domain-excluded-agent` | `excludedDomains: {"rust"}` | `of("rust")` | — | `Excluded("rust", DECLARED, 0)` |
+| `learned-excluded-agent` | 3 DECLINE signals recorded with qualifier `"rust"` | `of("rust")` | `"rust"` | `Excluded("rust", LEARNED, 3)` |
+| `weak-agent` | `epistemicDomains: {"rust": 0.15}` | `of("rust")` | — | `EpistemicallyWeak("rust", 0.15)` |
+| `violated-agent-pd` | 3 VIOLATED signals with qualifier `ComplianceDimension.LATENCY` | `of("java")` | `LATENCY` | `BehavioralViolation({LATENCY: 3}, PER_DIMENSION)` |
+| `violated-agent-agg` | 2 VIOLATED on `LATENCY` + 2 on `DELEGATION` + 2 on `ESCALATION` (total 6 > aggregate threshold 5, none ≥ per-dimension threshold 3) | `of("java")` | `LATENCY`, `DELEGATION`, `ESCALATION` | `BehavioralViolation({LATENCY:2, DELEGATION:2, ESCALATION:2}, AGGREGATE)` |
+| `healthy-agent` | No degradation/exclusion/weakness/violations | `of("java")` | — | `Ready` |
 
 ### Test Methods
 
 | Method | What it demonstrates |
 |--------|---------------------|
-| `step1_degradation_overrides_everything` | Degraded agent returns `Degraded` |
-| `step2_undeclared_capability_returns_unavailable` | Agent lacks capability, returns `Unavailable` |
-| `step3_declared_domain_exclusion` | `excludedDomains` match, returns `Excluded(DECLARED)` |
-| `step4_learned_domain_exclusion` | DECLINE signals above threshold, returns `Excluded(LEARNED)` |
-| `step5_epistemic_weakness_below_confidence` | Low epistemic confidence, returns `EpistemicallyWeak` |
-| `step6_behavioral_violation_per_dimension` | VIOLATED signals exceed per-dimension threshold, returns `BehavioralViolation(PER_DIMENSION)` |
-| `step7_healthy_agent_passes_all_checks` | Clean agent, returns `Ready` |
-| `precedence_degraded_agent_with_exclusion_returns_degraded` | Agent with both degradation AND exclusion returns `Degraded` (earlier step wins) |
-| `probe_context_task_domain_vs_capability_tag` | Demonstrates correct `ProbeContext` usage: `taskDomain` is the subject domain ("rust"), not the capability name ("code-review"). Garden gotcha GE-20260523-fa7407. |
+| `degradation_overrides_everything` | Degraded agent returns `Degraded` (checked first) |
+| `undeclared_capability_returns_unavailable` | Agent lacks capability, returns `Unavailable` |
+| `declared_domain_exclusion` | `excludedDomains` match, returns `Excluded(DECLARED)` |
+| `learned_domain_exclusion` | DECLINE signals above threshold, returns `Excluded(LEARNED)` |
+| `epistemic_weakness_below_confidence` | Low epistemic confidence, returns `EpistemicallyWeak` |
+| `behavioral_violation_per_dimension` | VIOLATED signals on one dimension exceed threshold, returns `BehavioralViolation(PER_DIMENSION)` |
+| `behavioral_violation_aggregate` | VIOLATED signals spread across dimensions exceed aggregate threshold (5), no single dimension exceeds per-dimension threshold (3), returns `BehavioralViolation(AGGREGATE)` |
+| `healthy_agent_passes_all_checks` | Clean agent, returns `Ready` |
+| `precedence_degraded_beats_exclusion` | Agent with both degradation AND exclusion returns `Degraded` (earlier step wins) |
+| `probe_context_task_domain_vs_capability_tag` | Correct `ProbeContext` usage: `taskDomain` is the subject domain ("rust"), not the capability name ("code-review"). Garden gotcha GE-20260523-fa7407. |
 
 ### APIs Exercised
 
-- `CapabilityHealth.probe()` → all six `CapabilityStatus` variants
+- `CapabilityHealth.probe()` → all seven `CapabilityStatus` variants (including both violation modes)
 - `AgentStateStore.record()` for degradation
-- `BehavioralSignalStore.record()` with `BehavioralSignal.DECLINE` and `VIOLATED`
-- `ComplianceDimension` qualifier keys
-- `ProbeContext` with `taskDomain`
+- `BehavioralSignalStore.record()` with `BehavioralSignal.DECLINE` (qualifier = task domain) and `VIOLATED` (qualifier = `ComplianceDimension` key)
+- `ComplianceDimension.LATENCY`, `.DELEGATION`, `.ESCALATION` as qualifier keys
+- `ProbeContext.of(taskDomain)` — `taskDomain` must match qualifier used in `record()`
 - `ExclusionSource.DECLARED` vs `LEARNED`
-- `BehavioralViolation.ViolationKind.PER_DIMENSION`
+- `BehavioralViolation.ViolationKind.PER_DIMENSION` vs `AGGREGATE`
 
 ---
 
