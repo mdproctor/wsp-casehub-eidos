@@ -30,32 +30,40 @@ public record AgentGoal(
 ) {
     public AgentGoal {
         // existing validation unchanged
-        capabilities = capabilities != null ? List.copyOf(capabilities) : List.of();
+        capabilities = capabilities != null
+            ? List.copyOf(capabilities.stream().filter(Objects::nonNull).toList())
+            : List.of();
         AgentDescriptorValidator.validateItems("goal.capabilities", capabilities,
             AgentDescriptorValidator.MAX_CAPABILITY_NAME);
-    }
-}
-```
-
-### Registration-time cross-validation — `DescriptorCollector`
-
-After existing template validation, verify every capability name in each goal's list matches a declared capability on the same descriptor:
-
-```java
-var capabilityNames = d.capabilities().stream()
-    .map(AgentCapability::name).collect(Collectors.toSet());
-for (var goal : d.goals()) {
-    for (var capName : goal.capabilities()) {
-        if (!capabilityNames.contains(capName)) {
-            throw new IllegalStateException("Descriptor '" + d.agentId()
-                + "', goal '" + goal.name()
-                + "': references unknown capability '" + capName + "'");
+        if (capabilities.size() != capabilities.stream().distinct().count()) {
+            throw new AgentValidationException("goal.capabilities",
+                "duplicate capability name in goal '" + name + "'");
         }
     }
 }
 ```
 
-Fails fast at startup. Same pattern as template ref validation.
+Null elements are filtered before `List.copyOf` (avoids NPE). Duplicates are rejected explicitly.
+
+### Cross-validation — `AgentDescriptor` compact constructor
+
+Verify every capability name in each goal's capabilities list matches a declared `AgentCapability.name()` on the same descriptor. This validation is self-contained within the record (unlike template validation which needs an external `TemplateRegistry`):
+
+```java
+// In AgentDescriptor compact constructor, after goals normalization
+var capabilityNames = capabilities.stream()
+    .map(AgentCapability::name).collect(Collectors.toSet());
+for (var goal : goals) {
+    for (var capName : goal.capabilities()) {
+        if (!capabilityNames.contains(capName)) {
+            throw new AgentValidationException("goals",
+                "goal '" + goal.name() + "' references unknown capability '" + capName + "'");
+        }
+    }
+}
+```
+
+Exact string match against declared capability names. Subsumption matching is not applicable — this is a structural reference within a single descriptor, not a query.
 
 ### YAML — `ClasspathYamlDescriptorRegistrar`
 
@@ -106,28 +114,40 @@ capabilities   TEXT,
 
 ### Goal evolution — `DefaultGoalEvolution`
 
-`AgentGoal` construction during promotion/demotion carries `capabilities` through:
+Both construction sites (promotion and demotion) carry `capabilities` through:
 
 ```java
+// Promotion (line ~98)
 new AgentGoal(g.name(), g.description(), GoalPriority.PRIMARY,
+              g.visibility(), g.capabilities())
+// Demotion (line ~101)
+new AgentGoal(g.name(), g.description(), GoalPriority.SECONDARY,
               g.visibility(), g.capabilities())
 ```
 
 ### Rendering
 
-`capabilities` is a structural engine mapping — not rendered in MARKDOWN/PROSE system prompts. Surfaced in A2A_CARD for machine consumers.
+`capabilities` is a structural engine mapping — not rendered in MARKDOWN/PROSE system prompts. In A2A_CARD, goals are already serialized as JSON objects via Jackson; the `capabilities` field appears automatically as `"capabilities": ["cap-a", "cap-b"]` on each goal node. No renderer code change needed — Jackson auto-serialization handles it.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
 | `api/.../AgentGoal.java` | Add `capabilities` field, validation in compact constructor |
-| `api/.../AgentGoalTest.java` | Tests for new field: null→empty, validation, immutability |
-| `runtime/.../DescriptorCollector.java` | Cross-validation: goal capabilities vs declared capabilities |
+| `api/.../AgentDescriptor.java` | Cross-validation in compact constructor: goal capabilities vs declared capabilities |
+| `api/.../AgentGoalTest.java` | Tests for new field: null→empty, null-element filtering, duplicate rejection, immutability |
 | `runtime/.../ClasspathYamlDescriptorRegistrar.java` | `GoalConfig.capabilities`, `toDescriptor` mapping |
 | `runtime/.../jpa/AgentGoalEntity.java` | JSON column for capabilities |
 | `runtime/.../jpa/AgentDescriptorMapper.java` | toGoal/toGoalEntity with JSON round-trip |
 | `runtime/.../health/DefaultGoalEvolution.java` | Pass `capabilities` through in new AgentGoal construction |
 | `runtime/.../db/eidos/migration/V8__goals_constraints.sql` | Add `capabilities TEXT` column |
-| `runtime/.../renderer/EidosSystemPromptRenderer.java` | Surface in A2A_CARD only |
-| Tests | YAML round-trip, cross-validation failure, JPA round-trip, evolution pass-through |
+| Tests | YAML round-trip, cross-validation failure, JPA round-trip, evolution pass-through, AgentDescriptor cross-validation |
+
+## Review Findings Addressed
+
+- **Validation placement:** moved cross-validation from `DescriptorCollector` to `AgentDescriptor` compact constructor (self-contained, no external registry needed)
+- **Goal evolution construction sites:** both promotion and demotion paths documented
+- **A2A_CARD rendering:** Jackson auto-serialization — no explicit renderer change needed
+- **Duplicate capability names:** rejected in `AgentGoal` compact constructor
+- **Null elements:** filtered before `List.copyOf`
+- **Empty-list semantics:** intentionally cross-cutting (affected by any capability failure). Distinct from "not configured" — all goals start empty; authors add mappings when discrimination is needed
