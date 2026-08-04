@@ -1,3 +1,5 @@
+*Updated: #118, #135 closed — removed from backlog.*
+
 # eidos Session Handover - 2026-08-04
 
 **Previous handover:** git show HEAD~1:HANDOFF.md
@@ -16,7 +18,7 @@
 
 engine#860 depends on this — `GoalFailureRecorder` needs updating to filter goals by `goal.capabilities().contains(failedCapabilityName)` before recording DECLINE signals. Engine construction sites (`GoalAbandonmentEvaluator`, `GoalFailureRecorderTest`, `GoalAbandonmentEvaluatorTest`, `GoalSignalProviderTest`, `AgentGoalCompletionMarkerTest`) all need the 5th arg added.
 
-## What is Next
+## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
@@ -24,7 +26,6 @@ engine#860 depends on this — `GoalFailureRecorder` needs updating to filter go
 | #78 | Example: learned specialization lifecycle | M | Med | Epic #82 |
 | #80 | Example: full probe pipeline | M | Med | Epic #82 |
 | #81 | Example: cost-aware multi-agent routing | M | Med | Epic #82 |
-| #118 | Refactor: move API coverage tests out of examples | S | Low | |
 
 ## References
 
