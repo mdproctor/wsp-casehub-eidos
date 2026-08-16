@@ -17,8 +17,8 @@
 **Alternatives:**
 - New DispositionAxis (6th axis) — full integration but heavy ripple through every axisExactMatch switch, AgentDisposition record, JPA schema, eval harness, and renderer
 - Hybrid (vocab + lightweight float field on AgentDisposition) — partial integration, mixed concerns
-**Rationale:** Zero changes to core API. Follows established DISC/BigFive/Enneagram pattern. If vocab turns out unused, it just sits there. No schema migrations needed.
-**Trade-offs:** No first-class axis means humor doesn't participate in disposition axis resolution directly — only through cross-vocabulary mappings
+**Rationale:** Humor/sarcasm is a personality framework (like Jungian, MBTI, Enneagram), not a behavioral axis (like SOCIAL_ORIENTATION or RISK_APPETITE). Follows established vocab pattern. No schema migrations needed. Note: the render pipeline requires changes to surface Sarc7 responseStyleGuidance (currently gated on Jungian URI — see D6).
+**Trade-offs:** No first-class axis means humor doesn't participate in disposition axis resolution directly — only through cross-vocabulary mappings. Render pipeline changes needed (not "zero changes" — D6 requires pipeline generalization).
 **Exploration:** quick
 **Status:** captured
 
@@ -35,14 +35,15 @@
 
 ## D4: Reception-side modeling
 
-**Choice:** Epistemic domain on existing capability — add `"sarcasm-detection"` as an epistemicDomain entry on whatever NLU/comprehension capability the agent declares
+**Choice:** Standalone AgentCapability `"sarcasm-awareness"` — independently queryable via find(), participates in subsumption matching, has own health probing
 **Alternatives:**
-- Standalone AgentCapability `"sarcasm-awareness"` — independently discoverable via find() but heavier, possibly premature
+- Epistemic domain on existing capability — lightweight but semantic mismatch (epistemicDomains is about knowledge domains like `{"java": 0.95}`, not processing capabilities)
 - Defer reception entirely — simpler but leaves the "both" scope incomplete
-**Rationale:** Lightweight, no new capability declaration needed. Epistemic domains already exist for qualifying capability competence by domain.
-**Trade-offs:** Not independently queryable via AgentRegistry.find(capabilityName="sarcasm-awareness") — requires knowing the parent capability name
+**Rationale:** Sarcasm detection is a processing capability, not a knowledge domain. A standalone capability is independently discoverable via `AgentRegistry.find(capabilityName="sarcasm-awareness")`, can have its own epistemicDomains (e.g., cultural sarcasm detection confidence), and integrates with CapabilityHealth for independent probing.
+**Trade-offs:** Heavier — requires a capability declaration on each agent that claims sarcasm awareness. Can be grounded in CasehubCapabilityTerm for subsumption.
 **Exploration:** quick
-**Status:** captured
+**Revised:** R1-03 — epistemicDomains is about knowledge domains, not processing capabilities
+**Status:** revised
 
 ## D5: Cross-vocabulary mappings
 
@@ -60,19 +61,20 @@
 **Choice:** Include responseStyleGuidance() and antiPatternWarning() on each Sarc7 term
 **Alternatives:**
 - Terms only, no guidance — lighter but misses the generation-side value that motivated the work
-**Rationale:** Directly shapes agent output tone via the existing render pipeline (EidosRenderPipeline already reads these from JungianFunctionTerm). Each sarcasm type generates specific tone instructions in the system prompt.
-**Trade-offs:** Guidance text must be carefully written — bad prompt guidance could make LLM output worse than no guidance
+**Rationale:** Directly shapes agent output tone in the system prompt. Note: the current render pipeline gates responseStyleGuidance/antiPatternWarning on `JUNGIAN_VOCAB_URI` — the pipeline must be generalized to support multiple vocabulary URIs, or a dedicated humor rendering section must be added for Sarc7 guidance to reach the prompt.
+**Trade-offs:** Guidance text must be carefully written — bad prompt guidance could make LLM output worse than no guidance. Requires render pipeline changes (not just vocab-only work).
 **Exploration:** quick
 **Status:** captured
 
-## D7: Vocabulary structure — dimensions and overridability
+## D7: Vocabulary structure — dimensions as read-only enum fields
 
-**Choice:** Sarc7Term with 7 types, each carrying the 4 Sarc7 evaluation dimensions (incongruity, shockValue, contextDependency, emotionalTone) as fields with paper-derived defaults. Per-agent dimension overrides via an override map on the descriptor.
+**Choice:** Sarc7Term with 7 types, each carrying the 4 Sarc7 evaluation dimensions (incongruity, shockValue, contextDependency, emotionalTone) as read-only fields with paper-derived values. No per-agent overrides. DispositionValue weight handles per-agent differentiation (DEADPAN at 0.85 vs 0.4). Experimentation with dimension values happens in the eval harness.
 **Alternatives:**
-- Dimensions on enum only, no per-agent override — simpler but can't experiment with tuning
+- Per-agent dimension overrides via override map on descriptor — breaks vocabulary abstraction (no existing vocab has per-agent overrides), introduces undefined mechanism, carries experimental knobs into production
 - Dimensions only on descriptor, enum is just a type tag — simpler enum but no sensible defaults
-**Rationale:** Defaults from the paper give sensible out-of-the-box behavior; most agents won't override. Per-agent overrides enable experimentation ("do LLMs respond differently to incongruity=0.3 vs 0.8?") without losing the academic grounding.
-**Trade-offs:** Requires a new mechanism for per-agent dimension overrides on the descriptor. Adds complexity to the descriptor → renderer pipeline.
+**Rationale:** The 4 dimensions characterize what each sarcasm type IS — deadpan IS high-incongruity, low-shock. They're intrinsic properties, not tuning knobs. DispositionValue weight already provides per-agent customization. The eval harness is the right place to experiment with different values; winners get baked into the enum constants.
+**Trade-offs:** Can't tune dimensions per-agent in production. Must update enum constants and redeploy to change dimension values.
 **Depends on:** D3 (Sarc7 terms), D6 (prompt guidance)
 **Exploration:** quick
-**Status:** captured
+**Revised:** R1-04 — per-agent overrides break vocabulary abstraction; DispositionValue weight is the existing customization path
+**Status:** revised
