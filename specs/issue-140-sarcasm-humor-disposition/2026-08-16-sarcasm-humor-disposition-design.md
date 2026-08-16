@@ -55,6 +55,8 @@ New enum `Sarc7Term` in `casehub-eidos-vocab`, implementing `VocabularyTerm`.
 
 URI: `urn:casehub:vocab:sarc7`
 
+Sarc7 types are used as disposition axis values, following the DISC pattern. An agent declares `dispositionVocabulary="urn:casehub:vocab:sarc7"` and uses Sarc7 type keys as values for all 5 disposition axes. Each type resolves to different ConscientiousnessTerm/ThomasKilmannTerm values per axis via `axisExactMatch` — exactly as DISC types do.
+
 ### 1.2 Constants
 
 | Constant | value | label | Description |
@@ -161,6 +163,8 @@ if (hasJungianProfile(descriptor))  → assembleJungianCognitiveProfile(sb, ...)
 if (hasSarc7Profile(descriptor))    → assembleSarc7HumorProfile(sb, ...)
 assembleGenericVocabularyGuidance(sb, descriptor, alreadyRendered)
 ```
+
+Detection: `hasSarc7Profile(descriptor)` returns true when the descriptor's `dispositionVocabulary` equals `urn:casehub:vocab:sarc7`, or when any `axisVocabularies` entry maps to the Sarc7 URI. Same pattern as Jungian detection.
 
 Two if-checks for two vocabularies. A third vocabulary with custom rendering adds one method and one if-check. Migration to a registry or SPI is warranted if we reach 5+ custom renderers.
 
