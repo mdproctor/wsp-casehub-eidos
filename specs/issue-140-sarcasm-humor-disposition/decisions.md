@@ -78,3 +78,28 @@
 **Exploration:** quick
 **Revised:** R1-04 — per-agent overrides break vocabulary abstraction; DispositionValue weight is the existing customization path
 **Status:** revised
+
+## D8: Cross-vocabulary mapping approach
+
+**Choice:** Map each Sarc7 term to ConscientiousnessTerm (axes 1-4) and ThomasKilmannTerm (CONFLICT_MODE) via axisExactMatch, following the DISC/BigFive pattern. Document mappings in docs/personality-frameworks.md as the authoritative reference.
+**Alternatives:**
+- No cross-maps — simpler but no subsumption matching or consistency validation
+- Minimal maps (strong correlations only) — safer but incomplete
+**Rationale:** Follows established vocabulary pattern. personality-frameworks.md is the authoritative source for all framework mappings — Sarc7 should be documented there alongside DISC, BigFive, Belbin, and Jungian.
+**Trade-offs:** Sarc7-to-Conscientiousness mappings are editorial (no psychometric research), unlike BigFive-to-Conscientiousness (Costa & McCrae, 1992). Must be reviewed carefully. personality-frameworks.md update is part of the deliverable.
+**Depends on:** D3 (Sarc7 terms), D2 (standalone vocab)
+**Exploration:** quick
+**Status:** captured
+
+## D9: Render pipeline architecture
+
+**Choice:** Hybrid three-layer design. Layer 1: framework-specific structural rendering via dedicated private methods (assembleJungianCognitiveProfile, assembleSarc7HumorProfile). Layer 2: shared guidance helper (renderGuidanceBlock) that renders responseStyleGuidance/antiPatternWarning from any VocabularyTerm with parameterized section heading. Layer 3: generic fallback sweep (assembleGenericVocabularyGuidance) for future vocabularies that provide guidance but have no dedicated renderer.
+**Alternatives:**
+- Pure generalization (Option A) — abstracts Jungian-specific logic into a generic framework, weakening Jungian rendering quality
+- Pure separation (Option B) — each vocabulary gets fully independent method, duplicating the guidance rendering mechanism
+- SPI-based (VocabularyPromptContributor CDI beans) — fully open-closed but heavy engineering for 2 vocabularies
+**Rationale:** Preserves full fidelity of framework-specific rendering (Jungian stays Jungian, Sarc7 stays Sarc7). Factors out the generic part (guidance text rendering) exactly once. Generic fallback means future guidance-only vocabularies need zero pipeline changes. Clear migration path to SPI if we reach 5+ custom renderers.
+**Trade-offs:** Adding a new vocabulary with custom rendering still requires one private method + one if-check. Acceptable at 2-3 vocabularies; refactor to registry/SPI if it grows beyond that.
+**Depends on:** D6 (prompt guidance), D2 (standalone vocab)
+**Exploration:** deep-analysis
+**Status:** captured
