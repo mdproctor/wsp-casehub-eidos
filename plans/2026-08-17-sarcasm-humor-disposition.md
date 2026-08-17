@@ -542,16 +542,20 @@ if (SARC7_VOCAB_URI.equals(descriptor.styleVocabulary())) {
 assembleGenericVocabularyGuidance(sb, descriptor, renderedStyleVocabs);
 ```
 
-- [ ] **Step 6: Add A2A_CARD styleProfile block**
+- [ ] **Step 6: Add PROSE format Sarc7 rendering**
+
+In `assembleProse()`, add Sarc7 rendering after the existing disposition prose section. Resolve the primary Sarc7 term from `styleProfile` and integrate `responseStyleGuidance()` as a natural-language paragraph — no structural headings (PROSE format convention). Example output: "When communicating, this agent defaults to a deadpan sarcasm style — delivering humor through understatement and matter-of-fact delivery without signaling that humor is intended."
+
+- [ ] **Step 7: Add A2A_CARD styleProfile block**
 
 In `assembleA2aCard()`, add a `styleProfile` JSON block alongside the existing disposition data. Include the Sarc7 type, dimensions, responseStyle, and antiPattern.
 
-- [ ] **Step 7: Run tests to verify they pass**
+- [ ] **Step 8: Run tests to verify they pass**
 
 Run: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl runtime`
 Expected: all pass including new Sarc7RenderPipelineTest.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git -C /Users/mdproctor/claude/casehub/eidos add runtime/
@@ -633,7 +637,7 @@ disposition:
 
 Create all 7 single-type profiles.
 
-- [ ] **Step 2: Create combined Jungian+Sarc7 profile**
+- [ ] **Step 2: Create combined Jungian+Sarc7 profile with sarcasm-awareness capability**
 
 ```yaml
 agentId: jungian-sarc7-intp-deadpan
@@ -646,7 +650,15 @@ disposition:
   styleProfile:
     - term: deadpan
       weight: 1.0
+capabilities:
+  - name: sarcasm-awareness
+    description: "Detects and correctly interprets sarcastic intent in user messages"
+    epistemicDomains:
+      western-cultural: 0.9
+      cross-cultural: 0.5
 ```
+
+This profile demonstrates both the generation-side (Sarc7 styleProfile) and reception-side (sarcasm-awareness capability) patterns from spec §4.
 
 - [ ] **Step 3: Create Sarc7EvalTest**
 
