@@ -1,0 +1,26 @@
+# Work Plan — issue-140-sarcasm-humor-disposition
+
+## State
+branch: issue-140-sarcasm-humor-disposition
+state: scaffolded
+project-sha: 7a08f800a62b02ee2723c7c1126c5bf224a32ae9
+date: 2026-08-16
+issue-repo: casehubio/eidos
+covers: 140
+design-repo: project
+design-section-hashes: 4d2cc5ab:## §1 Introduction and Goals|4f6b26ef:## §2 Constraints|39b76cb9:## §3 Context and Scope|74aa736f:## §4 Solution Strategy|9ca8de62:## §5 Building Block View|f1938c56:## §6 Runtime View|65807a21:## §7 Deployment View|a03d508f:## §8 Crosscutting Concepts|b2e1b57c:## §9 Journeys and Chapters|598f3a04:## §10 Architectural Decisions|1f604475:## §11 Quality Requirements|af5f260f:## §12 Risks and Technical Debt|42d51385:## §13 Glossary
+flyway-next-v: unknown
+
+## Queue
+- [ ] #140 — Issue #140 ← active
+  - [x] Batch 1: Core API
+    - [x] Task 1: Add styleProfile and styleVocabulary
+  - [x] Batch 2: Vocabulary
+    - [x] Task 2: Create Sarc7Term and registrar
+  - [x] Batch 3: Pipeline
+    - [x] Task 3: Extract renderGuidanceBlock helper
+    - [x] Task 4: Add Sarc7 rendering and dispatch
+  - [x] Batch 4: Docs
+    - [x] Task 5: Update personality-frameworks.md
+  - [x] Batch 5: Eval
+    - [x] Task 6: Add Sarc7 eval profiles
