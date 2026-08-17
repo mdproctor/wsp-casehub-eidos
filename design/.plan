@@ -13,14 +13,14 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] #140 — Issue #140 ← active
-  - [ ] Batch 1: Core API
-    - [ ] Task 1: Add styleProfile and styleVocabulary
-  - [ ] Batch 2: Vocabulary
-    - [ ] Task 2: Create Sarc7Term and registrar
-  - [ ] Batch 3: Pipeline
-    - [ ] Task 3: Extract renderGuidanceBlock helper
-    - [ ] Task 4: Add Sarc7 rendering and dispatch
-  - [ ] Batch 4: Docs
-    - [ ] Task 5: Update personality-frameworks.md
-  - [ ] Batch 5: Eval
-    - [ ] Task 6: Add Sarc7 eval profiles
+  - [x] Batch 1: Core API
+    - [x] Task 1: Add styleProfile and styleVocabulary
+  - [x] Batch 2: Vocabulary
+    - [x] Task 2: Create Sarc7Term and registrar
+  - [x] Batch 3: Pipeline
+    - [x] Task 3: Extract renderGuidanceBlock helper
+    - [x] Task 4: Add Sarc7 rendering and dispatch
+  - [x] Batch 4: Docs
+    - [x] Task 5: Update personality-frameworks.md
+  - [x] Batch 5: Eval
+    - [x] Task 6: Add Sarc7 eval profiles
