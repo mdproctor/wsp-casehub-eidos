@@ -6,7 +6,7 @@
 
 ## Summary
 
-Extend the Eidos disposition model with structured sarcasm dimensions per agent, grounded in the Sarc7 paper (Xiong et al., 2025). A new `Sarc7Term` vocabulary enum in `casehub-eidos-vocab` provides 7 sarcasm types with cross-vocabulary mappings, prompt guidance methods, and read-only evaluation dimension metadata. The render pipeline gains a hybrid three-layer architecture to surface vocabulary-provided guidance generically while preserving framework-specific rendering fidelity. Reception-side sarcasm awareness is modeled as a standalone `AgentCapability`.
+Extend the Eidos disposition model with structured sarcasm dimensions per agent, grounded in the Sarc7 paper (Xiong et al., 2025). Two new fields on core API records — `styleVocabulary` on `AgentDescriptor` and `styleProfile` on `AgentDisposition` — provide a clean second personality profile slot for communication style vocabularies alongside the behavioral `dispositionProfile`. A new `Sarc7Term` vocabulary enum in `casehub-eidos-vocab` provides 7 sarcasm types with prompt guidance methods, read-only evaluation dimension metadata, and reference cross-vocabulary mappings. The render pipeline gains a hybrid three-layer architecture to surface vocabulary-provided guidance generically while preserving framework-specific rendering fidelity. Reception-side sarcasm awareness is modeled as a standalone `AgentCapability`.
 
 ## Academic Reference
 
@@ -19,7 +19,8 @@ Seven pragmatically defined sarcasm types (self-deprecating, brooding, deadpan, 
 ## Scope
 
 **In scope:**
-- `Sarc7Term` vocabulary enum with 7 constants, cross-vocabulary mappings, responseStyleGuidance(), antiPatternWarning(), and read-only Sarc7 dimension fields
+- `styleVocabulary` field on `AgentDescriptor` + `styleProfile` field on `AgentDisposition` — new core API fields for communication style vocabularies
+- `Sarc7Term` vocabulary enum with 7 constants, reference cross-vocabulary mappings, responseStyleGuidance(), antiPatternWarning(), and read-only Sarc7 dimension fields
 - `Sarc7VocabularyRegistrar` CDI bean
 - Render pipeline hybrid refactor (Layer 1: framework-specific, Layer 2: generic guidance helper, Layer 3: generic fallback sweep)
 - `sarcasm-awareness` capability declaration pattern
@@ -27,7 +28,8 @@ Seven pragmatically defined sarcasm types (self-deprecating, brooding, deadpan, 
 - Eval YAML profiles and scenarios for sarcasm differentiation testing
 
 **Out of scope:**
-- New DispositionAxis — humor is a personality framework, not a behavioral axis (D2)
+- New DispositionAxis — humor is a communication style, not a behavioral axis (D2)
+- Axis auto-derivation from `styleProfile` — DescriptorCollector ignores styleProfile; cross-mappings exist on the enum for reference only (D5 revised)
 - Per-agent dimension overrides — dimensions are read-only on the enum; DispositionValue weight handles per-agent customization (D7)
 - Non-sarcastic humor (warmth, wit) — separate vocabulary if needed later (D3)
 - Disposition evolution for sarcasm — no theory of sarcasm type evolution exists (no structural transition rules like Jungian shadow/compensation)
@@ -55,7 +57,7 @@ New enum `Sarc7Term` in `casehub-eidos-vocab`, implementing `VocabularyTerm`.
 
 URI: `urn:casehub:vocab:sarc7`
 
-Sarc7 types are used as disposition axis values, following the DISC pattern. An agent declares `dispositionVocabulary="urn:casehub:vocab:sarc7"` and uses Sarc7 type keys as values for all 5 disposition axes. Each type resolves to different ConscientiousnessTerm/ThomasKilmannTerm values per axis via `axisExactMatch` — exactly as DISC types do.
+Sarc7 types live in `styleProfile` on `AgentDisposition`, NOT on the 5 behavioral axes. An agent declares `styleVocabulary="urn:casehub:vocab:sarc7"` and populates `styleProfile` with one or more weighted Sarc7 terms (e.g., `[DispositionValue("deadpan", 0.8), DispositionValue("brooding", 0.2)]`). The behavioral disposition axes (`socialOrient`, `ruleFollowing`, etc.) are populated independently — typically from a Jungian or DISC profile. `DescriptorCollector` does NOT auto-derive axes from `styleProfile`.
 
 ### 1.2 Constants
 
@@ -89,11 +91,13 @@ Fields:
 - `contextDependency()` — how much context is needed to detect the sarcasm
 - `emotionalTone()` — negative (0.0) to positive (1.0)
 
-Note: These values are initial estimates from the paper's qualitative descriptions. The eval harness (§5) will test whether these values, when surfaced in prompt guidance, produce measurably different LLM output. Adjust based on eval results.
+Note: These values are initial estimates from the paper's qualitative descriptions. Dimension values are **eval-only metadata** — they are NOT rendered directly in the system prompt. The `responseStyleGuidance()` text (§1.5) already encodes the dimensional profile narratively (e.g., DEADPAN guidance emphasizes incongruity without stating "incongruity=0.8"). The numeric values serve the eval harness (§6) for scoring and comparison, and the A2A_CARD format for machine-readable metadata. Adjust based on eval results.
 
 ### 1.4 Cross-Vocabulary Mappings
 
-Each Sarc7 term maps to ConscientiousnessTerm (axes 1–4) and ThomasKilmannTerm (CONFLICT_MODE) via `axisExactMatch()`. These are editorial mappings — no psychometric research backs them, unlike BigFive-to-Conscientiousness (Costa & McCrae, 1992). They represent reasonable behavioral correlations.
+Each Sarc7 term implements `axisExactMatch()` to ConscientiousnessTerm (axes 1–4) and ThomasKilmannTerm (CONFLICT_MODE). These are **reference mappings** — they document correlations between sarcasm style and behavioral tendencies but are NOT used for axis auto-derivation. `DescriptorCollector` ignores `styleProfile` entirely; these mappings are available for explicit consumer use (consistency validation, personality-frameworks.md documentation) only.
+
+The mappings are editorial — no psychometric research backs them, unlike BigFive-to-Conscientiousness (Costa & McCrae, 1992). They represent reasonable but debatable behavioral correlations.
 
 | Sarc7 Term | SOCIAL_ORIENT | RULE_FOLLOWING | RISK_APPETITE | AUTONOMY | CONFLICT_MODE (TK) |
 |---|---|---|---|---|---|
@@ -130,13 +134,63 @@ Guidance text for all 7 types will be drafted during implementation and refined 
 
 ---
 
-## 2. Render Pipeline: Hybrid Three-Layer Architecture
+## 2. Core API: `styleProfile` / `styleVocabulary`
 
-### 2.1 Problem
+### 2.1 New Fields
+
+Two new fields introduce a second personality profile slot for communication style vocabularies:
+
+```
+AgentDescriptor:
+  + styleVocabulary: String    // vocabulary URI for the style profile (e.g., "urn:casehub:vocab:sarc7")
+
+AgentDisposition:
+  + styleProfile: List<DispositionValue>   // communication style terms with weights
+```
+
+This parallels the existing behavioral disposition structure:
+
+| Concern | Vocabulary URI field | Profile data field | Auto-derives axes? |
+|---|---|---|---|
+| Behavioral disposition | `dispositionVocabulary` | `dispositionProfile` | Yes |
+| Communication style | `styleVocabulary` | `styleProfile` | **No** |
+
+### 3.2 Design Properties
+
+- `styleProfile` uses `List<DispositionValue>` for consistency with `dispositionProfile`. Enables multi-term blending: `DEADPAN(0.7) + BROODING(0.3)` — "primarily deadpan with brooding undertones."
+- `DescriptorCollector` ignores `styleProfile` — no axis auto-derivation. Cross-mappings on the enum exist for reference/consistency only.
+- Jungian + Sarc7 coexist naturally: `dispositionVocabulary="urn:casehub:vocab:jungian"` + `styleVocabulary="urn:casehub:vocab:sarc7"`.
+- `styleVocabulary` resolution: `styleVocabulary` → `domainVocabulary` (fallback). No `slotVocabulary`/`dispositionVocabulary` fallback — communication style is a distinct concern.
+- `impliesSupervision()`: no Sarc7 term implies supervision. Sarcasm style doesn't determine autonomy.
+
+### 2.3 Builder / YAML / JPA
+
+- `AgentDisposition.Builder` gains `styleProfile(DispositionValue...)` and `styleProfile(List<DispositionValue>)` methods.
+- `AgentDescriptor` builder gains `styleVocabulary(String)`.
+- YAML descriptor format gains `styleVocabulary` and `styleProfile` fields on the disposition config.
+- JPA: new `style_profile` column on the disposition entity (JSON array of term+weight pairs). No Flyway migration needed — no deployed instances.
+
+### 2.4 Worked Example
+
+```
+// Jungian cognitive profile + Sarc7 communication style
+dispositionVocabulary = "urn:casehub:vocab:jungian"
+dispositionProfile    = [{ti, 0.45}, {ne, 0.20}, {si, 0.10}, {fe, 0.08}]
+styleVocabulary       = "urn:casehub:vocab:sarc7"
+styleProfile          = [{deadpan, 0.8}]
+```
+
+Both render in the system prompt: Jungian via `assembleJungianCognitiveProfile()`, Sarc7 via `assembleSarc7HumorProfile()`. No conflict — separate profile fields, separate vocabulary URIs, separate pipeline sections.
+
+---
+
+## 3. Render Pipeline: Hybrid Three-Layer Architecture
+
+### 3.1 Problem
 
 `EidosRenderPipeline.assembleMarkdownCognitiveProfile()` gates on `JUNGIAN_VOCAB_URI`. Sarc7's `responseStyleGuidance()` and `antiPatternWarning()` would never be called without pipeline changes.
 
-### 2.2 Design
+### 3.2 Design
 
 Decompose into three layers:
 
@@ -154,7 +208,7 @@ Refactoring: the current Jungian method's inline guidance rendering is extracted
 **Layer 3 — Generic fallback sweep:**
 `assembleGenericVocabularyGuidance(StringBuilder sb, descriptor, Set<String> renderedUris)` — after all Layer 1 methods have run, iterates any remaining vocabularies on the descriptor. For each vocabulary not already rendered, checks if its terms implement `responseStyleGuidance()`. If so, renders a plain guidance block with a generic heading. This means a future vocabulary that implements `responseStyleGuidance()` gets its guidance surfaced automatically — zero pipeline changes needed.
 
-### 2.3 Dispatch
+### 3.3 Dispatch
 
 In the main render orchestration:
 
@@ -164,11 +218,11 @@ if (hasSarc7Profile(descriptor))    → assembleSarc7HumorProfile(sb, ...)
 assembleGenericVocabularyGuidance(sb, descriptor, alreadyRendered)
 ```
 
-Detection: `hasSarc7Profile(descriptor)` returns true when the descriptor's `dispositionVocabulary` equals `urn:casehub:vocab:sarc7`, or when any `axisVocabularies` entry maps to the Sarc7 URI. Same pattern as Jungian detection.
+Detection: `hasSarc7Profile(descriptor)` returns true when `descriptor.styleVocabulary()` equals `urn:casehub:vocab:sarc7` and `descriptor.disposition().styleProfile()` is non-empty. Clean and unambiguous — no overlap with Jungian detection.
 
 Two if-checks for two vocabularies. A third vocabulary with custom rendering adds one method and one if-check. Migration to a registry or SPI is warranted if we reach 5+ custom renderers.
 
-### 2.4 A2A_CARD Format
+### 3.4 A2A_CARD Format
 
 The A2A_CARD path (`assembleA2aCard()`) adds a `"humorProfile"` JSON block alongside the existing cognitive profile:
 
@@ -189,13 +243,13 @@ The A2A_CARD path (`assembleA2aCard()`) adds a `"humorProfile"` JSON block along
 }
 ```
 
-### 2.5 PROSE Format
+### 3.5 PROSE Format
 
 PROSE format renders the sarcasm profile as a natural-language paragraph integrated into the agent description, using the same `responseStyleGuidance()` and `antiPatternWarning()` content but without structural headings.
 
 ---
 
-## 3. Reception: `sarcasm-awareness` Capability
+## 4. Reception: `sarcasm-awareness` Capability
 
 Sarcasm comprehension is modeled as a standalone `AgentCapability` declaration on the agent's descriptor. No new types or SPIs.
 
@@ -218,15 +272,15 @@ Optionally, `CasehubCapabilityTerm` can add a `SARCASM_AWARENESS` term for subsu
 
 ---
 
-## 4. Documentation: `personality-frameworks.md` Update
+## 5. Documentation: `personality-frameworks.md` Update
 
 The authoritative mapping reference at `docs/personality-frameworks.md` gains:
 
-### 4.1 New Section: §2.5 Sarc7 Sarcasm Types
+### 6.1 New Section: §2.5 Sarc7 Sarcasm Types
 
 Following the existing section format (What it models, Scientific validity, Workplace adoption, Vocabulary role, mapping table). Scientific validity: Medium — published at ACL WiNLP 2025 and NeurIPS COLM SoLaR 2025. Annotation grounded in Qasim (2021) linguistic taxonomy.
 
-### 4.2 Cross-Reference Summary Table Update (§5)
+### 6.2 Cross-Reference Summary Table Update (§5)
 
 New column `Sarc7` added. Rows:
 - `socialOrient` → **disposition** (via axisExactMatch)
@@ -236,7 +290,7 @@ New column `Sarc7` added. Rows:
 - `conflictMode` → **disposition** (via TK axisExactMatch)
 - All other rows → `—`
 
-### 4.3 Framework Compatibility Update (§6)
+### 6.3 Framework Compatibility Update (§6)
 
 New entries:
 
@@ -247,7 +301,7 @@ New entries:
 | Sarc7 + Belbin | Additive | Sarcasm style and team role are orthogonal |
 | Sarc7 + Conscientiousness | Redundant (partial) | Sarc7 maps to Conscientiousness terms via axisExactMatch — using both creates overlapping encodings on the mapped axes |
 
-### 4.4 New Combination Pattern: Sarc7 Profile
+### 6.4 New Combination Pattern: Sarc7 Profile
 
 ```
 dispositionVocabulary = "urn:casehub:vocab:sarc7"  // or alongside Jungian
@@ -258,26 +312,26 @@ Guidance on combining Sarc7 with Jungian profiles — both can be active simulta
 
 ---
 
-## 5. Eval Integration
+## 6. Eval Integration
 
-### 5.1 Approach
+### 6.1 Approach
 
 Use existing eval judges — no new judge types needed initially.
 
 - `TraitExpressionJudge` — assess whether sarcasm style traits are expressed in rendered system prompts
 - `PairContrastJudge` — verify that different Sarc7 types produce distinguishable agent output (e.g., DEADPAN vs. OBNOXIOUS given the same scenario)
 
-### 5.2 YAML Profiles
+### 6.2 YAML Profiles
 
 Add Sarc7-specific eval YAML agent profiles in `eval/src/test/resources/`:
 - One profile per Sarc7 type (7 profiles)
 - At least 2 combined profiles (Jungian + Sarc7) to test interaction effects
 
-### 5.3 Protocol Compliance
+### 6.3 Protocol Compliance
 
 The `disposition-axis-string-boundary` protocol applies: if eval judges iterate Sarc7 dimensions or types, the constants must match exactly. Use `Sarc7Term.values()` or explicit lists — never hardcoded strings.
 
-### 5.4 Key Experimental Questions
+### 6.4 Key Experimental Questions
 
 The eval harness should answer:
 1. Do LLMs produce detectably different output for different Sarc7 types?
@@ -287,7 +341,7 @@ The eval harness should answer:
 
 ---
 
-## 6. Disposition Evolution
+## 7. Disposition Evolution
 
 Sarc7 terms do **not** participate in `DispositionEvolution` or `DispositionHealth` initially. The Jungian framework has structural rules for valid personality transitions (shadow activation, dominant-auxiliary swap, over-reinforcement). Sarc7 has no equivalent theory — there is no academic model of sarcasm type evolution (e.g., "what does it mean for an agent's sarcasm to shift from POLITE to RAGING?").
 
@@ -295,17 +349,22 @@ If a theory of sarcasm evolution emerges from eval results or future research, t
 
 ---
 
-## 7. Deliverables Summary
+## 8. Deliverables Summary
 
 | Deliverable | Module | New/Modified |
 |---|---|---|
+| `styleVocabulary` field on `AgentDescriptor` | casehub-eidos-api | Modified |
+| `styleProfile` field on `AgentDisposition` + Builder | casehub-eidos-api | Modified |
 | `Sarc7Term` enum | casehub-eidos-vocab | New |
 | `Sarc7VocabularyRegistrar` | casehub-eidos-vocab | New |
+| JPA entity updates for `styleProfile` | casehub-eidos (runtime, registry/jpa) | Modified |
+| YAML descriptor support for `styleVocabulary`/`styleProfile` | casehub-eidos (runtime, registrar) | Modified |
+| `DescriptorCollector` — ignore `styleProfile` for axis derivation | casehub-eidos (runtime, registrar) | Verified (no change needed if styleProfile isn't in dispositionProfile) |
 | `assembleSarc7HumorProfile()` | casehub-eidos (runtime, renderer) | New |
 | `renderGuidanceBlock()` helper | casehub-eidos (runtime, renderer) | New (extracted from Jungian method) |
 | `assembleGenericVocabularyGuidance()` | casehub-eidos (runtime, renderer) | New |
 | Refactor `assembleMarkdownCognitiveProfile()` | casehub-eidos (runtime, renderer) | Modified (extract guidance to helper) |
-| A2A_CARD `humorProfile` block | casehub-eidos (runtime, renderer) | Modified |
+| A2A_CARD `styleProfile` block | casehub-eidos (runtime, renderer) | Modified |
 | `personality-frameworks.md` | docs | Modified |
 | Eval YAML profiles (7+ Sarc7 profiles) | casehub-eidos-eval | New |
 | Eval scenarios for sarcasm differentiation | casehub-eidos-eval | New |

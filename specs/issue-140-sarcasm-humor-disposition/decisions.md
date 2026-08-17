@@ -17,8 +17,9 @@
 **Alternatives:**
 - New DispositionAxis (6th axis) — full integration but heavy ripple through every axisExactMatch switch, AgentDisposition record, JPA schema, eval harness, and renderer
 - Hybrid (vocab + lightweight float field on AgentDisposition) — partial integration, mixed concerns
-**Rationale:** Humor/sarcasm is a personality framework (like Jungian, MBTI, Enneagram), not a behavioral axis (like SOCIAL_ORIENTATION or RISK_APPETITE). Follows established vocab pattern. No schema migrations needed. Note: the render pipeline requires changes to surface Sarc7 responseStyleGuidance (currently gated on Jungian URI — see D6).
-**Trade-offs:** No first-class axis means humor doesn't participate in disposition axis resolution directly — only through cross-vocabulary mappings. Render pipeline changes needed (not "zero changes" — D6 requires pipeline generalization).
+**Rationale:** Humor/sarcasm is a communication style overlay, not a behavioral axis. It doesn't determine how an agent behaves — it determines how an agent communicates, independent of disposition. A new `styleProfile` field on AgentDisposition (with `styleVocabulary` on AgentDescriptor) provides a clean second profile slot alongside the behavioral `dispositionProfile`. Pre-release project — no migration cost.
+**Trade-offs:** Two new fields on core API records (AgentDescriptor, AgentDisposition). Builder methods, JPA column, YAML support needed. Acceptable for a pre-release project with no deployed instances.
+**Revised:** Spec review R1-01/R1-02/R1-03 — original "standalone vocab with axis mappings following DISC pattern" was a category error. Sarcasm style doesn't make meaningful behavioral axis claims. `styleProfile`/`styleVocabulary` is the correct abstraction.
 **Exploration:** quick
 **Status:** captured
 
@@ -47,12 +48,13 @@
 
 ## D5: Cross-vocabulary mappings
 
-**Choice:** Cross-map each Sarc7 term to existing vocabularies (ConscientiousnessTerm, ThomasKilmannTerm) via axisExactMatch
+**Choice:** Sarc7Term implements axisExactMatch for reference and consistency checking. Cross-mappings exist on the enum and in personality-frameworks.md. DescriptorCollector does NOT auto-derive axes from styleProfile — the mappings are metadata, not axis population drivers.
 **Alternatives:**
-- Self-contained, no cross-maps — simpler but no integration with disposition axis resolution or subsumption matching
-- Minimal cross-maps (only strong correlations) — safer but loses weaker but useful correlations
-**Rationale:** Follows DISC/BigFive pattern. Enables subsumption matching and consistency validation (e.g., a DISC-S agent with obnoxious sarcasm would flag as inconsistent).
-**Trade-offs:** Cross-mappings are subjective — "brooding maps to CONSERVATIVE on RISK_APPETITE" is defensible but debatable. Must be reviewed carefully.
+- Full axis derivation (DISC pattern) — category error; sarcasm type doesn't determine behavioral disposition
+- No cross-maps at all — loses consistency validation opportunity
+**Rationale:** Cross-mappings document genuine (if weak) correlations between sarcasm style and behavioral tendencies. Available for consumers who want consistency checking. But NOT used for axis auto-derivation because the correlations are editorial, not empirically grounded.
+**Trade-offs:** Mappings exist in code and docs but don't drive axis values. Consumers who call axisExactMatch directly get the mappings; auto-derivation ignores them.
+**Revised:** Spec review R1-01 — axis population from sarcasm type is a category error. Mappings preserved as reference, not as derivation drivers.
 **Exploration:** quick
 **Status:** captured
 
