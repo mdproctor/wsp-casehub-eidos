@@ -13,3 +13,13 @@ flyway-next-v: none
 
 ## Queue
 - [ ] #139 — Issue #139 ← active
+  - [ ] Batch 1: Foundation
+    - [ ] Task 1: Fix styleVocabulary + @Discoverable
+    - [ ] Task 2: Annotations runtime module
+  - [ ] Batch 2: Build Extension
+    - [ ] Task 3: Processor + bean generation
+  - [ ] Batch 3: Validation
+    - [ ] Task 4: Hybrid vocabulary validation
+  - [ ] Batch 4: Examples
+    - [ ] Task 5: Annotated agent examples
+    - [ ] Task 6: Parity tests
