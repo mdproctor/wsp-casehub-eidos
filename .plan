@@ -1,0 +1,15 @@
+# Work Plan — issue-141-annotation-examples
+
+## State
+branch: issue-141-annotation-examples
+state: scaffolded
+project-sha: fd831f9e9a019ba3709cf9355668b2d65df70bb5
+date: 2026-08-18
+issue-repo: casehubio/eidos
+covers: 141
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
+
+## Queue
+- [ ] #141 — Issue #141 ← active
