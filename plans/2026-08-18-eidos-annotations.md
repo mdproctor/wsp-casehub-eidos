@@ -90,6 +90,32 @@ class AgentDescriptorStyleVocabValidationTest {
 }
 ```
 
+- [ ] **Step 4b: Fix DescriptorCollector.deriveDispositionAxes — pre-existing bug**
+
+`deriveDispositionAxes()` rebuilds the `AgentDescriptor` field-by-field but omits `styleVocabulary` and `styleProfile`. Fix by:
+1. Using `descriptor.toBuilder()` instead of manual field-by-field rebuild (preserves all fields including future additions)
+2. Adding `.styleProfile(disposition.styleProfile())` to the disposition builder
+
+Use `ide_replace_member` to replace the `deriveDispositionAxes` method body.
+
+The key changes in the descriptor rebuild (end of method):
+```java
+// Replace manual builder chain with toBuilder()
+return descriptor.toBuilder()
+    .axisVocabularies(axisVocabularies.isEmpty() ? null : new java.util.HashMap<>(axisVocabularies))
+    .disposition(builder.build())
+    .build();
+```
+
+And in the disposition builder initialization:
+```java
+var builder = AgentDisposition.builder()
+    .delegation(disposition.delegation())
+    .dispositionProfile(disposition.dispositionProfile())
+    .styleProfile(disposition.styleProfile());  // ← was missing
+```
+```
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl api -Dtest=AgentDescriptorStyleVocabValidationTest -DfailIfNoTests=false`
@@ -270,7 +296,9 @@ public final class NameDerivation {
         for (int i = 0; i < className.length(); i++) {
             char c = className.charAt(i);
             if (Character.isUpperCase(c)) {
-                if (i > 0) sb.append('-');
+                boolean nextIsLower = i + 1 < className.length() && Character.isLowerCase(className.charAt(i + 1));
+                boolean prevIsUpper = i > 0 && Character.isUpperCase(className.charAt(i - 1));
+                if (i > 0 && (!prevIsUpper || nextIsLower)) sb.append('-');
                 sb.append(Character.toLowerCase(c));
             } else {
                 sb.append(c);
@@ -311,7 +339,7 @@ class NameDerivationTest {
         "LegalAnalystAgent, legal-analyst-agent",
         "Reviewer, reviewer",
         "DocumentAnalyst, document-analyst",
-        "HTMLParser, h-t-m-l-parser",
+        "HTMLParser, html-parser",
         "A, a"
     })
     void toKebabCase(String input, String expected) {
@@ -582,12 +610,16 @@ git -C /Users/mdproctor/claude/casehub/eidos commit -m "feat: casehub-eidos-anno
 - Create: `annotations-deployment/pom.xml`
 - Create: `annotations-deployment/src/main/java/io/casehub/eidos/annotations/deployment/EidosAnnotationProcessedBuildItem.java`
 - Create: `annotations-deployment/src/main/java/io/casehub/eidos/annotations/deployment/EidosAnnotationsProcessor.java`
+- Create: `annotations/src/main/java/io/casehub/eidos/annotations/runtime/EidosAnnotationsRecorder.java`
+- Create: `annotations/src/main/java/io/casehub/eidos/annotations/runtime/AnnotatedDescriptorConfig.java`
 - Test: `annotations-deployment/src/test/java/io/casehub/eidos/annotations/deployment/EidosAnnotationsProcessorTest.java`
 - Test helper: `annotations-deployment/src/test/java/io/casehub/eidos/annotations/deployment/test/SimpleAnnotatedAgent.java` (and other annotated test interfaces)
 
 **Interfaces:**
 - Consumes: `@Identity`, `@Disposition`, `@AgentGoals`, `@AgentConstraints` from `casehub-eidos-annotations`; `@Discoverable` from `casehub-eidos-api`; `AgentDescriptor.builder()`, `AgentDisposition.builder()`, `AgentGoal`, `AgentConstraint`, `AgentCapability`, `DispositionValue`, `AgentDescriptorRegistrar` from `casehub-eidos-api`
-- Produces: `EidosAnnotationProcessedBuildItem` (list of processed class names); synthetic `AgentDescriptorRegistrar` CDI beans; `FeatureBuildItem("eidos-annotations")`
+- Produces: `EidosAnnotationProcessedBuildItem` (list of processed class names); synthetic `AgentDescriptorRegistrar` CDI beans via `@Recorder` pattern; `FeatureBuildItem("eidos-annotations")`
+
+**IMPORTANT — Quarkus build→runtime boundary:** Domain records (`AgentDisposition`, `AgentGoal`, etc.) are not serializable. The processor must NOT capture them in a `Supplier` lambda. Instead, use a `@Recorder` class (`EidosAnnotationsRecorder`) that accepts primitive/String values at build time and constructs domain objects at runtime. Alternatively, use `SyntheticBeanBuildItem.createWith(BeanCreator)` with a configuration data class (`AnnotatedDescriptorConfig`) that carries only strings/enums.
 
 - [ ] **Step 1: Create annotations-deployment/pom.xml**
 
@@ -1197,21 +1229,30 @@ void validateVocabularyTerms(CombinedIndexBuildItem index) {
         var classInfo = identityAnn.target().asClass();
         var vocabUri = stringValue(identityAnn, "vocabulary");
         var dispVocabUri = stringValue(identityAnn, "dispositionVocabulary");
-        var effectiveUri = !dispVocabUri.isEmpty() ? dispVocabUri : vocabUri;
-        if (effectiveUri.isEmpty()) continue;
-        var validTerms = vocabs.get(effectiveUri);
-        if (validTerms == null) continue;
+        var styleVocabUri = stringValue(identityAnn, "styleVocabulary");
+        var effectiveDispUri = !dispVocabUri.isEmpty() ? dispVocabUri : vocabUri;
+        var effectiveStyleUri = !styleVocabUri.isEmpty() ? styleVocabUri : vocabUri;
 
         var dispAnn = classInfo.annotation(DISPOSITION);
         if (dispAnn == null) continue;
 
-        validateTerm(dispAnn, "socialOrient", validTerms, effectiveUri, classInfo);
-        validateTerm(dispAnn, "ruleFollowing", validTerms, effectiveUri, classInfo);
-        validateTerm(dispAnn, "riskAppetite", validTerms, effectiveUri, classInfo);
-        validateTerm(dispAnn, "autonomy", validTerms, effectiveUri, classInfo);
-        validateTerm(dispAnn, "conflictMode", validTerms, effectiveUri, classInfo);
-        validateArrayTerms(dispAnn, "dispositionProfile", validTerms, effectiveUri, classInfo);
-        validateArrayTerms(dispAnn, "styleProfile", validTerms, effectiveUri, classInfo);
+        if (!effectiveDispUri.isEmpty()) {
+            var dispTerms = vocabs.get(effectiveDispUri);
+            if (dispTerms != null) {
+                validateTerm(dispAnn, "socialOrient", dispTerms, effectiveDispUri, classInfo);
+                validateTerm(dispAnn, "ruleFollowing", dispTerms, effectiveDispUri, classInfo);
+                validateTerm(dispAnn, "riskAppetite", dispTerms, effectiveDispUri, classInfo);
+                validateTerm(dispAnn, "autonomy", dispTerms, effectiveDispUri, classInfo);
+                validateTerm(dispAnn, "conflictMode", dispTerms, effectiveDispUri, classInfo);
+                validateArrayTerms(dispAnn, "dispositionProfile", dispTerms, effectiveDispUri, classInfo);
+            }
+        }
+        if (!effectiveStyleUri.isEmpty()) {
+            var styleTerms = vocabs.get(effectiveStyleUri);
+            if (styleTerms != null) {
+                validateArrayTerms(dispAnn, "styleProfile", styleTerms, effectiveStyleUri, classInfo);
+            }
+        }
     }
 }
 
@@ -1220,9 +1261,9 @@ private void validateTerm(AnnotationInstance ann, String field,
     var term = stringValue(ann, field);
     if (term.isEmpty()) return;
     if (!validTerms.stream().anyMatch(t -> t.equalsIgnoreCase(term))) {
-        throw new IllegalStateException(
-            "@Disposition." + field + " value '" + term + "' on " + classInfo.name()
-            + " is not a valid term in vocabulary '" + vocabUri + "'");
+        LOG.warnf("@Disposition.%s value '%s' on %s may not be a valid term in vocabulary '%s'"
+            + " (build-time check uses enum constant names, not VocabularyTerm.value())",
+            field, term, classInfo.name(), vocabUri);
     }
 }
 
@@ -1233,9 +1274,9 @@ private void validateArrayTerms(AnnotationInstance ann, String field,
     for (var term : v.asStringArray()) {
         if (term.isEmpty()) continue;
         if (!validTerms.stream().anyMatch(t -> t.equalsIgnoreCase(term))) {
-            throw new IllegalStateException(
-                "@Disposition." + field + " value '" + term + "' on " + classInfo.name()
-                + " is not a valid term in vocabulary '" + vocabUri + "'");
+            LOG.warnf("@Disposition.%s value '%s' on %s may not be a valid term in vocabulary '%s'"
+                + " (build-time check uses enum constant names, not VocabularyTerm.value())",
+                field, term, classInfo.name(), vocabUri);
         }
     }
 }
