@@ -33,7 +33,7 @@ LC4j Extension     Engine Ext     Eidos Ext        Blocks Ext
 @Tool              @Worker        @Disposition     @VotingAgent
 @SystemMessage     @Bind          @AgentGoals      @OversightGate
                    @Goal          @AgentConstraints @TrustRouted
-                   @Milestone     @Discoverable    + cross-cutting
+                   @Milestone                      + cross-cutting
 ```
 
 Each repo processes its own annotations. Blocks adds cross-cutting governance composition separately (e.g., `@OversightGate` on an `@Identity`-annotated class).
@@ -43,6 +43,10 @@ Each repo processes its own annotations. Blocks adds cross-cutting governance co
 New Quarkus extension — opt-in, not forced on all eidos consumers:
 
 ```
+casehub-eidos-api/                    ← EXISTING (add @Discoverable here)
+  src/main/java/io/casehub/eidos/api/
+    Discoverable.java                 ← NEW — pure marker, no enum dependencies
+
 casehub-eidos-annotations/           ← NEW runtime module
   src/main/java/io/casehub/eidos/annotations/
     Identity.java
@@ -51,19 +55,31 @@ casehub-eidos-annotations/           ← NEW runtime module
     AgentGoalDef.java
     AgentConstraints.java
     AgentConstraintDef.java
-    Discoverable.java
 
 casehub-eidos-annotations-deployment/ ← NEW deployment module
   src/main/java/io/casehub/eidos/annotations/deployment/
     EidosAnnotationsProcessor.java
+    EidosAnnotationProcessedBuildItem.java
 ```
 
 **Dependencies:**
-- `casehub-eidos-annotations` depends on `casehub-eidos-api` (for `GoalPriority`, `Visibility`, `ConstraintSeverity` enums)
-- `casehub-eidos-annotations-deployment` depends on `casehub-eidos-annotations` (runtime artifact) + `casehub-eidos-deployment` (build step ordering) + `quarkus-core-deployment` + `quarkus-arc-deployment`
+- `casehub-eidos-annotations` depends on `casehub-eidos-api` (for `GoalPriority`, `Visibility`, `ConstraintSeverity` enums, and `@Discoverable`)
+- `casehub-eidos-annotations-deployment` depends on `casehub-eidos-annotations` (runtime artifact) + `quarkus-core-deployment` + `quarkus-arc-deployment`. Maven POM dependency on `casehub-eidos-deployment` for compile ordering only — no Quarkus build step consumption.
 - No langchain4j-agentic dependency — eidos annotations reference only eidos-api types
 
-**Package:** `io.casehub.eidos.annotations` — separate from `io.casehub.eidos.api` to avoid split packages across JARs.
+**@Discoverable placement:** `@Discoverable` is a pure marker annotation with `String[]` fields — no dependency on eidos-api enums. It lives in `casehub-eidos-api` per blocks#115 Design Principle 2, so any module depending on eidos-api can use it without pulling in the annotations extension. The eidos annotations build extension processes it when found alongside `@Identity`.
+
+**Package:** `io.casehub.eidos.annotations` — separate from `io.casehub.eidos.api` to avoid split packages across JARs. `@Discoverable` stays in `io.casehub.eidos.api`.
+
+### Build extension coordination
+
+When both `casehub-eidos-annotations` and `casehub-blocks` are on the classpath, both build extensions would otherwise generate `AgentDescriptor` beans from `@Identity`, causing duplicate `(agentId, tenancyId)` failures at startup.
+
+**Protocol:** `EidosAnnotationsProcessor` produces an `EidosAnnotationProcessedBuildItem` listing all `@Identity`-annotated class names it has processed. The blocks build extension `@Consume`s this build item and skips `AgentDescriptor` generation for any class already in the processed set. When `casehub-eidos-annotations` is NOT on the classpath, the build item is absent and blocks generates descriptors itself (backward compatible).
+
+### Pre-existing fix: styleVocabulary validation
+
+`AgentDescriptor`'s compact constructor validates `domainVocabulary`, `slotVocabulary`, and `dispositionVocabulary` but NOT `styleVocabulary`. This is a pre-existing gap that becomes more accessible via `@Identity.styleVocabulary()`. As part of this work, add `AgentDescriptorValidator.validateOptional("styleVocabulary", styleVocabulary, MAX_VOCABULARY_URI)` to the compact constructor.
 
 ## Annotations
 
@@ -100,13 +116,19 @@ public @interface Identity {
 | `slotVocabulary()` | `slotVocabulary` | Direct |
 | `dispositionVocabulary()` | `dispositionVocabulary` | Direct |
 | `styleVocabulary()` | `styleVocabulary` | Direct |
-| All others | Same-named field | Direct mapping |
+| `provider()` | `provider` | Direct |
+| `modelFamily()` | `modelFamily` | Direct |
+| `jurisdiction()` | `jurisdiction` | Direct |
+| `dataHandlingPolicy()` | `dataHandlingPolicy` | Direct |
+| `briefing()` | `briefing` | Direct |
+| `version()` | `version` | Direct |
 
-**tenancyId:** Sourced from MicroProfile config `casehub.eidos.annotations.default-tenancy-id`. Not an annotation field — tenancyId is operational (varies per deployment), not definitional (varies per agent type).
+**tenancyId:** Sourced from MicroProfile config `casehub.eidos.annotations.default-tenancy-id` at runtime (not build-time recording). The generated `BeanCreator` looks up config via `ConfigProvider.getConfig().getOptionalValue(...)` so the value can differ across environments (dev/staging/prod). Not an annotation field — tenancyId is operational (varies per deployment), not definitional (varies per agent type).
 
 **agentId derivation rules:**
 - Simple class name, not fully qualified — `LegalAnalyst` not `com.app.agents.LegalAnalyst`
 - Kebab-case conversion: `LegalAnalystAgent` → `legal-analyst-agent`
+- Inner classes: use simple name only (`OuterClass.InnerAgent` → `inner-agent`). Inner classes with colliding simple names require explicit `id()`.
 - Collision detection: if two classes derive the same agentId, the build extension emits a compile-time error: `"Duplicate derived agentId 'reviewer' from classes com.app.agents.Reviewer and com.app.support.Reviewer — add explicit id() to at least one @Identity"`
 
 **Fields NOT on @Identity:** `modelVersion`, `weightsFingerprint`, `axisVocabularies`, `templates` — these are power fields best served by the builder or `AgentDescriptorRegistrar` SPI. The annotation surface covers the 80% case.
@@ -134,6 +156,8 @@ public @interface Disposition {
 
 **Weight limitation:** Annotations create equal-weight disposition values. For weighted profiles (e.g., `new DispositionValue("collaborative", 0.8)` vs `new DispositionValue("analytical", 0.3)`), use `AgentDisposition.builder()` directly via the `AgentDescriptorRegistrar` SPI. This is an intentional progressive-disclosure boundary — annotations serve the common case; the builder API serves nuanced personality profiles.
 
+**Axis values vs dispositionProfile — different code paths:** Axis values set directly (e.g., `socialOrient = "collaborative"`) go straight to the `AgentDisposition` axis field as `List.of(DispositionValue.of("collaborative"))`. They do NOT go through `DescriptorCollector.deriveDispositionAxes()`. Only `dispositionProfile` terms trigger the cross-vocabulary equivalence resolution pipeline. This means `@Disposition(socialOrient = "collaborative")` is NOT vocabulary-resolved the same way as `@Disposition(dispositionProfile = {"collaborative"})` — they are different semantic paths.
+
 **Field naming:** Annotation fields match the `AgentDisposition` record fields exactly (`socialOrient`, not `socialOrientation`) to maintain consistency with the eidos API.
 
 ### @AgentGoals / @AgentGoalDef
@@ -149,7 +173,7 @@ public @interface AgentGoals {
 @Target({})
 public @interface AgentGoalDef {
     String name();
-    String description() default "";
+    String description();
     GoalPriority priority() default GoalPriority.PRIMARY;
     Visibility visibility() default Visibility.PUBLIC;
     String[] capabilities() default {};
@@ -173,7 +197,7 @@ public @interface AgentConstraints {
 @Target({})
 public @interface AgentConstraintDef {
     String name();
-    String description() default "";
+    String description();
     ConstraintSeverity severity() default ConstraintSeverity.HARD;
     Visibility visibility() default Visibility.PUBLIC;
 }
@@ -181,16 +205,19 @@ public @interface AgentConstraintDef {
 
 **Note:** `ConstraintSeverity` values are `HARD` and `SOFT` (the eidos API). The blocks#115 spec uses `MUST` which does not exist.
 
-### @Discoverable
+### @Discoverable (in casehub-eidos-api)
 
 ```java
+package io.casehub.eidos.api;
+
 @Retention(RUNTIME)
 @Target(TYPE)
 public @interface Discoverable {
     String[] capabilities();
-    String[] tags() default {};
 }
 ```
+
+Lives in `casehub-eidos-api`, not `casehub-eidos-annotations` — it is a pure marker annotation with no enum dependencies. Any module depending on eidos-api can use it.
 
 **Capability mapping:** Each string in `capabilities()` creates an `AgentCapability` with `name` set and all other fields empty/default. This is name-only — `description`, `qualityHint`, `latencyHintP50Ms`, `costHint`, `epistemicDomains`, `excludedDomains`, `capabilityVocabulary`, `inputTypes`, `outputTypes` are not set.
 
@@ -200,8 +227,6 @@ public @interface Discoverable {
 - `BehavioralExpectations.latencyBound()` returns empty (no latency compliance observation)
 
 For agents that need rich capability metadata, implement `AgentDescriptorRegistrar` or use the builder API. This is an intentional progressive-disclosure boundary. A future `@Capability` repeatable annotation could close this gap without changing the current design.
-
-`tags()` provides free-form discovery metadata. Tags do not map to any `AgentDescriptor` field in the current API. They are reserved for future `AgentQuery` extensions (e.g., tag-based filtering in `AgentRegistry.find()`). In this implementation, tags are captured in the generated registrar but not consumed.
 
 ## Build Extension
 
