@@ -47,3 +47,26 @@
 **Sources:** VocabularyMetadata.java, VocabularyTerm.java, CdiVocabularyRegistry.java, Quarkus Jandex build API
 **Exploration:** quick
 **Status:** captured
+
+## D5: Bean generation strategy
+
+**Choice:** Build extension generates synthetic CDI beans implementing `AgentDescriptorRegistrar`. Existing `DescriptorCollector.collectAndValidate()` handles validation, disposition axis derivation, and duplicate detection.
+**Alternatives:**
+- Generate AgentDescriptor beans directly — bypasses DescriptorCollector, would need to replicate validation
+- Quarkus recorder pattern — more Quarkus-idiomatic but requires new recorder class for no benefit
+**Rationale:** Plugs into the existing registration pipeline. Annotation-defined and builder/YAML-defined descriptors flow through the same path. No validation duplication.
+**Trade-offs:** None — this is the natural integration point.
+**Sources:** AgentDescriptorBootstrap.java, DescriptorCollector.java, AgentDescriptorRegistrar SPI
+**Exploration:** quick
+**Status:** captured
+
+## D6: @Discoverable in scope
+
+**Choice:** Include `@Discoverable(capabilities, tags)` in #139 scope. @DiscoverFrom and @Route remain blocks concerns.
+**Alternatives:**
+- Defer to separate issue — creates unnecessary backlog for minimal incremental work
+**Rationale:** @Discoverable is an eidos concept (agent declares it CAN be discovered). The build extension already scans for @Identity — adding capability extraction from @Discoverable is trivial. @Discoverable creates AgentCapability instances with name only; full capability metadata uses the builder.
+**Trade-offs:** @Discoverable capabilities are name-only (no description, epistemicDomains, etc.). Progressive disclosure: simple via annotation, rich via builder.
+**Sources:** blocks#115 spec §Layer 2 Dynamic composition annotations, AgentCapability.java
+**Exploration:** quick
+**Status:** captured
