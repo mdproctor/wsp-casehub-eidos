@@ -23,3 +23,27 @@
 **Sources:** AgentDescriptor.java (required fields), AgentDescriptorBootstrap.java (registration flow), spec @Identity definition
 **Exploration:** quick
 **Status:** captured
+
+## D3: styleProfile and styleVocabulary coverage
+
+**Choice:** Add `String[] styleProfile() default {}` to `@Disposition` and `String styleVocabulary() default ""` to `@Identity`. Same pattern as dispositionProfile/dispositionVocabulary.
+**Alternatives:**
+- Omit — builder/YAML only for style — leaves annotation surface incomplete for a shipped API field
+- Separate @StyleProfile annotation — over-annotates for a single field
+**Rationale:** Annotation surface should be complete relative to the API. styleProfile and dispositionProfile are parallel concepts with the same mapping pattern (String[] → List<DispositionValue>).
+**Trade-offs:** None significant — trivial addition.
+**Sources:** AgentDisposition.java:13 (styleProfile field), AgentDescriptor.java:11 (styleVocabulary field)
+**Exploration:** quick
+**Status:** captured
+
+## D4: Vocabulary validation timing
+
+**Choice:** Hybrid — build-time validation when vocabulary enums are Jandex-indexed on the classpath, runtime fallback via existing DescriptorCollector otherwise.
+**Alternatives:**
+- Runtime only — simpler but misses compile-time error detection for typos
+- Full build-time only — requires vocab always on classpath, too restrictive
+**Rationale:** Quarkus philosophy is fail-fast at build time. Jandex already indexes @VocabularyMetadata-annotated enums. Checking disposition term strings against enum constants is straightforward. Catches typos like "collaboartive" at compile time when vocab is available.
+**Trade-offs:** Build extension is slightly more complex (term-existence check against Jandex-indexed enums). Graceful fallback when vocab isn't available means errors can still slip to runtime.
+**Sources:** VocabularyMetadata.java, VocabularyTerm.java, CdiVocabularyRegistry.java, Quarkus Jandex build API
+**Exploration:** quick
+**Status:** captured
