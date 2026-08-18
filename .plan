@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-139-eidos-annotations
-state: scaffolded
+state: closing:review
 project-sha: 7841f5c962ddd5c5db158bdb58ac28fd10ab6224
 date: 2026-08-18
 issue-repo: casehubio/eidos
