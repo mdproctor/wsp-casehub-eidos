@@ -201,7 +201,7 @@ public @interface Discoverable {
 
 For agents that need rich capability metadata, implement `AgentDescriptorRegistrar` or use the builder API. This is an intentional progressive-disclosure boundary. A future `@Capability` repeatable annotation could close this gap without changing the current design.
 
-`tags()` provides free-form discovery metadata. Tags do not map to any `AgentDescriptor` field today — they are stored as build-time metadata for future registry query extensions.
+`tags()` provides free-form discovery metadata. Tags do not map to any `AgentDescriptor` field in the current API. They are reserved for future `AgentQuery` extensions (e.g., tag-based filtering in `AgentRegistry.find()`). In this implementation, tags are captured in the generated registrar but not consumed.
 
 ## Build Extension
 
