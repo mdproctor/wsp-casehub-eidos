@@ -1,1 +1,3 @@
 {"event":"land","repo":"eidos","branch":"issue-141-annotation-examples","base_branch":"main","landed_sha":"cb51b52c4b82d2f36c53bc0f61db2045ec2fd502","push_target":"upstream","mirrored":true,"stamped":true,"timestamp":"2026-08-19T02:13:54.723203+00:00"}
+{"event":"promote","branch":"issue-142-annotations-nested-layout","files":[],"timestamp":"2026-08-28T06:54:02.808987+00:00"}
+{"event":"land","repo":"eidos","branch":"issue-142-annotations-nested-layout","base_branch":"main","landed_sha":"3b6ed3cdb7fb477b6d9a8a7475fbf7fb64d15930","push_target":"upstream","mirrored":true,"stamped":true,"timestamp":"2026-08-28T06:54:28.661067+00:00"}
