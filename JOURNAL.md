@@ -1,1 +1,1 @@
-# Design Journal — issue-142-annotations-nested-layout
+# Design Journal — issue-147-descriptor-codegen
