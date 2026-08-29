@@ -35,3 +35,41 @@
 **Sources:** io.casehub.generator.CaseHubSchemaGenerator in engine, casehub-dependency-tier-order protocol
 **Exploration:** quick
 **Status:** captured
+
+## D4: Generate AnnotatedAgentConfig from record via reflection
+
+**Choice:** Generate AnnotatedAgentConfig (the Quarkus recorder boundary POJO) from AgentDescriptor via reflection. A test validates the generated config matches the record.
+**Alternatives:**
+- Generate + commit as source — same source layout but auto-generated, staleness test catches drift
+- Redesign recorder pattern — investigate Quarkus record support; higher risk, depends on Quarkus internals
+**Rationale:** AnnotatedAgentConfig can't be eliminated (Quarkus recorders require POJOs). Generating it ensures parity gaps are structurally impossible.
+**Trade-offs:** Generated code at build time adds a build step. Recorder (EidosAnnotationsRecorder) must also be updated when fields change — but the generated config gives it the right fields to wire.
+**Sources:** AnnotatedAgentConfig.java, EidosAnnotationsRecorder.java in annotations/runtime
+**Exploration:** quick
+**Depends on:** D3 (shared generator provides the reflection infrastructure)
+**Status:** captured
+
+## D5: Convenience field resolution in Jackson Module
+
+**Choice:** Convenience fields (mbtiType, enneagramType) resolved in the EidosDescriptorModule (Jackson Module) which receives VocabularyRegistry via CDI injection. Custom deserializer delegates to it.
+**Alternatives:**
+- Static methods on the record — adds VocabularyRegistry dependency to api/ (currently pure Java)
+- Builder extension methods — makes builder stateful (needs VocabularyRegistry parameter)
+**Rationale:** Keeps api/ as pure Java with no framework dependencies. Follows engine's pattern (CaseDefinitionModule handles all marshalling customisation). Vocabulary resolution is a runtime concern, not a domain model concern.
+**Trade-offs:** Convenience fields are invisible in the record's API — only available via YAML. Builder users must do vocabulary resolution manually.
+**Sources:** CaseDefinitionModule in engine, ClasspathYamlDescriptorRegistrar.toDescriptor() lines 70-99 for current mbtiType/enneagramType logic
+**Exploration:** quick
+**Status:** captured
+
+## D6: Publish JSON Schema as classpath resource
+
+**Choice:** Generated JSON Schema packaged as META-INF/eidos/descriptor-schema.json in the runtime artifact. Any consumer can validate descriptors.yaml against it.
+**Alternatives:**
+- Test-only validation — schema not published, external tools can't consume
+- Separate schema artifact — more modules to manage
+**Rationale:** Personality generation tools (quarkmind#283) and IDE plugins need the schema. Classpath resource is zero-cost for consumers already depending on eidos.
+**Trade-offs:** Schema generation must run at build time (not just test time). Adds victools as a build dependency of eidos runtime.
+**Sources:** engine schema/src/main/resources/schema/CaseDefinition.yaml precedent
+**Exploration:** quick
+**Depends on:** D3 (shared generator produces the schema)
+**Status:** captured
