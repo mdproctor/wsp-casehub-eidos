@@ -96,8 +96,11 @@ Custom `JsonDeserializer<AgentDescriptor>` that:
 2. Constructs `AgentDescriptor` via the builder
 3. Handles field-by-field mapping including:
    - **Simple fields** — direct string forwarding (`agentId`, `name`, `slot`, etc.)
-   - **tenancyId injection** — not in YAML, resolved from MicroProfile Config at runtime
-     (`casehub.eidos.annotations.default-tenancy-id`, default `"default"`)
+   - **tenancyId** — read from YAML if present; fall back to MicroProfile Config
+     (`casehub.eidos.annotations.default-tenancy-id`, default `"default"`) when absent
+   - **axisVocabularies** — `Map<String, String>` in YAML → `Map<DispositionAxis, String>`
+     via `DispositionAxis.valueOf(key)`. This mapping lives here (not in DispositionDeserializer)
+     because `axisVocabularies` is on `AgentDescriptor`, not `AgentDisposition`.
    - **Capabilities** — delegates to `CapabilityDeserializer` for full metadata
    - **Goals and constraints** — direct record construction with enum parsing
    - **Templates** — direct `TemplateRef` construction
@@ -210,7 +213,16 @@ public class ClasspathYamlDescriptorRegistrar implements AgentDescriptorRegistra
 `ConstraintConfig`, `TemplateRefConfig`, `DispositionValueConfig` (all 7 inner classes),
 and the `toDescriptor()` method.
 
-**Retained:** `DescriptorFile` — a trivial wrapper record `record DescriptorFile(List<AgentDescriptor> descriptors) {}`. This is the YAML root structure (`descriptors:` key) and has no drift risk.
+**Retained:** `DescriptorFile` — kept as a static inner class with public field
+(`public List<AgentDescriptor> descriptors`), not converted to a record. This avoids
+Jackson record-deserialization issues (records need `@JsonCreator` or parameter-names module).
+The class has a single field and no drift risk.
+
+**Non-CDI path:** A static factory method creates an `ObjectMapper` with the module
+configured without CDI — passing `null` for `VocabularyRegistry`. This preserves the
+existing `loadFrom(InputStream)` test API and matches the current `loadFrom(yaml, null)`
+behaviour where convenience fields (`mbtiType`, `enneagramType`) silently skip when
+no vocabulary registry is available.
 
 ## Test Strategy
 
@@ -234,6 +246,10 @@ and the `toDescriptor()` method.
 9. **Templates** — `templates` with `ref` and `args` deserialize to `TemplateRef`
 10. **Goals and constraints** — priority, visibility, severity, capability references all
     deserialize correctly
+11. **axisVocabularies** — `Map<String, String>` in YAML deserializes to
+    `Map<DispositionAxis, String>` on the descriptor
+12. **loadFrom without CDI** — `loadFrom(InputStream)` works with null VocabularyRegistry,
+    convenience fields silently skip
 
 ### Existing test migration
 
@@ -275,6 +291,16 @@ files continue to work. The change is internal — how the YAML is deserialized.
 3. **Ordering** — `AgentDescriptor` compact constructor validates goal-capability cross-references.
    The deserializer must set capabilities before goals on the builder. Field order in YAML
    shouldn't matter (Jackson reads the full tree first), but the builder call order matters.
+
+4. **ObjectMapper lifecycle** — current code uses a `static final ObjectMapper`. The new
+   design creates the mapper at CDI init time (non-static, module-injected). Any code path
+   that caches or shares the ObjectMapper outside CDI scope won't have the module registered.
+   Mitigated by keeping the mapper internal to the registrar.
+
+5. **enneagramType resolution complexity** — the enneagram → axis resolution involves
+   cross-vocabulary `equivalentValues` lookups across 5 axes plus a special case for
+   `CONFLICT_MODE` (Thomas-Kilmann). ~25 lines of axis-specific logic to port from
+   `ClasspathYamlDescriptorRegistrar` lines 75-99.
 
 ## References
 
