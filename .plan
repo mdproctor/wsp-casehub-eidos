@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-147-descriptor-codegen
-state: closing:review
+state: closing:stamped
 project-sha: 3b6ed3cdb7fb477b6d9a8a7475fbf7fb64d15930
 date: 2026-08-28
 issue-repo: casehubio/eidos
