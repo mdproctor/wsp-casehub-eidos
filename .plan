@@ -13,8 +13,8 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#147 — Issue #147 ← active
-  - [ ] Batch 1: Deserializers
-    - [ ] Task 1: DispositionDeserializer
-    - [ ] Task 2: AgentDescriptorDeserializer+EidosDescriptorModule
-  - [ ] Batch 2: Migration
-    - [ ] Task 3: Migrate ClasspathYamlDescriptorRegistrar
+  - [x] Batch 1: Deserializers
+    - [x] Task 1: DispositionDeserializer
+    - [x] Task 2: AgentDescriptorDeserializer+EidosDescriptorModule
+  - [x] Batch 2: Migration
+    - [x] Task 3: Migrate ClasspathYamlDescriptorRegistrar
