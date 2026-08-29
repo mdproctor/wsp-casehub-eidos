@@ -46,7 +46,6 @@
 **Trade-offs:** Generated code at build time adds a build step. Recorder (EidosAnnotationsRecorder) must also be updated when fields change — but the generated config gives it the right fields to wire.
 **Sources:** AnnotatedAgentConfig.java, EidosAnnotationsRecorder.java in annotations/runtime
 **Exploration:** quick
-**Depends on:** D3 (shared generator provides the reflection infrastructure)
 **Status:** captured
 
 ## D5: Convenience field resolution in Jackson Module
