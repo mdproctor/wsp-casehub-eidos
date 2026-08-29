@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-147-descriptor-codegen
-state: scaffolded
+state: active
 project-sha: 3b6ed3cdb7fb477b6d9a8a7475fbf7fb64d15930
 date: 2026-08-28
 issue-repo: casehubio/eidos
@@ -13,3 +13,8 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#147 — Issue #147 ← active
+  - [ ] Batch 1: Deserializers
+    - [ ] Task 1: DispositionDeserializer
+    - [ ] Task 2: AgentDescriptorDeserializer+EidosDescriptorModule
+  - [ ] Batch 2: Migration
+    - [ ] Task 3: Migrate ClasspathYamlDescriptorRegistrar
