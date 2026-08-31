@@ -13,3 +13,11 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#150 — Issue #150 ← active
+  - [ ] Batch 1: POJO Core
+    - [ ] Task 1: Scaffold and foundation types
+    - [ ] Task 2: Membership and OrganizationalUnit
+    - [ ] Task 3: AgentRelationship and OrgRegistry SPI
+  - [ ] Batch 2: In-Memory
+    - [ ] Task 4: InMemoryOrgRegistry with cycle detection
+  - [ ] Batch 3: Desiredstate
+    - [ ] Task 5: OrgGoalCompiler and NodeSpec types
