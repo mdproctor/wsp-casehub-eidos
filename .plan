@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-149-yaml-core-descriptors
-state: scaffolded
+state: active
 project-sha: 25f61ee9bd49a11d4f8e67ce7d4c48858c72c938
 date: 2026-08-31
 issue-repo: casehubio/eidos
@@ -13,10 +13,10 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#149 — Issue #149 ← active
-  - [ ] Batch 1: Adapter+Core
-    - [ ] Task 1: Maven dep + DescriptorForEachAdapter
-    - [ ] Task 2: DescriptorPreprocessor vars+forEach
-  - [ ] Batch 2: CSV+When
-    - [ ] Task 3: CSV expansion + when conditions
-  - [ ] Batch 3: Integration
-    - [ ] Task 4: Wire into ClasspathYamlDescriptorRegistrar
+  - [x] Batch 1: Adapter+Core
+    - [x] Task 1: Maven dep + DescriptorForEachAdapter
+    - [x] Task 2: DescriptorPreprocessor vars+forEach
+  - [x] Batch 2: CSV+When
+    - [x] Task 3: CSV expansion + when conditions
+  - [x] Batch 3: Integration
+    - [x] Task 4: Wire into ClasspathYamlDescriptorRegistrar
