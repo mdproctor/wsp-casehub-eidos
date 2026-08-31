@@ -1,1 +1,1 @@
-# Design Journal — issue-149-yaml-core-descriptors
+# Design Journal — issue-150-org-model
