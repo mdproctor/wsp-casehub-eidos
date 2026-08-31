@@ -1,2 +1,3 @@
 {"event":"promote","branch":"issue-147-descriptor-codegen","files":[],"timestamp":"2026-08-29T04:52:29.369649+00:00"}
 {"event":"land","repo":"eidos","branch":"issue-147-descriptor-codegen","base_branch":"main","landed_sha":"25f61ee9bd49a11d4f8e67ce7d4c48858c72c938","push_target":"upstream","mirrored":true,"stamped":true,"timestamp":"2026-08-29T04:54:02.187894+00:00"}
+{"event":"land","repo":"eidos","branch":"issue-149-yaml-core-descriptors","base_branch":"main","landed_sha":"7592f8bb0a89769c86404a29e151d77c8af45942","push_target":"upstream","mirrored":true,"stamped":true,"timestamp":"2026-08-31T18:18:11.470471+00:00"}

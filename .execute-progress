@@ -1,2 +1,3 @@
 default=promoted
 eidos:issue-147-descriptor-codegen=stamped
+eidos:issue-149-yaml-core-descriptors=stamped
