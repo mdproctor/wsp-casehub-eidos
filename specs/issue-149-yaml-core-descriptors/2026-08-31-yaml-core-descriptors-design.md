@@ -99,12 +99,14 @@ forEach:
   in: [frontend, backend]
 ```
 
-**CSV data source** — `in` references a data source name:
+**CSV data source** — inline form where `in` references a data source name:
 ```yaml
 forEach:
   as: agent
   in: roster    # references dataSources.roster
 ```
+
+Resolution order for `in` values: if `in` is a string, check `dataSources` first, then `iterations`. This means data source names and iteration group names share a namespace — a collision is an error.
 
 CSV rows are available as structured objects: `${each.agent.name}`, `${each.agent.role}`.
 
@@ -177,12 +179,16 @@ Steps:
 1. Extract `variables` → build `var` VariableSource
 2. Combine with caller-provided sources (e.g., `config`) → build `VariableResolver`
 3. Extract `iterations` → build `Map<String, IterationGroup>`
-4. Extract `dataSources` → load CSV files/inline content via `CsvParser`, build iteration groups for CSV data sources
+4. Extract `dataSources` → load CSV files/inline content via `CsvParser`
 5. Extract `descriptors` list → convert to `LinkedHashMap<String, Map<String, Object>>` keyed by raw `agentId`
-6. Create `DescriptorForEachAdapter`
-7. Run `ForEachExpander.expand()` with maxExpansion=100
-8. Strip `forEach` and `when` keys from each expanded map
-9. Return the list of resolved maps
+6. Partition descriptors: CSV-backed forEach vs. normal (string-list/named-group forEach or no forEach)
+7. Expand normal descriptors via `ForEachExpander.expand()` with `DescriptorForEachAdapter`, maxExpansion=100
+8. Expand CSV-backed descriptors directly: for each CSV row, build a resolver with both `withEachContext(as, rowKey)` and `withEachRowContext(as, rowMap)`, resolve variables, evaluate `when` conditions, enforce expansion limit
+9. Merge results maintaining original descriptor order (interleaved by position in the input list)
+10. Strip `forEach` and `when` keys from each expanded map
+11. Return the list of resolved maps
+
+**Why CSV is handled separately:** `ForEachExpander` iterates over string values via `withEachContext()`. CSV rows require structured field access (`${each.agent.name}`) via `withEachRowContext()` — which `ForEachExpander` does not set up. Rather than shoehorning row context through the adapter's `stamp()` method (which can't extract the current iteration value from the resolver), CSV expansion is done directly using `VariableResolver`'s native row context support. The duplicated logic is ~15 lines (when check + expansion limit).
 
 #### `DescriptorForEachAdapter` (runtime/yaml/)
 
