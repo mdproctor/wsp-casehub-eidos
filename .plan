@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-150-org-model
-state: scaffolded
+state: active
 project-sha: 7592f8bb0a89769c86404a29e151d77c8af45942
 date: 2026-08-31
 issue-repo: casehubio/eidos
@@ -13,10 +13,10 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#150 — Issue #150 ← active
-  - [ ] Batch 1: POJO Core
-    - [ ] Task 1: Scaffold and foundation types
-    - [ ] Task 2: Membership and OrganizationalUnit
-    - [ ] Task 3: AgentRelationship and OrgRegistry SPI
+  - [x] Batch 1: POJO Core
+    - [x] Task 1: Scaffold and foundation types
+    - [x] Task 2: Membership and OrganizationalUnit
+    - [x] Task 3: AgentRelationship and OrgRegistry SPI
   - [ ] Batch 2: In-Memory
     - [ ] Task 4: InMemoryOrgRegistry with cycle detection
   - [ ] Batch 3: Desiredstate
