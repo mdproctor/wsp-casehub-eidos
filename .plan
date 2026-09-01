@@ -13,8 +13,8 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#150 — Issue #150 ← active
-  - [ ] Batch 1: DSL
-    - [ ] Task 1: Rich compositional builders
+  - [x] Batch 1: DSL
+    - [x] Task 1: Rich compositional builders
   - [ ] Batch 2: YAML
     - [ ] Task 2: Jackson module and ClasspathYamlOrgRegistrar
   - [ ] Batch 3: Examples
