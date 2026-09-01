@@ -1,21 +1,16 @@
-# eidos Session Handover - 2026-08-06
+# HANDOFF — eidos
 
-*Updated: #93 closed — engine#647 landed, tracking issue resolved.*
+## Last Session
 
-**Previous handover:** git show HEAD~1:HANDOFF.md
-
-## What Changed This Session
-
-- Closed #93 (tracking issue for engine adoption of behavioral contracts) — engine#647 is done.
+Designed and implemented the agent organizational model (#150) — from research brief through brainstorming (11 design decisions), research doc, implementation plan, and 6 execution batches. Core insight: org structure is YAML-declared (no JPA needed), reconciled via casehub-desiredstate, with three layers — descriptors (who), organization (how they relate), deployment (where they run). Triangulated with engine#1017 YAML-first deployment model and casehub-ops#83 application NodeSpec.
 
 ## Immediate Next Step
 
-Backlog is empty. No open issues. Good time to check for new work or cross-repo needs.
-
-## What's Next
-
-No open issues. See `casehubio/eidos` for any newly filed work.
+Annotation surface for org model — `@OrgUnit`, `@Supervises`, Quarkus build extension + recorder. Deferred as M/High. Use `casehub-eidos-annotations/` `EidosAnnotationsProcessor` as the template. Then update CLAUDE.md with the new module structure.
 
 ## References
 
-*Unchanged — `git show HEAD~1:HANDOFF.md`*
+- `research/organizational-model.md` — full design research (workspace)
+- `plans/2026-09-01-org-model.md` — implementation plan (workspace)
+- `JOURNAL.md` — design journal (workspace)
+- `org-api/`, `org-memory/`, `org-runtime/`, `examples/org-scenarios/` — implementation
