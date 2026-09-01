@@ -1,16 +1,15 @@
-# Work Plan — issue-150-org-model
+# Work Plan — issue-146-annotation-parity
 
 ## State
-branch: issue-150-org-model
-state: closing:stamped
-project-sha: 7592f8bb0a89769c86404a29e151d77c8af45942
-date: 2026-08-31
+branch: issue-146-annotation-parity
+state: scaffolded
+project-sha: 1a59332fc7267fd6e88c16a1a0c6a90186219282
+date: 2026-09-01
 issue-repo: casehubio/eidos
-covers: 150
-design-repo: project
+covers: 146
+design-repo: workspace
 design-section-hashes: 4d2cc5ab:## §1 Introduction and Goals|4f6b26ef:## §2 Constraints|39b76cb9:## §3 Context and Scope|74aa736f:## §4 Solution Strategy|9ca8de62:## §5 Building Block View|f1938c56:## §6 Runtime View|65807a21:## §7 Deployment View|a03d508f:## §8 Crosscutting Concepts|b2e1b57c:## §9 Journeys and Chapters|598f3a04:## §10 Architectural Decisions|1f604475:## §11 Quality Requirements|af5f260f:## §12 Risks and Technical Debt|42d51385:## §13 Glossary
 flyway-next-v: unknown
 
-evidence-era: true
 ## Queue
-- [x] casehubio/eidos#150 — Issue #150
+- [ ] casehubio/eidos#146 — Issue #146 ← active
