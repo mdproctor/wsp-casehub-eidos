@@ -17,7 +17,7 @@ flyway-next-v: unknown
     - [x] Task 1: Rich compositional builders
   - [x] Batch 2: YAML
     - [x] Task 2: Jackson module and ClasspathYamlOrgRegistrar
-  - [ ] Batch 3: Examples
-    - [ ] Task 3: Domain scenarios with capability matrix
+  - [x] Batch 3: Examples
+    - [x] Task 3: Domain scenarios with capability matrix
   - [ ] Batch 4: Annotations
     - [ ] Task 4: OrgUnit and relationship annotations
