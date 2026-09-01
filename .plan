@@ -17,7 +17,7 @@ flyway-next-v: unknown
     - [x] Task 1: Scaffold and foundation types
     - [x] Task 2: Membership and OrganizationalUnit
     - [x] Task 3: AgentRelationship and OrgRegistry SPI
-  - [ ] Batch 2: In-Memory
-    - [ ] Task 4: InMemoryOrgRegistry with cycle detection
-  - [ ] Batch 3: Desiredstate
-    - [ ] Task 5: OrgGoalCompiler and NodeSpec types
+  - [x] Batch 2: In-Memory
+    - [x] Task 4: InMemoryOrgRegistry with cycle detection
+  - [x] Batch 3: Desiredstate
+    - [x] Task 5: OrgGoalCompiler and NodeSpec types
