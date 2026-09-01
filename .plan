@@ -21,3 +21,6 @@ flyway-next-v: unknown
     - [x] Task 3: Domain scenarios with capability matrix
   - [ ] Batch 4: Annotations
     - [ ] Task 4: OrgUnit and relationship annotations
+
+## Deferred
+- [ ] OrgUnit and relationship annotations (M / High) [] — Quarkus build extension + recorder pattern — substantial, needs EidosAnnotationsProcessor as template
