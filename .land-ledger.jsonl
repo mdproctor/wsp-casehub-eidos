@@ -1,2 +1,0 @@
-{"event":"promote","branch":"issue-150-org-model","files":[],"timestamp":"2026-09-01T10:27:59.388453+00:00"}
-{"event":"land","repo":"eidos","branch":"issue-150-org-model","base_branch":"main","landed_sha":"1a59332fc7267fd6e88c16a1a0c6a90186219282","push_target":"upstream","mirrored":true,"stamped":true,"timestamp":"2026-09-01T10:55:07.005633+00:00"}
