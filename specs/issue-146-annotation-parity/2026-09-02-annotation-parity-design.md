@@ -272,6 +272,17 @@ Extend validation in `processAnnotations()`:
 6. Duplicate `@AxisVocabulary.axis()` detection: two `@AxisVocabulary` entries with the same `DispositionAxis` → build-time error.
 7. Duplicate `@AgentCapabilityDef.name()` detection: two `@AgentCapabilityDef` annotations on the same class with the same `name()` → build-time error. (Cross-surface collisions between `@Discoverable` and `@AgentCapabilityDef` are covered by D2 step 3.)
 
+#### Orphan annotation warnings (D8b)
+
+Extend `warnDiscoverableWithoutIdentity()` to also warn for `@AgentCapabilityDef` and `@AgentTemplateRef` on classes without `@Identity`. These are `@Target(TYPE)` annotations that are silently ignored when no `@Identity` is present — the processor only iterates `@Identity`-annotated classes for extraction. Without the warning, a user could annotate a class with rich capabilities or templates, forget `@Identity`, and get no feedback.
+
+Scan the Jandex index for `AGENT_CAPABILITY_DEF`, `AGENT_CAPABILITIES`, `AGENT_TEMPLATE_REF`, and `AGENT_TEMPLATES` — any class carrying these annotations but not in `processedClasses` gets a warning:
+
+```java
+LOG.warnf("Class %s has @AgentCapabilityDef but no @Identity — capabilities will not be registered", className);
+LOG.warnf("Class %s has @AgentTemplateRef but no @Identity — templates will not be registered", className);
+```
+
 ### EidosAnnotationsRecorder changes (D5)
 
 Switch from `Supplier<AgentDescriptorRegistrar>` to `BeanCreator` pattern:
@@ -472,9 +483,16 @@ For each `AgentDescriptor` field, assert the annotation surface can produce the 
 ### Build-time validation tests
 
 - `qualityHint = 1.5` → build-time error
+- `qualityHint = Double.NaN` → build-time error (ARC42STORIES §8 Anti-pattern 4)
 - `@EpistemicDomain(value = "java", score = 2.0)` → build-time error
+- `@EpistemicDomain(value = "java", score = Double.NaN)` → build-time error
 - `excludedDomains = {"java"}` + `@EpistemicDomain(value = "java", ...)` → build-time error
 - `@AgentGoalDef(capabilities = {"missing-cap"})` with no matching `@AgentCapabilityDef` or `@Discoverable` → build-time error
+- `@DispositionWeight(value = "term", weight = 1.5)` → build-time error
+- `@DispositionWeight(value = "term", weight = Double.NaN)` → build-time error
+- Two `@AgentCapabilityDef` with same `name()` on one class → build-time error
+- `@AgentCapabilityDef` without `@Identity` on class → build-time warning
+- `@AgentTemplateRef` without `@Identity` on class → build-time warning
 
 ## Annotation Inventory
 
