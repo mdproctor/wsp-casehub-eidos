@@ -9,7 +9,7 @@
 
 Issue #139 delivered the annotation surface for eidos with intentional scope boundaries: name-only capabilities (`@Discoverable`), equal-weight disposition profiles (`String[]`), no templates, no axis vocabularies, no convenience personality types. These were documented as Known Limitations §1-6.
 
-Issue #146 closes every gap. The goal: any `AgentDescriptor` expressible via Builder or YAML is also expressible via annotations. This matters for personality generation workflows — a generator targeting the annotation surface should produce the same descriptor as one targeting YAML or the Builder.
+Issue #146 closes every gap from issue #139's Known Limitations §1-6. The goal: any `AgentDescriptor` achievable through the YAML surface is also achievable via annotations. This matters for personality generation workflows — a generator targeting the annotation surface should produce the same descriptor as one targeting YAML. Residual Builder-only capabilities (multi-valued disposition axes) are documented in §Residual Limitations.
 
 ## Scope
 
@@ -30,7 +30,7 @@ Issue #146 closes every gap. The goal: any `AgentDescriptor` expressible via Bui
 
 - `@Discoverable` changes — stays name-only in `casehub-eidos-api`
 - `@AgentGoals`/`@AgentConstraints` — already at full parity
-- Retrofit `@Repeatable` onto `@AgentGoalDef`/`@AgentConstraintDef` — separate concern
+- Retrofit `@Repeatable` onto `@AgentGoalDef`/`@AgentConstraintDef` — separate concern (casehubio/eidos#152)
 - Runtime `@Inject VocabularyRegistry` in recorder — infrastructure only, not a feature
 
 ## Architecture
@@ -170,6 +170,10 @@ New fields to carry build-time-extracted values to the recorder:
 public class AnnotatedAgentConfig {
     // ... existing fields ...
 
+    // D4: weighted disposition profiles (replaces String[] dispositionProfile/styleProfile)
+    public DispositionWeightConfig[] dispositionProfile;
+    public DispositionWeightConfig[] styleProfile;
+
     // D9: new Identity fields
     public String weightsFingerprint;
     public String modelVersion;
@@ -220,6 +224,11 @@ public class AnnotatedAgentConfig {
         public String value;
         public double score;
     }
+
+    public static class DispositionWeightConfig {
+        public String value;
+        public double weight;
+    }
 }
 ```
 
@@ -230,16 +239,19 @@ public class AnnotatedAgentConfig {
 Replace `extractCapabilities()` with merged extraction:
 
 1. Collect name-only capabilities from `@Discoverable.capabilities()` (if present)
-2. Collect rich capabilities from `@AgentCapabilityDef` annotations (via Jandex `getAnnotations()` on the class)
+2. Collect rich capabilities from `@AgentCapabilityDef` annotations — use `classInfo.annotationsWithRepeatable(AGENT_CAPABILITY_DEF, AGENT_CAPABILITIES)` to handle both single and container forms (Jandex requires the container `DotName` for `@Repeatable` annotations; `classInfo.annotation()` returns only the container when multiple are present)
 3. Check for name collisions between the two sets → build-time error
-4. Store merged result in `config.richCapabilities` (name-only entries get a `CapabilityConfig` with only `name` set)
+4. Check for duplicate names within `@AgentCapabilityDef` annotations → build-time error
+5. Store merged result in `config.richCapabilities` (name-only entries get a `CapabilityConfig` with only `name` set)
 
 #### Disposition extraction (D4, D7, D10)
 
 Update `extractDisposition()`:
-- `dispositionProfile` / `styleProfile`: iterate `@DispositionWeight[]` annotations, extract `value()` and `weight()`
+- `dispositionProfile` / `styleProfile`: iterate `@DispositionWeight[]` nested annotation instances via `ann.value("dispositionProfile").asNestedArray()`, extract `value()` and `weight()` from each. Store as `DispositionWeightConfig[]` on config.
 - `axisVocabularies`: iterate `@AxisVocabulary[]`, extract `axis()` enum name and `uri()`
 - `mbtiType` / `enneagramType`: extract string values
+
+Update `validateArrayTerms()` for the `@DispositionWeight[]` type change: after the type change, `v.asStringArray()` throws because values are now nested `AnnotationInstance` objects, not strings. Replace with iteration over `v.asNestedArray()`, extracting the `value()` field from each `@DispositionWeight` instance for vocabulary validation.
 
 #### Template extraction (D6)
 
@@ -252,10 +264,13 @@ New `extractTemplates()` method:
 
 Extend validation in `processAnnotations()`:
 
-1. `qualityHint` range: if set (not -1), must be 0.0-1.0
-2. `epistemicDomains` scores: each `@EpistemicDomain.score()` must be 0.0-1.0
+1. `qualityHint` range: if set (not -1), guard `Double.isNaN()` first, then check 0.0-1.0. `NaN` is a valid annotation compile-time constant that defeats naïve range checks — `NaN < 0.0` and `NaN > 1.0` both return `false` per IEEE 754 (ARC42STORIES §8 Anti-pattern 4).
+2. `epistemicDomains` scores: each `@EpistemicDomain.score()` must pass `!Double.isNaN(score)` and be 0.0-1.0
 3. `excludedDomains ∩ epistemicDomains = ∅`: no domain in both sets
-4. Goal-capability cross-validation: `@AgentGoalDef.capabilities()` validated against union of `@Discoverable` and `@AgentCapabilityDef` capability names
+4. Goal-capability cross-validation: `@AgentGoalDef.capabilities()` validated against union of `@Discoverable` and `@AgentCapabilityDef` capability names. `validateGoalCapabilities()` must iterate `config.richCapabilities` (a `CapabilityConfig[]`) rather than the removed `config.capabilities` (a `String[]`), extracting `cap.name` for the name set.
+5. `@DispositionWeight.weight()` range: `!Double.isNaN(weight)` and 0.0-1.0. Without this, invalid weights pass to `DispositionValue` compact constructor at runtime.
+6. Duplicate `@AxisVocabulary.axis()` detection: two `@AxisVocabulary` entries with the same `DispositionAxis` → build-time error.
+7. Duplicate `@AgentCapabilityDef.name()` detection: two `@AgentCapabilityDef` annotations on the same class with the same `name()` → build-time error. (Cross-surface collisions between `@Discoverable` and `@AgentCapabilityDef` are covered by D2 step 3.)
 
 ### EidosAnnotationsRecorder changes (D5)
 
@@ -274,6 +289,8 @@ public Function<SyntheticCreationalContext<AgentDescriptorRegistrar>, AgentDescr
 ```
 
 The build step changes from `.supplier(recorder.createRegistrar(config))` to `.createWith(recorder.createRegistrar(config))` with `.addInjectionPoint(VocabularyRegistry.class)`.
+
+**Dependency:** `casehub-eidos` runtime is a mandatory transitive dependency of `casehub-eidos-annotations`. The annotations module produces `AgentDescriptorRegistrar` beans consumed by `AgentDescriptorBootstrap` (runtime module) — without the runtime module, registered beans are inert. The `BeanCreator` pattern makes this coupling explicit via the `VocabularyRegistry` injection point: if `CdiVocabularyRegistry` (runtime module) is absent, Arc reports an unsatisfied dependency at startup. No fallback is needed — the annotations pipeline is non-functional without the runtime module.
 
 #### Rich capability construction
 
@@ -313,29 +330,67 @@ if (ref.args != null) {
 templateRefs.add(new TemplateRef(ref.id, args));
 ```
 
+**Template validation:** Templates from the annotation path flow through the standard `DescriptorCollector.collectAndValidate()` pipeline, which validates template IDs against `TemplateRegistry.resolve()` and checks for missing/extra args against `DescriptorTemplate.parameters()`. This is the same validation applied to Builder and YAML paths. If a template ID doesn't exist: `"Descriptor '<agentId>' references unknown template: <templateId>"`. If args don't match: `"Descriptor '<agentId>', template '<id>': missing args [...]"` or `"... unexpected args [...]"`.
+
+#### Weighted disposition profile construction
+
+The updated `dispositionProfile` and `styleProfile` extraction (replaces current `DispositionValue.of(t)` from plain strings):
+
+```java
+if (config.dispositionProfile != null && config.dispositionProfile.length > 0) {
+    var values = new ArrayList<DispositionValue>();
+    for (var dp : config.dispositionProfile) {
+        if (notEmpty(dp.value)) values.add(new DispositionValue(dp.value, dp.weight));
+    }
+    if (!values.isEmpty()) db.dispositionProfile(values);
+}
+// Same pattern for config.styleProfile
+```
+
+#### PersonalityTypeDeriver integration
+
+After building the disposition from explicit fields, call the deriver:
+
+```java
+var explicitAxes = new EnumMap<DispositionAxis, String>(DispositionAxis.class);
+if (notEmpty(config.socialOrient)) explicitAxes.put(SOCIAL_ORIENTATION, config.socialOrient);
+if (notEmpty(config.ruleFollowing)) explicitAxes.put(RULE_FOLLOWING, config.ruleFollowing);
+if (notEmpty(config.riskAppetite)) explicitAxes.put(RISK_APPETITE, config.riskAppetite);
+if (notEmpty(config.autonomy)) explicitAxes.put(AUTONOMY, config.autonomy);
+if (notEmpty(config.conflictMode)) explicitAxes.put(CONFLICT_MODE, config.conflictMode);
+
+PersonalityTypeDeriver.derive(
+    new PersonalityInput(config.mbtiType, config.enneagramType,
+        config.dispositionProfile != null && config.dispositionProfile.length > 0,
+        explicitAxes),
+    vocabRegistry, db);
+```
+
 ### PersonalityTypeDeriver utility (D5)
 
 New class in `io.casehub.eidos.api` (shared by `DispositionDeserializer` and recorder). Lives in the api module because all its dependencies are api types (`VocabularyRegistry`, `AgentDisposition.Builder`, `DispositionValue`) — follows the `CapabilityResolver` / `BehavioralExpectations` precedent for static utilities in api:
 
 ```java
+public record PersonalityInput(
+        String mbtiType,
+        String enneagramType,
+        boolean hasExplicitProfile,
+        Map<DispositionAxis, String> explicitAxes) {}
+
 public final class PersonalityTypeDeriver {
     public static void derive(
-            String mbtiType,
-            String enneagramType,
-            boolean hasExplicitProfile,
-            String explicitSocialOrient,
-            String explicitRuleFollowing,
-            String explicitRiskAppetite,
-            String explicitAutonomy,
-            String explicitConflictMode,
+            PersonalityInput input,
             VocabularyRegistry vocabRegistry,
             AgentDisposition.Builder builder) {
         // mbtiType → dispositionProfile (only when profile not explicitly set)
-        // enneagramType → per-axis values (only when explicit axis value not set)
+        // enneagramType → per-axis values (only when explicit axis not in input.explicitAxes())
         // Same precedence rules as DispositionDeserializer:51-95
+        // Uses input.explicitAxes().containsKey(axis) to determine precedence
     }
 }
 ```
+
+`PersonalityInput` lives alongside `PersonalityTypeDeriver` in `io.casehub.eidos.api`. The `Map<DispositionAxis, String>` captures only axes with non-empty explicit values — an axis absent from the map means "derive from personality type if available".
 
 `DispositionDeserializer` refactored to call `PersonalityTypeDeriver.derive()` instead of inline logic.
 
@@ -363,6 +418,12 @@ Mechanical migration. No semantic change when all weights are 1.0 (the default).
 - New fields on `@Identity`: `weightsFingerprint`, `modelVersion`
 - New fields on `@Disposition`: `mbtiType`, `enneagramType`, `axisVocabularies`
 - New annotations: `@AgentCapabilityDef`, `@AgentTemplateRef`, `@TemplateArg`, `@EpistemicDomain`, `@DispositionWeight`, `@AxisVocabulary`
+
+## Residual Limitations
+
+1. **Multi-valued disposition axes:** The Builder API supports `socialOrient(DispositionValue... values)` for multi-valued weighted axis values (e.g., `socialOrient(new DispositionValue("collaborative", 0.7), new DispositionValue("directive", 0.3))`). The annotation surface supports only a single unweighted string per axis (`String socialOrient() default ""`). This matches the YAML surface, which also uses single axis strings. Multi-valued axes are typically derived from `dispositionProfile` via `DescriptorCollector.deriveDispositionAxes()`, which runs on all paths including annotations.
+
+2. **Per-agent tenancyId:** Inherited from issue #139 Known Limitations §4 — all annotation-defined agents share the configured default tenancy.
 
 ## Testing Strategy
 
@@ -437,17 +498,18 @@ For each `AgentDescriptor` field, assert the annotation surface can produce the 
 | `@Identity` | +`weightsFingerprint`, +`modelVersion` |
 | `@Disposition` | `dispositionProfile`/`styleProfile` type change (`String[]` → `DispositionWeight[]`), +`mbtiType`, +`enneagramType`, +`axisVocabularies` |
 
-### New utility classes (1)
+### New utility classes (2)
 
 | Class | Package | Purpose |
 |-------|---------|---------|
 | `PersonalityTypeDeriver` | `io.casehub.eidos.api` | Shared mbtiType/enneagramType derivation |
+| `PersonalityInput` | `io.casehub.eidos.api` | Structured input for `PersonalityTypeDeriver.derive()` |
 
 ### Modified classes (3)
 
 | Class | Changes |
 |-------|---------|
-| `AnnotatedAgentConfig` | +`CapabilityConfig`, +`TemplateRefConfig`, +`TemplateArgConfig`, +`AxisVocabConfig`, +`EpistemicDomainConfig`, +identity fields, +personality fields |
+| `AnnotatedAgentConfig` | +`CapabilityConfig`, +`TemplateRefConfig`, +`TemplateArgConfig`, +`AxisVocabConfig`, +`EpistemicDomainConfig`, +`DispositionWeightConfig`, `dispositionProfile`/`styleProfile` type change (`String[]` → `DispositionWeightConfig[]`), +identity fields, +personality fields |
 | `EidosAnnotationsProcessor` | Capability merge extraction, disposition weight/axis extraction, template extraction, extended validation |
 | `EidosAnnotationsRecorder` | `Supplier` → `BeanCreator` pattern, rich capability construction, template construction, `PersonalityTypeDeriver` call |
 
