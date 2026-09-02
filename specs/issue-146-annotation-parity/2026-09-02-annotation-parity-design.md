@@ -315,7 +315,7 @@ templateRefs.add(new TemplateRef(ref.id, args));
 
 ### PersonalityTypeDeriver utility (D5)
 
-New class in `io.casehub.eidos.runtime.yaml` (shared by `DispositionDeserializer` and recorder):
+New class in `io.casehub.eidos.api` (shared by `DispositionDeserializer` and recorder). Lives in the api module because all its dependencies are api types (`VocabularyRegistry`, `AgentDisposition.Builder`, `DispositionValue`) — follows the `CapabilityResolver` / `BehavioralExpectations` precedent for static utilities in api:
 
 ```java
 public final class PersonalityTypeDeriver {
@@ -441,7 +441,7 @@ For each `AgentDescriptor` field, assert the annotation surface can produce the 
 
 | Class | Package | Purpose |
 |-------|---------|---------|
-| `PersonalityTypeDeriver` | `io.casehub.eidos.runtime.yaml` | Shared mbtiType/enneagramType derivation |
+| `PersonalityTypeDeriver` | `io.casehub.eidos.api` | Shared mbtiType/enneagramType derivation |
 
 ### Modified classes (3)
 
