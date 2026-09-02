@@ -33,3 +33,33 @@ Adding eidos-annotations-deployment as a dependency to org-annotations-deploymen
 transitively brings in eidos-deployment, which brings JPA entities and Hibernate.
 Tried excluding — Quarkus extension validation rejects missing deployment counterparts.
 Resolution: keep full chain, configure H2 datasource in org tests.
+
+## 2026-09-03 — Quick wins batch: #155, #156, #159, #160, #161; #158 closed
+
+### #155 — Container naming (DONE)
+Renamed `Supervises.List` → top-level `Supervisions` annotation. Aligns with
+eidos-annotations convention (AgentCapabilities, AgentTemplates).
+
+### #156 — Orphan warnings (CLOSED)
+Already implemented in #154's `warnOrphanAnnotations()` method.
+
+### #158 — Per-descriptor tenancyId (CLOSED — won't fix)
+Design discussion: tenancyId is infrastructure plumbing for data partitioning,
+not agent identity. Application developers shouldn't think about it. The annotation
+path's current behavior (tenancyId from config property) is correct. Adding it to
+`@Identity` would leak deployment infrastructure into identity definitions.
+
+### #159 — AgentGoal.attributes (DONE)
+Field was NOT dead — has JPA persistence, comparator, and 5 tests. Gap was that
+neither YAML nor annotations could set it. Surfaced in both paths:
+- YAML: `AgentDescriptorDeserializer` now parses `attributes` map
+- Annotations: new `@GoalAttribute` annotation, `@AgentGoalDef.attributes()` field
+
+### #160 — YAML goal/constraint defaults (DONE)
+YAML deserializer now defaults to PRIMARY/PUBLIC for goals and PUBLIC/HARD for
+constraints when fields are omitted — matching annotation defaults.
+
+### #161 — Expand parity tests (DONE)
+Added capability, template, and reverse checks to `AnnotationParityTest`.
+New `OrgAnnotationParityTest` covers @OrgUnit, @OrgMemberDef, @OrgRelationshipDef
+with forward and reverse checks. Infrastructure fields excluded from reverse checks.

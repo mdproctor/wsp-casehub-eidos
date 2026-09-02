@@ -2,37 +2,31 @@
 
 ## Last Session
 
-Audited eidos DSL, annotations, and YAML systems for composition gaps, parity issues, and yaml-core adoption opportunities. Ran three parallel IntelliJ-driven audits. Created epic #153 with 15 child issues across four categories.
-
-Completed #154 — layered org-annotations on eidos-annotations: deleted duplicate NameDerivation, extracted shared AnnotationProcessorUtils, wired coordinated processing via EidosAnnotationProcessedBuildItem, added orphan warnings, switched org recorder to createWith() pattern. Full test suite green.
+Continued epic #153 — DSL, annotations & YAML composition audit. Closed 7 of 15 child issues across two sessions. This session completed the quick wins: container naming (#155), goal attributes surfaced (#159), YAML defaults (#160), expanded parity tests (#161). Closed #156 (already done) and #158 (tenancyId is infrastructure, not identity — won't fix).
 
 ## What's Next
 
 | Issue | Title | Scale | Complexity |
 |-------|-------|-------|------------|
-| #155 | Align org annotation container naming — Supervises.List to top-level | XS | Low |
-| #156 | Add orphan warnings to org-annotations processor | S | Low |
-| #157 | Org annotation field parity (tenancyId, capabilities, goals, constraints, attestation, scope) | L | Med |
-| #158 | Per-descriptor tenancyId in annotations | S | Low |
-| #159 | AgentGoal.attributes — surface or remove | S | Low |
-| #160 | YAML goal/constraint defaults | XS | Low |
-| #161 | Expand parity tests | M | Low |
-| #162 | Adopt yaml-core module system | L | High |
+| #157 | Org annotation field parity (capabilities, goals, constraints, attestation, scope) | L | Med |
+| #162 | Adopt yaml-core module system for descriptor YAML | L | High |
 | #163 | Add preprocessing to org YAML | M | Med |
-| #164-#166 | ForEachAdapter refs, IterationValueExpander, DeferredPrefixHandler | XS-S | Low-Med |
+| #164 | ForEachAdapter getReferences/withReferences | S | Med |
+| #165 | Adopt IterationValueExpander | S | Low |
+| #166 | Evaluate DeferredPrefixHandler | XS | Low |
 | #167 | Annotation composition — @AgentProfile | L | High |
 | #168 | Agent team DSL | M | Med |
 
-All edits via IntelliJ MCP per user preference. #155 is the natural next — XS rename of `Supervises.List` to top-level `Supervisions`.
+Recommended next: #157 (org annotation field parity) — it uses the layering infrastructure from #154 and the parity tests from #161 will immediately catch gaps.
 
 ## Key Decisions
 
-- **Quarkus extension chain**: can't exclude transitive deployment deps — Quarkus extension validation requires the full deployment counterpart chain. Org-annotations tests need H2 + datasource config because transitive eidos-deployment brings JPA entities.
-- **Org-annotations layers on eidos-annotations**: org-annotations-runtime depends on eidos-annotations; deployment depends on eidos-annotations-deployment. Shared AnnotationProcessorUtils lives in eidos-annotations-deployment.
-- **Inconsistency alignment**: eidos-annotations is the more mature implementation in all cases — org-annotations aligns to it.
+- **tenancyId is infrastructure, not identity** (#158 closed). The annotation path's config-driven approach is correct. YAML per-descriptor tenancyId is an escape hatch, not the primary mechanism.
+- **AgentGoal.attributes is live** — has JPA, comparator, and test support. Was just missing from declaration paths. Now surfaced in both YAML and annotations.
+- **Quarkus extension chain**: can't exclude transitive deployment deps. Org-annotations tests need H2 + datasource config.
 
 ## References
 
-- `JOURNAL.md` — design journal with session notes and decision log
-- `.plan` — work queue with 15 issues, position 0/15, #154 done
+- `JOURNAL.md` — design journal with session notes and decisions
+- `.plan` — work queue, 7/15 done
 - Epic #153 — full scope checklist on GitHub
