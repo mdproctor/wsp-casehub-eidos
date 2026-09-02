@@ -2,15 +2,37 @@
 
 ## Last Session
 
-Designed and implemented the agent organizational model (#150) — from research brief through brainstorming (11 design decisions), research doc, implementation plan, and 6 execution batches. Core insight: org structure is YAML-declared (no JPA needed), reconciled via casehub-desiredstate, with three layers — descriptors (who), organization (how they relate), deployment (where they run). Triangulated with engine#1017 YAML-first deployment model and casehub-ops#83 application NodeSpec.
+Audited eidos DSL, annotations, and YAML systems for composition gaps, parity issues, and yaml-core adoption opportunities. Ran three parallel IntelliJ-driven audits. Created epic #153 with 15 child issues across four categories.
 
-## Immediate Next Step
+Completed #154 — layered org-annotations on eidos-annotations: deleted duplicate NameDerivation, extracted shared AnnotationProcessorUtils, wired coordinated processing via EidosAnnotationProcessedBuildItem, added orphan warnings, switched org recorder to createWith() pattern. Full test suite green.
 
-Annotation surface for org model — `@OrgUnit`, `@Supervises`, Quarkus build extension + recorder. Deferred as M/High. Use `casehub-eidos-annotations/` `EidosAnnotationsProcessor` as the template. Then update CLAUDE.md with the new module structure.
+## What's Next
+
+| Issue | Title | Scale | Complexity |
+|-------|-------|-------|------------|
+| #155 | Align org annotation container naming — Supervises.List to top-level | XS | Low |
+| #156 | Add orphan warnings to org-annotations processor | S | Low |
+| #157 | Org annotation field parity (tenancyId, capabilities, goals, constraints, attestation, scope) | L | Med |
+| #158 | Per-descriptor tenancyId in annotations | S | Low |
+| #159 | AgentGoal.attributes — surface or remove | S | Low |
+| #160 | YAML goal/constraint defaults | XS | Low |
+| #161 | Expand parity tests | M | Low |
+| #162 | Adopt yaml-core module system | L | High |
+| #163 | Add preprocessing to org YAML | M | Med |
+| #164-#166 | ForEachAdapter refs, IterationValueExpander, DeferredPrefixHandler | XS-S | Low-Med |
+| #167 | Annotation composition — @AgentProfile | L | High |
+| #168 | Agent team DSL | M | Med |
+
+All edits via IntelliJ MCP per user preference. #155 is the natural next — XS rename of `Supervises.List` to top-level `Supervisions`.
+
+## Key Decisions
+
+- **Quarkus extension chain**: can't exclude transitive deployment deps — Quarkus extension validation requires the full deployment counterpart chain. Org-annotations tests need H2 + datasource config because transitive eidos-deployment brings JPA entities.
+- **Org-annotations layers on eidos-annotations**: org-annotations-runtime depends on eidos-annotations; deployment depends on eidos-annotations-deployment. Shared AnnotationProcessorUtils lives in eidos-annotations-deployment.
+- **Inconsistency alignment**: eidos-annotations is the more mature implementation in all cases — org-annotations aligns to it.
 
 ## References
 
-- `research/organizational-model.md` — full design research (workspace)
-- `plans/2026-09-01-org-model.md` — implementation plan (workspace)
-- `JOURNAL.md` — design journal (workspace)
-- `org-api/`, `org-memory/`, `org-runtime/`, `examples/org-scenarios/` — implementation
+- `JOURNAL.md` — design journal with session notes and decision log
+- `.plan` — work queue with 15 issues, position 0/15, #154 done
+- Epic #153 — full scope checklist on GitHub
