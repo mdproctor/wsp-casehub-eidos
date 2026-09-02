@@ -343,6 +343,22 @@ templateRefs.add(new TemplateRef(ref.id, args));
 
 **Template validation:** Templates from the annotation path flow through the standard `DescriptorCollector.collectAndValidate()` pipeline, which validates template IDs against `TemplateRegistry.resolve()` and checks for missing/extra args against `DescriptorTemplate.parameters()`. This is the same validation applied to Builder and YAML paths. If a template ID doesn't exist: `"Descriptor '<agentId>' references unknown template: <templateId>"`. If args don't match: `"Descriptor '<agentId>', template '<id>': missing args [...]"` or `"... unexpected args [...]"`.
 
+#### Axis vocabularies construction
+
+For `config.axisVocabularies` → `Map<DispositionAxis, String>` on `builder.axisVocabularies(map)`:
+
+```java
+if (config.axisVocabularies != null && config.axisVocabularies.length > 0) {
+    var map = new EnumMap<DispositionAxis, String>(DispositionAxis.class);
+    for (var av : config.axisVocabularies) {
+        map.put(DispositionAxis.valueOf(av.axis), av.uri);
+    }
+    builder.axisVocabularies(map);
+}
+```
+
+`AxisVocabConfig.axis` stores the `DispositionAxis` enum name as a string (extracted by the processor via `ann.value("axis").asEnum()`). `DispositionAxis.valueOf()` converts it back. The `valueOf()` call is safe — the processor already validates against the `DispositionAxis` enum at build time (the annotation field is typed as `DispositionAxis axis()`, so only valid enum constants compile).
+
 #### Weighted disposition profile construction
 
 The updated `dispositionProfile` and `styleProfile` extraction (replaces current `DispositionValue.of(t)` from plain strings):
