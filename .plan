@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-146-annotation-parity
-state: scaffolded
+state: active
 project-sha: 1a59332fc7267fd6e88c16a1a0c6a90186219282
 date: 2026-09-01
 issue-repo: casehubio/eidos
@@ -13,12 +13,12 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#146 — Issue #146 ← active
-  - [ ] Batch 1: PersonalityTypeDeriver
-    - [ ] Task 1: PersonalityTypeDeriver+DispositionDeserializer refactor
-  - [ ] Batch 2: Annotations+Disposition
-    - [ ] Task 2: Annotation definitions+AnnotatedAgentConfig
-    - [ ] Task 3: Processor+Recorder Identity+Disposition
-  - [ ] Batch 3: Capabilities+Templates
-    - [ ] Task 4: Processor+Recorder capabilities+templates
-  - [ ] Batch 4: Validation+Parity
-    - [ ] Task 5: Build-time validation+orphan warnings+parity test
+  - [x] Batch 1: PersonalityTypeDeriver
+    - [x] Task 1: PersonalityTypeDeriver+DispositionDeserializer refactor
+  - [x] Batch 2: Annotations+Disposition
+    - [x] Task 2: Annotation definitions+AnnotatedAgentConfig
+    - [x] Task 3: Processor+Recorder Identity+Disposition
+  - [x] Batch 3: Capabilities+Templates
+    - [x] Task 4: Processor+Recorder capabilities+templates
+  - [x] Batch 4: Validation+Parity
+    - [x] Task 5: Build-time validation+orphan warnings+parity test
