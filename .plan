@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-153-dsl-annotations-yaml-audit
-state: scaffolded
+state: active
 project-sha: 340665bdb2ef35892ae0f5fb97af17e0f4fa4ef7
 date: 2026-09-02
 issue-repo: casehubio/eidos
