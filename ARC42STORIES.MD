@@ -1126,7 +1126,7 @@ Not closed here: `JpaAgentGraphBackfill` is a stub — backfill wiring (reading 
 ##### Key files
 
 - `api/src/main/java/io/casehub/eidos/api/AgentTask.java` — `taskId` (UUID), `agentId`, `tenancyId`, `capabilityTag`, `taskDomain`, `dispatchedAt`
-- `api/src/main/java/io/casehub/eidos/api/AgentOutcome.java` — `taskId`, `result` (TaskResult enum), `confidence` (0.0–1.0, NaN guard), `observedAt` (Instant, required), `degradationReason` (nullable)
+- `api/src/main/java/io/casehub/eidos/api/AgentOutcome.java` — `taskId`, `result` (TaskResult enum), `RetentionScore` (0.0–1.0, NaN guard), `observedAt` (Instant, required), `degradationReason` (nullable)
 - `api/src/main/java/io/casehub/eidos/api/AttestationRef.java` — `taskId`, `ledgerEntryHash`, `attestedAt`
 - `api/src/main/java/io/casehub/eidos/api/GraphDataSufficiency.java` — `SufficiencyLevel` + `List<String> warnings`
 - `api/src/main/java/io/casehub/eidos/api/TaskSemanticEnricher.java` — SPI: pull interface; eidos calls at query time; applications provide personality axis correlation and semantic domain equivalence
