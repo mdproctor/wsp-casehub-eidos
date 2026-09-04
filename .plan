@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-153-dsl-annotations-yaml-audit
-state: active
+state: closing:promoted
 project-sha: 340665bdb2ef35892ae0f5fb97af17e0f4fa4ef7
 date: 2026-09-02
 issue-repo: casehubio/eidos
@@ -12,6 +12,7 @@ design-section-hashes: 4d2cc5ab:## §1 Introduction and Goals|4f6b26ef:## §2 Co
 flyway-next-v: none
 active-issue: 154
 
+evidence-era: true
 ## Queue
 - [ ] casehubio/eidos#153 — Issue #153 ← active
 - [ ] casehubio/eidos#155 — Align

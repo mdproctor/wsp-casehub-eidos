@@ -38,7 +38,7 @@ optionally enhance with semantic context.
 ## Design Philosophy
 
 **The graph is domain-agnostic by construction.** eidos records `capabilityTag`,
-`taskDomain`, `result`, and `confidence`. It does not know what a "code-review in
+`taskDomain`, `result`, and `RetentionScore`. It does not know what a "code-review in
 rust" task means for riskAppetite, or whether "security" and "safety-critical" are
 semantically equivalent. That knowledge belongs in application repos.
 

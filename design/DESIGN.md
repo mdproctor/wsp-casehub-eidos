@@ -17,7 +17,7 @@ Field order: `taskId, result, confidence, observedAt (required), degradationReas
 
 Compact constructor validation:
 - `taskId`, `result`, `observedAt`: `Objects.requireNonNull` with bare field name message (consistent with `AgentQuery` convention)
-- `confidence` range: `Double.isNaN(confidence) || confidence < 0.0 || confidence > 1.0` — `isNaN` guard is required because IEEE 754 comparison with NaN always returns `false`; the range check alone silently accepts NaN
+- `RetentionScore` range: `Double.isNaN(confidence) || confidence < 0.0 || confidence > 1.0` — `isNaN` guard is required because IEEE 754 comparison with NaN always returns `false`; the range check alone silently accepts NaN
 - `AgentValidationException("confidence", "must be between 0.0 and 1.0")` is the correct exception type
 
 ## ReactiveAgentGraphQuery — bridge constructor pattern
