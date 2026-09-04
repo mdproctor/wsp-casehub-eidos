@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-152-repeatable-goal-constraint
-state: scaffolded
+state: active
 project-sha: 42a770e1f8b6416b9e4cbb3747a00fa888cfc1f9
 date: 2026-09-04
 issue-repo: casehubio/eidos
