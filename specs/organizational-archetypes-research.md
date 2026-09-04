@@ -204,6 +204,101 @@ specific capability being handed off.
 
 ---
 
+## Normative Framework Alignment
+
+Eidos org does not exist in isolation. It is the structural layer within
+CaseHub's 5-layer normative accountability framework. Each layer is
+owned by a different component:
+
+### The 5-layer normative accountability framework
+
+| Layer | Concern | Owner | What it knows |
+|---|---|---|---|
+| **L1 — Illocutionary** | What was said (speech act type) | Qhorus | QUERY, COMMAND, RESPONSE, DECLINE, HANDOFF, DONE, FAILURE, PROPOSE, JUDGMENT, STATUS, EVENT |
+| **L2 — Commitment** | What was obligated (lifecycle) | Qhorus | 7-state obligation lifecycle, `causedByEntryId` chains |
+| **L3 — Protocol** | Is the interaction following the expected pattern? | Choreography | DCR constraints, conformance checking, progressive formalism |
+| **L4 — Temporal** | When obligations become stale | Qhorus | Deadline enforcement, obligation expiry |
+| **L5 — Enforcement** | React to commitment/protocol outcomes | Engine | Drools-based evaluation, remediation |
+
+Source: Choreography brief; engine ADR-0006.
+
+### Qhorus speech acts → Searle's illocutionary categories
+
+| Searle category | Qhorus types | Direction of fit | Deontic effect |
+|---|---|---|---|
+| **Directive** | QUERY, COMMAND, JUDGMENT | World-to-word | Creates obligation on receiver |
+| **Commissive** | PROPOSE | Word-to-world | Sender binds to conditional action |
+| **Assertive** | RESPONSE, STATUS, DONE, FAILURE | Word-to-world | Reports state, may discharge obligation |
+| **Declarative** | HANDOFF | Both | Constitutively changes participation |
+| **Expressive** | DECLINE | Neither | Refuses obligation with reason |
+| **Observer** | EVENT | — | Telemetry only, not agent-visible |
+
+Source: Qhorus `MessageType.java`; Searle, J.R. (1969). *Speech Acts*.
+
+### Where eidos org sits in the framework
+
+Eidos org provides the **structural preconditions** that the normative
+framework operates on:
+
+| Normative concern | Eidos org provides |
+|---|---|
+| **Who may speak to whom** | `AgentRelationship` + `RelationshipKind` — typed directed links define authority patterns |
+| **What a participant may do** | `AgentCapability` on descriptors, `OrganizationalUnit.capabilities` on units |
+| **What a participant must do** | `AgentGoal` (standing objectives), `AgentConstraint` (behavioral guardrails) |
+| **Who may attest about whom** | `AttestationGrant` on relationships — dimensions, capability scope, signal types |
+| **What roles exist in an interaction** | `Membership.role` (with vocabulary grounding) — maps to choreography roles |
+| **How authority flows** | `SUPERVISES`, `DELEGATES_TO`, `ESCALATES_TO`, `REPORTS_TO` — the authority topology |
+| **How trust propagates** | Discovery lineage via relationship chains (ADR-0006: trust derives from lineage, not assertion) |
+
+### MOISE+ dimension mapping — extended for normative integration
+
+| MOISE+ dimension | Eidos org concept | Normative framework connection |
+|---|---|---|
+| **Structural** — roles, groups, links | `OrgUnit`, `Membership`, `AgentRelationship`, `RelationshipKind` | L3 (Protocol): defines which roles interact in choreography |
+| **Functional** — goals, plans, missions | `AgentGoal` (with `capabilities` mapping), `AgentCapability` | L1 (Illocutionary): capabilities determine what COMMAND/QUERY types an agent can receive |
+| **Deontic** — obligations, permissions | `AgentConstraint` (HARD/SOFT severity), `AttestationGrant`, `Visibility` | L2 (Commitment): constraints bind to commitment lifecycle; attestation governs who may record COMPLIANT/VIOLATED signals |
+
+MOISE+ does not have temporal or enforcement dimensions. CaseHub extends
+the model with L4 (Qhorus deadline enforcement) and L5 (engine Drools
+evaluation). The deontic dimension in eidos is richer than MOISE+'s
+permission/obligation pair — it includes severity discrimination
+(HARD vs SOFT), visibility (PUBLIC vs PRIVATE), and behavioral signal
+accumulation (`BehavioralSignalStore`).
+
+### Normative acts in organizational operations (ADR-0006)
+
+Worker registration is itself a normative act — a declarative speech act
+that constitutively creates a new participant. Trust derives from the
+discovery chain, not from the worker's self-assertion:
+
+| Discovery path | Deontic standing | Eidos modelling |
+|---|---|---|
+| Statically declared | Highest (baked in by system owner) | `AgentDescriptorRegistrar` in code or YAML |
+| Provisioned by trusted provisioner | Inherits from provisioner's trust | `DELEGATES_TO` relationship from provisioner |
+| Introduced by existing participant | Derived from introducer's chain | `EXTENDED("introduces")` relationship |
+| Self-announced | Lowest (no voucher) | No relationship — agent registers itself |
+
+The `causedByEntryId` chain in the normative ledger makes the discovery
+path permanently traversable — who introduced whom, and who introduced
+the introducer.
+
+### Implications for archetype examples
+
+Each archetype example should demonstrate not just the structural topology
+but also the normative properties it enables:
+
+| Archetype | Key normative property |
+|---|---|
+| **Hierarchy** | Authority chain determines COMMAND/DECLINE flow; supervisor attestation |
+| **Professional Team** | Peer QUERY/RESPONSE; no COMMAND authority between members |
+| **Tiered Escalation** | ESCALATES_TO chain defines HANDOFF path; each tier's DECLINE triggers next tier |
+| **Divisional** | Cross-unit DELEGATES_TO carries delegation semantics; attestation scoped to delegated capability |
+| **Orchestrator-Worker** | Coordinator issues COMMAND; workers DONE/FAILURE/DECLINE; coordinator aggregates |
+| **Pipeline** | Sequential HANDOFF; each stage's DONE is next stage's trigger |
+| **Advisory Board** | Advisors issue independent JUDGMENT; decision-maker RESPONSE synthesizes |
+
+---
+
 ## Assessment Summary
 
 The eidos org model is sufficient for all surveyed archetypes. No
@@ -266,3 +361,10 @@ common in current LLM agent deployments and can be deferred.
   organizations: an organizational view of multi-agent systems. *AOSE 2003*,
   LNCS 2935, pp. 214–230.
 - Koestler, A. (1967). *The Ghost in the Machine*. Hutchinson. (holarchy concept)
+- Searle, J.R. (1969). *Speech Acts: An Essay in the Philosophy of Language*. Cambridge University Press.
+- Searle, J.R. (1979). *Expression and Meaning: Studies in the Theory of Speech Acts*. Cambridge University Press.
+- Singh, M.P. (1999). An ontology for commitments in multiagent systems.
+  *Artificial Intelligence and Law*, 7(1), 97–113.
+- Hilpinen, R. (ed.) (1981). *New Studies in Deontic Logic*. Reidel. (deontic logic foundations)
+- Munindar P. Singh & Michael N. Huhns (2005). *Service-Oriented Computing:
+  Semantics, Processes, Agents*. Wiley. (commitment-based coordination)
