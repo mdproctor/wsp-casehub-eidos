@@ -1234,7 +1234,7 @@ Cross-cutting decisions not captured inline in layer entries. Layer-specific dec
 | `VocabularyRegistry` / `CdiVocabularyRegistry` | SPI + default CDI implementation; discovers `Vocabulary` CDI beans; supports `find`, `resolve`, and `equivalentValues` with cross-vocabulary `exactMatches` traversal |
 | `Vocabulary` / `VocabularyTerm` | Named versioned vocabulary; each term carries `aliases` and `exactMatches` pairs for cross-vocabulary equivalence |
 | `CapabilityHealth` / `ReactiveCapabilityHealth` | SPI for probing whether a declared capability is operable at dispatch time; returns sealed `CapabilityStatus` |
-| `CapabilityStatus` | Sealed hierarchy: `Ready`, `Unavailable(message)`, `Degraded(reason, message)`, `EpistemicallyWeak(domain, confidence)` |
+| `CapabilityStatus` | Sealed hierarchy: `Ready`, `Degraded(reason, message)`, `Overloaded(pressure, threshold)`, `Unavailable(message)`, `Excluded(domain, source, count)`, `EpistemicallyWeak(domain, confidence)`, `BehavioralViolation(violations, kind)` |
 | `DegradationReason` | Top-level enum: `RATE_LIMITED`, `CONTEXT_EXHAUSTED`, `OVERLOADED`, `DOMAIN_MISMATCH` |
 | `AgentStateStore` | SPI for recording and querying runtime degradation state with TTL; `tenancyId` required on all operations |
 | `AgentPromptContext` | Render-time accumulation record: `Optional<GoalContext>`, `List<Resource>`, `situationalContext`, `RenderFormat`; wither methods support incremental build; re-renderable as context evolves |
