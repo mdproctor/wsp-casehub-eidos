@@ -55,11 +55,11 @@ The correct grouping: agent-level runtime checks (Degraded, Overloaded) before c
 ```java
 sealed interface CapabilityStatus permits
         CapabilityStatus.Degraded,
+        CapabilityStatus.Overloaded,         // NEW — after Degraded in probe chain
         CapabilityStatus.Unavailable,
         CapabilityStatus.Excluded,
         CapabilityStatus.EpistemicallyWeak,
         CapabilityStatus.BehavioralViolation,
-        CapabilityStatus.Overloaded,         // NEW
         CapabilityStatus.Ready {
 
     // ... existing variants unchanged ...
