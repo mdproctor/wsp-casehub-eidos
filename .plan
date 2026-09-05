@@ -13,3 +13,6 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#151 — Issue #151 ← active
+  - [ ] Batch 1: Overloaded probe step
+    - [ ] Task 1: CapabilityStatus.Overloaded + DefaultCapabilityHealth probe
+    - [ ] Task 2: Selector switch update + filtering tests
