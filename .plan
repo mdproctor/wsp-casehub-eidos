@@ -13,3 +13,5 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#170 — Issue #170 ← active
+  - [ ] Batch 1: DisplayTermResolver
+    - [ ] Task 1: SPI + impl + tests
