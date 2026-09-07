@@ -13,13 +13,14 @@
 
 ## D2: API shape — three-arg method with cross-vocabulary swap
 
-**Choice:** Single primary method `resolveLabel(value, sourceVocabUri, targetVocabUri)` with a two-arg convenience overload. Resolution chain: find source term → if target provided, cross-vocab via equivalentValues → return label → fallback to raw value.
+**Choice:** Four-arg primary method `resolveLabel(value, sourceVocabUri, targetVocabUri, axis)` with convenience overloads for common cases. Resolution chain: find source term → if target provided, cross-vocab via equivalentValues (axis-aware when axis is non-null, axis-unaware otherwise) → resolve target value to term → return label → fallback to raw value. Note: equivalentValues returns a target *value*, not a term — a second resolve() call is needed to get the label.
 **Alternatives:**
 - Two separate methods (direct + swap) — clearer intent per call but doubles the API surface for the same underlying logic
 - Builder/Resolution pattern — over-engineered for what is fundamentally a label lookup
-**Rationale:** The three-arg method handles both cases: direct resolution (targetVocabUri=null) and cross-vocab swap (targetVocabUri=different). The convenience overload covers the common case. The "just works" swap behavior is: UI sets a target vocabulary, passes it on every call, cross-vocab mappings resolve automatically via existing exactMatch() infrastructure.
-**Trade-offs:** Nullable parameters (sourceVocabUri, targetVocabUri) — null means "search all" / "use source label" respectively. Acceptable for a utility service.
-**Sources:** VocabularyRegistry.java:35 (equivalentValues), VocabularyTerm.java:27 (exactMatch)
+- Three-arg without axis — would silently fail cross-vocab swap for disposition terms (DISC, Thomas-Kilmann, Belbin) which use axisExactMatch exclusively
+**Rationale:** The four-arg method handles all cases: direct resolution (targetVocabUri=null), cross-vocab swap (targetVocabUri=different), and axis-aware disposition swap (axis=non-null). Convenience overloads keep common cases clean. The "just works" swap behavior is: UI sets a target vocabulary, passes it on every call, cross-vocab mappings resolve automatically via existing exactMatch/axisExactMatch infrastructure.
+**Trade-offs:** Nullable parameters (sourceVocabUri, targetVocabUri, axis) — null means "search all" / "use source label" / "axis-unaware" respectively. Four parameters is the maximum comfortable arity; further extension would need a context object.
+**Sources:** VocabularyRegistry.java:35-36 (equivalentValues axis-aware + unaware), VocabularyTerm.java:27 (exactMatch), VocabularyTerm.java:44 (axisExactMatch)
 **Exploration:** quick
 **Status:** captured
 
@@ -45,4 +46,17 @@
 **Trade-offs:** O(N) search across registered vocabularies — negligible for display-time use. Ambiguity if the same value exists in multiple vocabularies (first-match wins). Acceptable: vocabulary values are typically unique across a deployment.
 **Sources:** VocabularyRegistry.java:25 (registeredUris), CdiVocabularyRegistry.java:418 (resolve)
 **Exploration:** quick
+**Status:** captured
+
+## D5: Auto-discovery is best-effort; explicit sourceVocabUri preferred
+
+**Choice:** Document auto-discovery (sourceVocabUri=null) as best-effort. Registration order is stable within a deployment but unspecified across deployments. Callers should provide sourceVocabUri when available — auto-discovery is the fallback, not the primary path.
+**Alternatives:**
+- Enforce deterministic ordering (alphabetical by URI) — adds complexity for an edge case
+- Reject null sourceVocabUri entirely — breaks the "just works" convenience
+**Rationale:** Decision review finding: registeredUris() returns a Set with unspecified iteration order. Same value in two vocabularies (unlikely) could yield different labels across runs. Documenting best-effort + preferring explicit sourceVocabUri handles this without over-engineering.
+**Trade-offs:** Non-deterministic edge case remains. Acceptable: vocabulary values are unique in practice.
+**Depends on:** D4 (auto-discovery)
+**Sources:** Decision review finding #2
+**Exploration:** quick (from review)
 **Status:** captured
