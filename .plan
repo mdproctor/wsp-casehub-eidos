@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-170-display-term-resolver
-state: scaffolded
+state: active
 project-sha: 1378f6c6597ec598df5f4802eb91f2cb16da9bb3
 date: 2026-09-07
 issue-repo: casehubio/eidos
@@ -13,5 +13,5 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#170 — Issue #170 ← active
-  - [ ] Batch 1: DisplayTermResolver
-    - [ ] Task 1: SPI + impl + tests
+  - [x] Batch 1: DisplayTermResolver
+    - [x] Task 1: SPI + impl + tests
