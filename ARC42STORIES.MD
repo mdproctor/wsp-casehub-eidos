@@ -1233,6 +1233,7 @@ Cross-cutting decisions not captured inline in layer entries. Layer-specific dec
 | `AgentRegistry` / `ReactiveAgentRegistry` | SPI for registering and discovering `AgentDescriptor` instances; `AgentQuery` drives all find operations |
 | `VocabularyRegistry` / `CdiVocabularyRegistry` | SPI + default CDI implementation; discovers `Vocabulary` CDI beans; supports `find`, `resolve`, and `equivalentValues` with cross-vocabulary `exactMatches` traversal |
 | `Vocabulary` / `VocabularyTerm` | Named versioned vocabulary; each term carries `aliases` and `exactMatches` pairs for cross-vocabulary equivalence |
+| `DisplayTermResolver` / `DefaultDisplayTermResolver` | SPI for resolving vocabulary term values to display labels with cross-vocabulary swap; `resolveLabel(value, sourceVocabUri, targetVocabUri, axis)` delegates to `VocabularyRegistry`; temporary home before platform-api |
 | `CapabilityHealth` / `ReactiveCapabilityHealth` | SPI for probing whether a declared capability is operable at dispatch time; returns sealed `CapabilityStatus` |
 | `CapabilityStatus` | Sealed hierarchy: `Ready`, `Degraded(reason, message)`, `Overloaded(pressure, threshold)`, `Unavailable(message)`, `Excluded(domain, source, count)`, `EpistemicallyWeak(domain, confidence)`, `BehavioralViolation(violations, kind)` |
 | `DegradationReason` | Top-level enum: `RATE_LIMITED`, `CONTEXT_EXHAUSTED`, `OVERLOADED`, `DOMAIN_MISMATCH` |
