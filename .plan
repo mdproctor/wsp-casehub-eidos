@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-171-platform-display-resolver
-state: scaffolded
+state: active
 project-sha: a59ca1241d86e7f3cc5c2600a3e5318db676881d
 date: 2026-09-11
 issue-repo: casehubio/eidos
@@ -13,5 +13,5 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#171 — Issue #171 ← active
-  - [ ] Batch 1: Platform SPI bridge
-    - [ ] Task 1: Add platform DisplayTermResolver + mapTerm + tests
+  - [x] Batch 1: Platform SPI bridge
+    - [x] Task 1: Add platform DisplayTermResolver + mapTerm + tests
