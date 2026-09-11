@@ -13,3 +13,5 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#171 — Issue #171 ← active
+  - [ ] Batch 1: Platform SPI bridge
+    - [ ] Task 1: Add platform DisplayTermResolver + mapTerm + tests
