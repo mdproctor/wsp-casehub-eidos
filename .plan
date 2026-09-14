@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-172-model-selection-vocab
-state: scaffolded
+state: active
 project-sha: 4c7af45c5b461880038f81d27ede0d0bbf8d299e
 date: 2026-09-14
 issue-repo: casehubio/eidos
@@ -13,13 +13,13 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#172 — Issue #172 ← active
-  - [ ] Batch 1: Foundation
-    - [ ] Task 1: Add modelTier and modelCapabilities to AgentCapability
-    - [ ] Task 2: Create ModelTierTerm vocabulary and registrar
-  - [ ] Batch 2: Persistence
-    - [ ] Task 3: JPA entity mapper and schema migration
-    - [ ] Task 4: Vocabulary validation for modelTier
-  - [ ] Batch 3: Rendering
-    - [ ] Task 5: A2A_CARD rendering and hash coverage
-    - [ ] Task 6: YAML deserialization support
-    - [ ] Task 7: Annotation extension AgentCapabilityDef
+  - [x] Batch 1: Foundation
+    - [x] Task 1: Add modelTier and modelCapabilities to AgentCapability
+    - [x] Task 2: Create ModelTierTerm vocabulary and registrar
+  - [x] Batch 2: Persistence
+    - [x] Task 3: JPA entity mapper and schema migration
+    - [x] Task 4: Vocabulary validation for modelTier
+  - [x] Batch 3: Rendering
+    - [x] Task 5: A2A_CARD rendering and hash coverage
+    - [x] Task 6: YAML deserialization support
+    - [x] Task 7: Annotation extension AgentCapabilityDef
