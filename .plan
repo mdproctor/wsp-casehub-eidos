@@ -13,3 +13,13 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#172 — Issue #172 ← active
+  - [ ] Batch 1: Foundation
+    - [ ] Task 1: Add modelTier and modelCapabilities to AgentCapability
+    - [ ] Task 2: Create ModelTierTerm vocabulary and registrar
+  - [ ] Batch 2: Persistence
+    - [ ] Task 3: JPA entity mapper and schema migration
+    - [ ] Task 4: Vocabulary validation for modelTier
+  - [ ] Batch 3: Rendering
+    - [ ] Task 5: A2A_CARD rendering and hash coverage
+    - [ ] Task 6: YAML deserialization support
+    - [ ] Task 7: Annotation extension AgentCapabilityDef
