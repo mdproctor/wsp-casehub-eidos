@@ -173,7 +173,7 @@ public @interface ExtensionEntry {
 }
 ```
 
-`@ExtensionData` is a separate container annotation, not nested in `@Identity`. This positions extension data as secondary metadata, not core identity.
+`@ExtensionData` is a separate container annotation, not nested in `@Identity`. This positions extension data as secondary metadata, not core identity. `@ExtensionEntry` uses `@Target({})` (nested-only, consistent with `@EpistemicDomain` and `@TemplateArg`).
 
 ### Usage
 
