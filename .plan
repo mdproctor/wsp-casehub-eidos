@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-177-extension-data
-state: scaffolded
+state: active
 project-sha: 87779b5468a4e549cded36d4ab8c63f535363181
 date: 2026-09-15
 issue-repo: casehubio/eidos
@@ -13,12 +13,12 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#177 — Issue #177 ← active
-  - [ ] Batch 1: API Foundation
-    - [ ] Task 1: ExtensionDataCopier utility
-    - [ ] Task 2: AgentDescriptor field+validator+comparator
-  - [ ] Batch 2: YAML+JPA
-    - [ ] Task 3: YAML deserialization
-    - [ ] Task 4: JPA persistence
-  - [ ] Batch 3: Annotations
-    - [ ] Task 5: Annotation support
-    - [ ] Task 6: Full build + consumer guide
+  - [x] Batch 1: API Foundation
+    - [x] Task 1: ExtensionDataCopier utility
+    - [x] Task 2: AgentDescriptor field+validator+comparator
+  - [x] Batch 2: YAML+JPA
+    - [x] Task 3: YAML deserialization
+    - [x] Task 4: JPA persistence
+  - [x] Batch 3: Annotations
+    - [x] Task 5: Annotation support
+    - [x] Task 6: Full build + consumer guide
