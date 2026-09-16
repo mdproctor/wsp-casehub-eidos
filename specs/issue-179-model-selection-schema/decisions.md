@@ -23,3 +23,16 @@
 **Exploration:** quick
 **Depends on:** D1 (using ModelQuery requires the dependency)
 **Status:** captured
+
+## D3: Org integration — no new org fields
+
+**Choice:** No new model selection fields on `Membership` or `OrganizationalUnit`. Org units already carry `List<AgentCapability>` which inherits the `ModelQuery model` field from D1. Role-level model requirements are expressed through capability declarations on the org unit.
+**Alternatives:**
+- ModelQuery on Membership (per-agent-per-role override) — conflates agent identity with infrastructure policy
+- ModelQuery on OrganizationalUnit (unit-level default) — model requirements are per-capability, not per-unit; a unit doing code review (FLAGSHIP) and lint checking (FAST) needs different tiers per capability, not a unit-level default
+**Rationale:** Model selection is a capability-level concern (D2 from #172). Org units compose capabilities — the model requirements flow through that composition naturally.
+**Trade-offs:** No way to express "all agents in this unit default to FAST" without declaring it on each capability. Acceptable because that use case is rare and explicit is better than implicit for routing-critical metadata.
+**Sources:** OrganizationalUnit.java (capabilities field), Membership.java, issue-172 decisions D2 (per-capability rationale)
+**Exploration:** quick
+**Depends on:** D1 (ModelQuery on AgentCapability)
+**Status:** captured
