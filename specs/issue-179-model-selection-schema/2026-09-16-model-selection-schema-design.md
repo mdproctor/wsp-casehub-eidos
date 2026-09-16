@@ -325,10 +325,15 @@ check constraint enforces mutual exclusion.
 Since this is a breaking change to the `AgentCapability` record, all call sites must
 update. The migration is mechanical:
 
+**Builder calls (constructing capabilities):**
 1. `.modelTier("flagship")` → `.model(ModelQuery.builder().tier(ModelTier.FLAGSHIP).build())`
-2. `.modelCapabilities(Set.of("text"))` → fold into the same `ModelQuery.builder()` call
-3. `cap.modelTier()` → `cap.model() != null ? cap.model().tier() : null`
-4. `cap.modelCapabilities()` → `cap.model() != null ? cap.model().requiredCapabilities() : Set.of()`
+2. `.modelTier("flagship").modelCapabilities(Set.of("text"))` → `.model(ModelQuery.builder().tier(ModelTier.FLAGSHIP).requiredCapabilities(Set.of("text")).build())`
+3. For string shorthands (aliases, model IDs): `.modelRef("reasoning-heavy")`
+
+**Accessor calls (reading capabilities):**
+4. `cap.modelTier()` → `cap.model() != null ? cap.model().tier() : null`
+5. `cap.modelCapabilities()` → `cap.model() != null ? cap.model().requiredCapabilities() : Set.of()`
+6. For string ref: `cap.modelRef()`
 
 ## References
 

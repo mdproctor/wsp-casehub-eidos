@@ -2,7 +2,7 @@
 
 ## D1: Replace flat fields with ModelQuery model
 
-**Choice:** Replace `modelTier` (String) and `modelCapabilities` (Set<String>) on `AgentCapability` with a single `ModelQuery model` field from `platform-api`. YAML supports the union type: `model: "reasoning-heavy"` (string shorthand) or `model: {tier: FAST, capabilities: [reasoning]}` (inline constraints).
+**Choice:** Replace `modelTier` (String) and `modelCapabilities` (Set<String>) on `AgentCapability` with two mutually exclusive fields: `String modelRef` (string shorthand — alias, tier ref, model ID) and `ModelQuery model` (inline constraint query from `platform-api`). YAML supports the union type via a single `model:` key: `model: "reasoning-heavy"` (→ `modelRef`) or `model: {tier: FAST, capabilities: [reasoning]}` (→ `model`). Mirrors `AgentSessionConfig` on the platform side.
 **Alternatives:**
 - Add ModelQuery alongside existing fields with coexistence validation — adds complexity, old fields redundant
 - Keep flat fields, add toModelQuery() conversion — misses richer constraint dimensions and union type ergonomics
