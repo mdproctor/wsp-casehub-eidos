@@ -7,8 +7,9 @@
 - Add ModelQuery alongside existing fields with coexistence validation — adds complexity, old fields redundant
 - Keep flat fields, add toModelQuery() conversion — misses richer constraint dimensions and union type ergonomics
 **Rationale:** Pre-release with no deployed instances — no backward compat needed. ModelQuery is a strict superset covering tier, capabilities, plus vendor, family, locality, cost, context window, output size, and vendor preference. Single field eliminates duplication.
-**Trade-offs:** Breaking change to AgentCapability record — all existing callers (tests, examples, YAML profiles, annotations) must update. Acceptable given pre-release status.
-**Sources:** AgentCapability.java (existing modelTier + modelCapabilities), ModelQuery.java (platform-api), model-selection.schema.json (agent-config-core), issue-172 spec (rationale for per-capability model requirements)
+**Trade-offs:** Breaking change to AgentCapability record — all existing callers (tests, examples, YAML profiles, annotations) must update. Acceptable given pre-release status. ModelQuery carries operational fields (maxCostTier, locality, preferVendor) that #172 D5/D6 explicitly excluded from agent identity. This is a deliberate evolution: the full constraint surface is more valuable than prevention-by-absence. Eidos validation can reject or ignore inappropriate fields if needed, but the type signature does not prevent them.
+**Sources:** AgentCapability.java (existing modelTier + modelCapabilities), ModelQuery.java (platform-api), agent-config-core/src/main/resources/schema/model-selection.schema.json (casehubio/platform), issue-172 spec (rationale for per-capability model requirements)
+**Review findings:** R1-01 (boundary reversal), R1-02 (operational field leakage) — acknowledged and consciously accepted. The #172 boundary was correct at the time; platform#335 and #342 changed the landscape by providing schema, router alias resolution, and direct ModelQuery dispatch. The integration value outweighs the boundary purity.
 **Exploration:** quick
 **Status:** captured
 
@@ -18,8 +19,9 @@
 **Alternatives:**
 - eidos-owned sealed interface (ModelSelection.Ref / ModelSelection.Constraints) with runtime conversion to ModelQuery — duplicates all fields, adds converter, no real benefit
 **Rationale:** platform-api is pure Java (no framework pull-in). The dependency direction is correct (eidos → platform-api). Eidos runtime already depends on platform-api in practice. Avoids type duplication and the conversion layer that #172 D1 deliberately avoided.
-**Trade-offs:** eidos-api loses its zero-dependency status. Any consumer of eidos-api now transitively pulls in platform-api. Acceptable because platform-api is lightweight and the coupling is architecturally sound.
-**Sources:** eidos api/pom.xml (current zero-dep), platform-api pom.xml (pure Java), issue-172 decisions D1 (boundary principle)
+**Trade-offs:** eidos-api loses its zero-dependency status (ARC42STORIES §1 quality goal). Any consumer of eidos-api now transitively pulls in platform-api. Acceptable because platform-api is lightweight (pure Java, no framework) and the coupling direction is architecturally correct (eidos → platform-api, never reverse).
+**Sources:** eidos api/pom.xml (current zero-dep), platform-api pom.xml (pure Java), issue-172 decisions D1 (boundary principle), ARC42STORIES §1 (zero-dep quality goal)
+**Review findings:** R1-03 (zero-dep quality goal) — acknowledged and consciously accepted. The quality goal served its purpose during eidos's initial development. The platform-api dependency is the minimal coupling needed for type-safe model selection; platform-api itself has no transitive dependencies beyond Jackson.
 **Exploration:** quick
 **Depends on:** D1 (using ModelQuery requires the dependency)
 **Status:** captured

@@ -7,18 +7,23 @@
 ## Overview
 
 Replaces the flat `modelTier` (String) and `modelCapabilities` (Set<String>) fields on
-`AgentCapability` with a single `ModelQuery model` field from `casehub-platform-api`.
-This gives eidos the full model selection surface — tier, capabilities, vendor, family,
-locality, cost ceiling, context window, output size, and vendor preference — expressed
-as either a string shorthand or an inline constraints object in YAML.
+`AgentCapability` with two mutually exclusive model selection fields from
+`casehub-platform-api`: `String modelRef` for string shorthands (aliases, tier refs,
+model IDs) and `ModelQuery model` for inline constraint queries. This mirrors the
+platform's own `AgentSessionConfig` which has both `String model` and `ModelQuery
+modelQuery`.
+
+YAML supports the union type from `model-selection.schema.json`: `model: "reasoning-heavy"`
+(string shorthand → `modelRef`) or `model: {tier: FAST, capabilities: [reasoning]}`
+(inline constraints → `model`).
 
 **Boundary principle (unchanged from #172):** eidos is the requirements declaration layer.
-Platform (`RoutingAgentProvider`) is the selection authority. Eidos declares `ModelQuery`
-on capabilities; platform reads them and resolves to a concrete model at dispatch time.
+Platform (`RoutingAgentProvider`) is the selection authority. Eidos declares model
+requirements on capabilities; platform resolves to a concrete model at dispatch time.
 
 ## 1. AgentCapability Record Change
 
-Remove `modelTier` and `modelCapabilities`. Add `ModelQuery model`:
+Remove `modelTier` and `modelCapabilities`. Add `String modelRef` and `ModelQuery model`:
 
 ```java
 public record AgentCapability(
@@ -28,7 +33,8 @@ public record AgentCapability(
     Double qualityHint,
     Long latencyHintP50Ms,
     String costHint,
-    ModelQuery model,               // NEW — replaces modelTier + modelCapabilities
+    String modelRef,                // NEW — string shorthand (alias, tier ref, model ID)
+    ModelQuery model,               // NEW — inline constraint query
     List<String> inputTypes,
     List<String> outputTypes,
     List<String> tags,
@@ -37,21 +43,32 @@ public record AgentCapability(
 ) { ... }
 ```
 
+`modelRef` and `model` are mutually exclusive — setting both is a validation error.
+This mirrors `AgentSessionConfig` on the platform side, which has both `String model`
+and `ModelQuery modelQuery`.
+
+The engine reads the descriptor and dispatches accordingly:
+- `modelRef` set → `config.withModel(modelRef)` → string resolution (aliases, tier refs, registry IDs)
+- `model` set → `config.withModel(model)` → direct query resolution
+- Neither set → no model constraint, platform uses default
+
 ### Compact Constructor Validation
 
 ```java
-// ModelQuery is an opaque platform type — eidos validates only that
-// it's non-null when provided. Tier vocabulary validation moves to
-// CapabilityVocabularyValidator (see §4).
+if (modelRef != null && model != null) {
+    throw new AgentValidationException("model",
+        "modelRef and model are mutually exclusive");
+}
+AgentDescriptorValidator.validateOptional("modelRef", modelRef,
+    AgentDescriptorValidator.MAX_CAPABILITY_STRING);
+// ModelQuery owns its own invariants. Tier vocabulary validation
+// happens at registration time via CapabilityVocabularyValidator (§4).
 ```
-
-No structural validation on `ModelQuery` itself in the compact constructor — `ModelQuery`
-owns its own invariants. Eidos validates the tier value against the vocabulary at
-registration time (§4), not at construction time.
 
 ### Builder
 
 ```java
+public Builder modelRef(String v) { this.modelRef = v; return this; }
 public Builder model(ModelQuery v) { this.model = v; return this; }
 // Remove: modelTier(String), modelCapabilities(Set<String>)
 ```
@@ -99,23 +116,10 @@ In `AgentDescriptorDeserializer`, when parsing a capability node:
 JsonNode modelNode = node.get("model");
 if (modelNode != null) {
     if (modelNode.isTextual()) {
-        // String shorthand: could be alias, tier ref, or model ID.
-        // Store as a ModelQuery with just the string metadata.
-        // The platform router resolves aliases and tier refs at dispatch.
-        String ref = modelNode.asText();
-        if (ModelRef.isTierRef(ref)) {
-            b.model(ModelQuery.builder()
-                .tier(ModelTier.valueOf(ModelRef.parseTier(ref).name()))
-                .build());
-        } else {
-            // Alias or model ID — store the raw string.
-            // RoutingAgentProvider resolves aliases from ManifestResult.
-            // Eidos stores this as a vendor field (convention: string
-            // refs go through the alias path at dispatch time).
-            b.model(ModelQuery.builder().vendor(ref).build());
-        }
+        // String shorthand → modelRef (alias, tier ref, or model ID)
+        b.modelRef(modelNode.asText());
     } else if (modelNode.isObject()) {
-        // Inline constraints — parse each field
+        // Inline constraints → ModelQuery
         var qb = ModelQuery.builder();
         optionalText(modelNode, "vendor", qb::vendor);
         optionalText(modelNode, "family", qb::family);
@@ -133,47 +137,37 @@ if (modelNode != null) {
 }
 ```
 
+String shorthands go to `modelRef`, constraint objects go to `model`. No conversion
+needed at parse time — the engine dispatches each form through the appropriate
+`RoutingAgentProvider` path at invocation time.
+
 **YAML property naming:** The schema uses kebab-case (`max-cost`, `min-context`,
 `prefer-vendor`). The YAML deserializer accepts kebab-case to match the published
 schema. This is a deliberate local convention within the `model` block — it matches
 what YAML authors will see in IDE autocompletion from the schema.
 
-**String shorthand resolution:** When the model is a plain string that is not a tier
-ref, it represents an alias or model ID. The eidos deserializer cannot resolve it at
-parse time — alias resolution requires `ManifestResult` from the platform runtime.
-Two options for how to carry the string through the descriptor:
-
-**Approach: `preferVendor` carrier field.** Store the raw string in
-`ModelQuery.preferVendor()` as a carrier. At dispatch time, the engine checks
-`preferVendor()` for alias/model-ID strings before falling back to constraint matching.
-This avoids adding a new field to `ModelQuery`.
-
-**Alternative: Separate `modelRef` field on AgentCapability.** Add a `String modelRef`
-alongside `ModelQuery model` — the string form goes into `modelRef`, the constraints
-form goes into `model`. Cleaner semantics but adds a field and re-introduces some of the
-flat-field complexity we're removing. Rejected — keep it simple.
-
-> **Open question:** The `preferVendor` carrier approach is a semantic mismatch —
-> `preferVendor` means "tiebreaker preference", not "resolve this alias." A cleaner
-> solution is to add a `String alias` field to `ModelQuery` in platform-api. This is
-> a platform-side change. For eidos #179, we use the `preferVendor` carrier and
-> document the convention. Platform can add `alias` later if the pattern warrants it.
-
 ## 4. Registration-Time Validation
 
-`CapabilityVocabularyValidator` changes to validate the `model.tier()` field:
+`CapabilityVocabularyValidator` changes to validate model tier from both paths:
 
 ```java
-// Before: cap.modelTier() against urn:casehub:vocab:model-tier
-// After:  cap.model().tier() against urn:casehub:vocab:model-tier
+// From ModelQuery (inline constraints)
 if (cap.model() != null && cap.model().tier() != null) {
     String tierValue = cap.model().tier().name().toLowerCase();
     validateAgainstVocabulary(tierValue, MODEL_TIER_URI, registry);
 }
+
+// From modelRef (string shorthand) — validate tier refs only
+if (cap.modelRef() != null && ModelRef.isTierRef(cap.modelRef())) {
+    String tierValue = ModelRef.parseTier(cap.modelRef()).name().toLowerCase();
+    validateAgainstVocabulary(tierValue, MODEL_TIER_URI, registry);
+}
+// Non-tier-ref strings (aliases, model IDs) pass through unvalidated —
+// they resolve at dispatch time via RoutingAgentProvider.
 ```
 
-`modelCapabilities` had no vocabulary validation (open strings) — same applies to
-`model.requiredCapabilities()`. No change needed.
+`model.requiredCapabilities()` — no vocabulary validation (open strings). No change
+from previous behaviour.
 
 ## 5. Rendering
 
@@ -181,13 +175,22 @@ Follows the existing renderer protocol: routing signals are A2A_CARD only.
 
 ### A2A_CARD
 
-The `model` field renders as a JSON object inside each capability, replacing the
-separate `modelTier` and `modelCapabilities` fields:
+Replaces the separate `modelTier` and `modelCapabilities` fields with a unified `model`
+field. The value depends on which form is set:
 
+When `modelRef` is set (string shorthand):
 ```json
 {
   "name": "code-review",
-  "description": "Reviews code for quality and correctness",
+  "model": "reasoning-heavy",
+  "qualityHint": 0.95
+}
+```
+
+When `model` is set (inline constraints):
+```json
+{
+  "name": "code-review",
   "model": {
     "tier": "FLAGSHIP",
     "capabilities": ["text", "tool-use"],
@@ -199,12 +202,11 @@ separate `modelTier` and `modelCapabilities` fields:
 }
 ```
 
-Only non-null fields from `ModelQuery` render. When `model` has only a `tier` set,
-it renders as `"model": {"tier": "FLAGSHIP"}`.
+Only non-null fields from `ModelQuery` render in the object form.
 
 **A2A structural assembly hash:** The `model` field replaces `modelTier` and
-`modelCapabilities` in the hash payload. All non-null ModelQuery fields contribute
-to the hash.
+`modelCapabilities` in the hash payload. For `modelRef`, the string value contributes.
+For `model`, all non-null `ModelQuery` fields contribute.
 
 ### MARKDOWN / PROSE
 
@@ -234,7 +236,7 @@ Extracts annotation values, builds `AnnotatedAgentConfig` with model data:
 
 ```java
 if (notEmpty(ann, "model")) {
-    cap.modelRef = stringValue(ann, "model");  // string shorthand
+    cap.modelRef = stringValue(ann, "model");
 }
 if (notEmpty(ann, "modelTier")) {
     cap.modelTier = stringValue(ann, "modelTier");
@@ -250,20 +252,14 @@ if (notEmpty(cap.modelRef) && (notEmpty(cap.modelTier) || cap.modelCapabilities.
 
 ### EidosAnnotationsRecorder
 
-The recorder builds `ModelQuery` from whichever annotation form was used:
+The recorder maps annotation values to the dual-field model:
 
 ```java
 if (notEmpty(cap.modelRef)) {
-    // String shorthand — same resolution as YAML string form
-    String ref = cap.modelRef;
-    if (ModelRef.isTierRef(ref)) {
-        cb.model(ModelQuery.builder()
-            .tier(ModelTier.valueOf(ModelRef.parseTier(ref).name()))
-            .build());
-    } else {
-        cb.model(ModelQuery.builder().preferVendor(ref).build());
-    }
+    // String shorthand → modelRef (same path as YAML string form)
+    cb.modelRef(cap.modelRef);
 } else if (notEmpty(cap.modelTier)) {
+    // Structured form → ModelQuery
     var qb = ModelQuery.builder();
     qb.tier(ModelTier.valueOf(cap.modelTier.toUpperCase()));
     if (cap.modelCapabilities != null && cap.modelCapabilities.length > 0) {
@@ -281,41 +277,42 @@ annotation attribute).
 ## 7. JPA Schema
 
 Replace `model_tier` and `model_capabilities` columns on `agent_capability` table with
-a single `model` JSON column:
-
-```sql
--- V<next>__model_query_on_capability.sql
-ALTER TABLE agent_capability DROP COLUMN model_tier;
-ALTER TABLE agent_capability DROP COLUMN model_capabilities;
-ALTER TABLE agent_capability ADD COLUMN model JSONB;
-```
+`model_ref` and `model` columns:
 
 **No existing installations** — per project schema convention, this goes directly into
-`V1__initial_schema.sql` as a modification, not a separate migration. The `model_tier`
-and `model_capabilities` columns are replaced with:
+`V1__initial_schema.sql` as a modification. The `model_tier` and `model_capabilities`
+columns are replaced with:
 
 ```sql
+model_ref VARCHAR(200),
 model JSONB,
+CONSTRAINT chk_model_exclusion CHECK (
+    model_ref IS NULL OR model IS NULL
+),
 ```
 
 ### Entity Mapping
 
 ```java
+@Column(name = "model_ref", length = 200)
+private String modelRef;
+
 @Column(name = "model", columnDefinition = "JSONB")
 @Convert(converter = ModelQueryConverter.class)
 private ModelQuery model;
 ```
 
 `ModelQueryConverter` implements `AttributeConverter<ModelQuery, String>` using Jackson
-for JSON serialization. `ModelQuery` is already a Jackson-friendly record.
+for JSON serialization. `ModelQuery` is already a Jackson-friendly record. The DB-level
+check constraint enforces mutual exclusion.
 
 ## 8. Module Impact Summary
 
 | Module | Change |
 |--------|--------|
-| `casehub-eidos-api` | Add `platform-api` dep. Replace `modelTier`/`modelCapabilities` with `ModelQuery model` on `AgentCapability`. Update `Builder`. Update `CapabilityVocabularyValidator`. |
-| `casehub-eidos` (runtime) | `AgentDescriptorDeserializer` — union type parsing. `EidosRenderPipeline` — A2A_CARD rendering. `AgentCapabilityEntity` + `AgentDescriptorMapper` — JPA mapping. `V1__initial_schema.sql` — column change. |
-| `casehub-eidos-annotations` (deployment) | `@AgentCapabilityDef` — add `model` attribute. `EidosAnnotationsProcessor` — mutual exclusion validation. `EidosAnnotationsRecorder` — build ModelQuery. `AnnotatedAgentConfig` — add `modelRef` field. |
+| `casehub-eidos-api` | Add `platform-api` dep. Replace `modelTier`/`modelCapabilities` with `String modelRef` + `ModelQuery model` on `AgentCapability`. Update `Builder`. Update `CapabilityVocabularyValidator`. |
+| `casehub-eidos` (runtime) | `AgentDescriptorDeserializer` — union type parsing. `EidosRenderPipeline` — A2A_CARD rendering. `AgentCapabilityEntity` + `AgentDescriptorMapper` — JPA mapping. `V1__initial_schema.sql` — column change. `ModelQueryConverter` — new JPA converter. |
+| `casehub-eidos-annotations` (deployment) | `@AgentCapabilityDef` — add `model` attribute. `EidosAnnotationsProcessor` — mutual exclusion validation. `EidosAnnotationsRecorder` — map to modelRef/model. `AnnotatedAgentConfig` — add `modelRef` field. |
 | `casehub-eidos-vocab` | No change — `ModelTierTerm` stays as-is. |
 | `casehub-eidos-memory` | No change |
 | `casehub-eidos-routing` | No change |
