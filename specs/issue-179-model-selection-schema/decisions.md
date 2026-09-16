@@ -36,3 +36,15 @@
 **Exploration:** quick
 **Depends on:** D1 (ModelQuery on AgentCapability)
 **Status:** captured
+
+## D4: Annotation parity — string shorthand + structured attributes
+
+**Choice:** `@AgentCapabilityDef` keeps `modelTier` and `modelCapabilities` as annotation attributes for the structured form, adds `model` for the string shorthand. The recorder builds a `ModelQuery` from whichever form is set. Validation rejects setting both `model` and any structured model attribute simultaneously.
+**Alternatives:**
+- Only string `model` attribute (tier refs, aliases, model IDs all as strings) — simpler annotation surface but loses build-time vocabulary validation of modelTier against ModelTierTerm
+**Rationale:** Annotations can't express union types. Structured attributes preserve the build-time hybrid validation from #172 (compile-time check of modelTier against ModelTierTerm when casehub-eidos-vocab is on the classpath). The recorder layer does the conversion to ModelQuery — annotation attributes are ergonomic input, not the storage type.
+**Trade-offs:** Annotation retains `modelTier` and `modelCapabilities` attributes even though the `AgentCapability` record no longer has those fields — slight conceptual mismatch. Acceptable because annotations are an input surface with different constraints than records.
+**Sources:** EidosAnnotationsProcessor.java (existing hybrid validation), @AgentCapabilityDef.java (existing annotation), AnnotatedAgentConfig.java (build→runtime transfer)
+**Exploration:** quick
+**Depends on:** D1 (ModelQuery replaces flat fields on record, but annotation keeps them as input)
+**Status:** captured
