@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-179-model-selection-schema
-state: active
+state: closing:promoted
 project-sha: 6d03804f49d55596cd78ec3d3c148735f8e38e92
 date: 2026-09-16
 issue-repo: casehubio/eidos
@@ -11,17 +11,6 @@ design-repo: workspace
 design-section-hashes: 4d2cc5ab:## §1 Introduction and Goals|4f6b26ef:## §2 Constraints|39b76cb9:## §3 Context and Scope|74aa736f:## §4 Solution Strategy|9ca8de62:## §5 Building Block View|f1938c56:## §6 Runtime View|65807a21:## §7 Deployment View|a03d508f:## §8 Crosscutting Concepts|b2e1b57c:## §9 Journeys and Chapters|598f3a04:## §10 Architectural Decisions|1f604475:## §11 Quality Requirements|af5f260f:## §12 Risks and Technical Debt|42d51385:## §13 Glossary
 flyway-next-v: none
 
+evidence-era: true
 ## Queue
-- [ ] casehubio/eidos#179 — Issue #179 ← active
-  - [x] Batch 1: API Foundation
-    - [x] Task 1: AgentCapability record + platform-api dep
-    - [x] Task 2: Validator + comparator update
-  - [x] Batch 2: Runtime Plumbing
-    - [x] Task 3: YAML deserializer union type
-    - [x] Task 4: JPA schema entity mapper converter
-  - [x] Batch 3: Rendering + Annotations
-    - [x] Task 5: A2A_CARD rendering
-    - [x] Task 6: Annotation support
-  - [x] Batch 4: Consumer Updates
-    - [x] Task 7: Example YAML and tests
-    - [x] Task 8: CLAUDE.md update
+- [x] casehubio/eidos#179 — Issue #179
