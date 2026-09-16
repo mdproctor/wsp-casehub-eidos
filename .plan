@@ -13,3 +13,15 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#179 — Issue #179 ← active
+  - [ ] Batch 1: API Foundation
+    - [ ] Task 1: AgentCapability record + platform-api dep
+    - [ ] Task 2: Validator + comparator update
+  - [ ] Batch 2: Runtime Plumbing
+    - [ ] Task 3: YAML deserializer union type
+    - [ ] Task 4: JPA schema entity mapper converter
+  - [ ] Batch 3: Rendering + Annotations
+    - [ ] Task 5: A2A_CARD rendering
+    - [ ] Task 6: Annotation support
+  - [ ] Batch 4: Consumer Updates
+    - [ ] Task 7: Example YAML and tests
+    - [ ] Task 8: CLAUDE.md update
