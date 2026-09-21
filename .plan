@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-180-archetype-vocabulary
-state: scaffolded
+state: active
 project-sha: ad39115cf3a600a6956120bcc19958793b3402a6
 date: 2026-09-21
 issue-repo: casehubio/eidos
@@ -18,10 +18,10 @@ flyway-next-v: unknown
   - [x] Batch 2: Compatibility
     - [x] Task 2: ArchetypeCompatibility mapping data
     - [x] Task 3: ArchetypeResolver intersection algorithm
-  - [ ] Batch 3: Integration
-    - [ ] Task 4: AgentDescriptor archetype fields and YAML
-  - [ ] Batch 4: Rendering
-    - [ ] Task 5: MARKDOWN PROSE archetype and source vocab fix
-    - [ ] Task 6: A2A_CARD archetype rendering
+  - [x] Batch 3: Integration
+    - [x] Task 4: AgentDescriptor archetype fields and YAML
+  - [x] Batch 4: Rendering
+    - [x] Task 5: MARKDOWN PROSE archetype and source vocab fix
+    - [x] Task 6: A2A_CARD archetype rendering
   - [ ] Batch 5: Docs
     - [ ] Task 7: Integration tests and consumer guide
