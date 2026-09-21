@@ -2,31 +2,15 @@
 
 ## Last Session
 
-Continued epic #153 — DSL, annotations & YAML composition audit. Closed 7 of 15 child issues across two sessions. This session completed the quick wins: container naming (#155), goal attributes surfaced (#159), YAML defaults (#160), expanded parity tests (#161). Closed #156 (already done) and #158 (tenancyId is infrastructure, not identity — won't fix).
+Identified disposition vocabulary fidelity loss — 85 personality terms across 11 frameworks collapse to 17 canonical values before reaching the renderer or avatar. Designed the archetype abstraction layer: Hartwell & Chen's 48 sub-archetypes in 12 families, derived from personality framework values via set intersection. Implemented Batches 1-2: `ArchetypeFamily`, `ArchetypeTerm` (48 terms), `ArchetypeCompatibility` (mapping data for 6 frameworks), `ArchetypeResolver` (Venn diagram intersection algorithm). 392 vocab tests green, zero regressions.
 
-## What's Next
+## Immediate Next Step
 
-| Issue | Title | Scale | Complexity |
-|-------|-------|-------|------------|
-| #157 | Org annotation field parity (capabilities, goals, constraints, attestation, scope) | L | Med |
-| #162 | Adopt yaml-core module system for descriptor YAML | L | High |
-| #163 | Add preprocessing to org YAML | M | Med |
-| #164 | ForEachAdapter getReferences/withReferences | S | Med |
-| #165 | Adopt IterationValueExpander | S | Low |
-| #166 | Evaluate DeferredPrefixHandler | XS | Low |
-| #167 | Annotation composition — @AgentProfile | L | High |
-| #168 | Agent team DSL | M | Med |
-
-Recommended next: #157 (org annotation field parity) — it uses the layering infrastructure from #154 and the parity tests from #161 will immediately catch gaps.
-
-## Key Decisions
-
-- **tenancyId is infrastructure, not identity** (#158 closed). The annotation path's config-driven approach is correct. YAML per-descriptor tenancyId is an escape hatch, not the primary mechanism.
-- **AgentGoal.attributes is live** — has JPA, comparator, and test support. Was just missing from declaration paths. Now surfaced in both YAML and annotations.
-- **Quarkus extension chain**: can't exclude transitive deployment deps. Org-annotations tests need H2 + datasource config.
+Batch 3: Add `archetype` field to `AgentDescriptor` (as String, following slot pattern), YAML deserialization support, and auto-derivation from framework values in `DescriptorCollector`. Then Batch 4: renderer changes to surface archetype identity in MARKDOWN/PROSE/A2A_CARD.
 
 ## References
 
-- `JOURNAL.md` — design journal with session notes and decisions
-- `.plan` — work queue, 7/15 done
-- Epic #153 — full scope checklist on GitHub
+- `plans/2026-09-21-archetype-vocabulary.md` — implementation plan (Batches 3-5 remaining)
+- `specs/archetype-compatibility-matrix.md` — framework-to-archetype mapping data
+- `specs/avatar-generator-contract.md` — faceted selection + visual generation spec for blocks-ui
+- `blog/2026-09-21-mdp58-from-combinations-to-archetypes.md` — design diary entry
