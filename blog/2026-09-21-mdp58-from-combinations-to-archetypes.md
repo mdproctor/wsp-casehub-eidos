@@ -129,3 +129,13 @@ This replaces per-framework configuration with a two-step selection: pick an arc
 The vocabulary system's 85 terms and cross-mapping matrices aren't wasted. They're the foundation the archetype layer sits on — the compatibility tables that power the set intersection. Every `axisExactMatch()` implementation feeds the derivation pipeline. The work done building eleven vocabulary enums with bidirectional cross-references is what makes the archetype resolution accurate.
 
 The difference: a skilled developer adding a new personality framework no longer needs to worry about whether the renderer surfaces their descriptions. The archetype carries the semantic signal. The framework values are the plumbing.
+
+## The open-String decision
+
+The archetype field on `AgentDescriptor` is a plain `String` — not an `ArchetypeTerm` enum. This follows the same pattern as `slot`: an open identifier that the platform never constrains. The vocabulary system resolves it to a label and description at render time via `VocabularyRegistry`, the same way slot resolution works.
+
+The reason is layering. `AgentDescriptor` lives in `casehub-eidos-api` — Tier 1, pure Java, no dependencies beyond `casehub-platform-api`. The archetype vocabulary lives in `casehub-eidos-vocab`, which is optional. If the api record held an `ArchetypeTerm` reference, every consumer would be forced to depend on vocab. The open String preserves the boundary. When vocab is on the classpath, the renderer enriches `"detective"` into `**Detective** — Uncovers truth through systematic investigation and evidence`. When it isn't, the raw value renders as-is.
+
+Auto-derivation bridges the gap. At registration time, `ArchetypeDeriver` checks whether the descriptor's `dispositionVocabulary` points to a known framework. If it does, and no archetype is explicitly set, the resolver runs the Venn diagram intersection and assigns the best match. An agent registered with `dispositionVocabulary: urn:casehub:vocab:mbti` and `dispositionProfile: [{term: "intj", weight: 1.0}]` automatically gets an archetype from the Sage family — no explicit `archetype: detective` needed.
+
+The A2A_CARD gets a structured `archetype` object: value, label, description, adjectives. Machine consumers can route on archetype identity without parsing prose. The three render formats — MARKDOWN for LLMs, PROSE for humans, A2A_CARD for machines — each surface the archetype at the right level of abstraction.
