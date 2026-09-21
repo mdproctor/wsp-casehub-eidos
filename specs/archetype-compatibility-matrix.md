@@ -1,12 +1,20 @@
 # Archetype Compatibility Matrix
 
-Maps personality framework values to Hartwell & Chen archetypes (12 families, 60 sub-archetypes).
+Maps personality framework values to Hartwell & Chen archetypes (12 families, 48 sub-archetypes).
 Powers a set-intersection algorithm: specify framework values → intersect compatible sets → converge on archetype.
 
 ## Overview
 
-The Hartwell & Chen archetype model (from *Archetypes in Branding*, 2012) organizes 60 sub-archetypes
-into 12 families, grouped by 4 motivation quadrants:
+The Hartwell & Chen archetype model (from *Archetypes in Branding*, 2012) defines 60 sub-archetypes
+across 12 families. Each family has 5 sub-archetypes: 4 specialized variants plus the generic
+family archetype itself (e.g., "Hero" as both the family name and the 5th sub-archetype within
+the Hero family). Eidos uses the **48 specialized sub-archetypes only** (4 per family). The 12
+generic family-name archetypes are omitted because they add no signal beyond what `ArchetypeFamily`
+already provides — "Hero" as a sub-archetype tells the LLM nothing that `family: HERO` doesn't.
+The specialized variants (Athlete, Liberator, Rescuer, Warrior) are where personality
+differentiation lives.
+
+The 12 families are grouped by 4 motivation quadrants:
 
 | Quadrant | Drive | Families |
 |---|---|---|
