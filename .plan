@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-181-avatar-field
-state: scaffolded
+state: active
 project-sha: 65e1b8c3d611648c104beeb0e516c21da15c094b
 date: 2026-09-21
 issue-repo: casehubio/eidos
@@ -13,11 +13,11 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#181 — Issue #181 ← active
-  - [ ] Batch 1: Avatar Codec and Descriptor
-    - [ ] Task 1: AvatarCodec canonical index and default code
-    - [ ] Task 2: AgentDescriptor avatar field YAML JPA
-  - [ ] Batch 2: Auto-Derivation and Rendering
-    - [ ] Task 3: Avatar auto-derivation in ArchetypeDeriver
-    - [ ] Task 4: A2A_CARD rendering and descriptor payload
-  - [ ] Batch 3: Integration and Docs
-    - [ ] Task 5: Integration test and consumer guide
+  - [x] Batch 1: Avatar Codec and Descriptor
+    - [x] Task 1: AvatarCodec canonical index and default code
+    - [x] Task 2: AgentDescriptor avatar field YAML JPA
+  - [x] Batch 2: Auto-Derivation and Rendering
+    - [x] Task 3: Avatar auto-derivation in ArchetypeDeriver
+    - [x] Task 4: A2A_CARD rendering and descriptor payload
+  - [x] Batch 3: Integration and Docs
+    - [x] Task 5: Integration test and consumer guide
