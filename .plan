@@ -13,3 +13,15 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#180 — Issue #180 ← active
+  - [ ] Batch 1: Foundation
+    - [ ] Task 1: ArchetypeFamily and ArchetypeTerm enums
+  - [ ] Batch 2: Compatibility
+    - [ ] Task 2: ArchetypeCompatibility mapping data
+    - [ ] Task 3: ArchetypeResolver intersection algorithm
+  - [ ] Batch 3: Integration
+    - [ ] Task 4: AgentDescriptor archetype fields and YAML
+  - [ ] Batch 4: Rendering
+    - [ ] Task 5: MARKDOWN PROSE archetype and source vocab fix
+    - [ ] Task 6: A2A_CARD archetype rendering
+  - [ ] Batch 5: Docs
+    - [ ] Task 7: Integration tests and consumer guide
