@@ -13,3 +13,11 @@ flyway-next-v: unknown
 
 ## Queue
 - [ ] casehubio/eidos#181 — Issue #181 ← active
+  - [ ] Batch 1: Avatar Codec and Descriptor
+    - [ ] Task 1: AvatarCodec canonical index and default code
+    - [ ] Task 2: AgentDescriptor avatar field YAML JPA
+  - [ ] Batch 2: Auto-Derivation and Rendering
+    - [ ] Task 3: Avatar auto-derivation in ArchetypeDeriver
+    - [ ] Task 4: A2A_CARD rendering and descriptor payload
+  - [ ] Batch 3: Integration and Docs
+    - [ ] Task 5: Integration test and consumer guide
