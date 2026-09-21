@@ -23,5 +23,5 @@ flyway-next-v: unknown
   - [x] Batch 4: Rendering
     - [x] Task 5: MARKDOWN PROSE archetype and source vocab fix
     - [x] Task 6: A2A_CARD archetype rendering
-  - [ ] Batch 5: Docs
-    - [ ] Task 7: Integration tests and consumer guide
+  - [x] Batch 5: Docs
+    - [x] Task 7: Integration tests and consumer guide
