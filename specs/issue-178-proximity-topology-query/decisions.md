@@ -37,38 +37,42 @@
 
 ## D4: Activity queries extend AgentGraphQuery
 
-**Choice:** Add `coActiveAgents(String externalRef, String tenancyId)` to AgentGraphQuery.
+**Choice:** Add `coActiveAgents(String externalRef, String tenancyId)` to AgentGraphQuery, returning `List<String>` (agentIds).
 **Alternatives:**
 - Extend OrgRegistry — treats runtime collaboration as an organizational concern, which it isn't
 - New CollaborationTopology SPI — separate interface for a single method is over-abstraction
-**Rationale:** AgentGraphQuery already owns the read-side of task data. The task table has externalRef and endedAt. The query is: find agents with in-progress tasks sharing the same externalRef. This is a graph query, not an org query.
-**Trade-offs:** AgentGraphQuery now needs AgentRegistry injected to produce AgentMatch results. Existing implementations (JPA, NoOp) must be updated.
+**Rationale:** AgentGraphQuery already owns the read-side of task data. The task table has externalRef and endedAt. The query is: find agents with in-progress tasks sharing the same externalRef. This is a graph query, not an org query. Returns `List<String>` consistent with existing `topAgentsByOutcome()` — graph queries return identifiers, callers compose with registry.
+**Trade-offs:** Callers must look up descriptors separately via AgentRegistry if they need AgentMatch. Existing implementations (JPA, NoOp) must be updated.
 **Sources:** AgentGraphQuery.java, JpaAgentGraphQuery.java, blocks CbrAgentRoutingStrategy.java (consumer)
 **Exploration:** quick
 **Depends on:** D1 (separate SPIs)
-**Status:** captured
+**Status:** revised (review: D6 interaction — AgentGraphQuery returns List<String>, not AgentMatch)
 
 ## D5: RuntimeCollaborationQuery SPI in eidos-api
 
-**Choice:** New SPI interface in eidos-api for runtime collaboration topology. Engine's TeamDetector provides the implementation. Follows the CapabilityHealth pattern (SPI in eidos, engine implements).
+**Choice:** New SPI interface in eidos-api for runtime collaboration topology. Engine's TeamDetector provides the implementation. Follows the CapabilityHealth pattern (SPI in eidos, engine implements). Define `CollaborationRelation` enum in eidos-api (not imported from engine-api).
 **Alternatives:**
 - Document existing coverage only — MetricsSpace.detectedTeams() exists but is per-case, agent-scoped, not a general query API
 - Extend OrgRegistry with runtime teams — blurs static/dynamic boundary
-**Rationale:** Engine's TeamDetector produces DetectedTeam(teamId, memberAgents, dominantRelations, avgAffinity, stabilityCount) with NeighborRelation { COACTIVE, SHARED_INTEREST, SHARED_SIGNAL, COMPLEMENTARY }. This is exposed via MetricsSpace.detectedTeams() — but only inside a worker runtime, per-case. No general query SPI exists for "what emergent teams has agent X participated in across cases?" The CapabilityHealth pattern is the proven approach: eidos-api defines the SPI, eidos-core provides NoOp @DefaultBean, engine provides the real implementation.
-**Trade-offs:** New SPI surface area. Engine must implement it, creating a cross-repo dependency on this issue. Relationship types (NeighborRelation) either need to be defined in eidos-api or imported from engine-api.
-**Sources:** engine MetricsSpace.java:37 (detectedTeams()), DetectedTeam.java, NeighborRelation.java, TeamDetector.java (internal), CapabilityHealth.java (pattern reference)
+- Import NeighborRelation from engine-api — wrong dependency direction (eidos-api cannot depend on engine-api)
+**Rationale:** Engine's TeamDetector produces DetectedTeam(teamId, memberAgents, dominantRelations, avgAffinity, stabilityCount) with NeighborRelation { COACTIVE, SHARED_INTEREST, SHARED_SIGNAL, COMPLEMENTARY }. This is exposed via MetricsSpace.detectedTeams() — but only inside a worker runtime, per-case. No general query SPI exists for "what emergent teams has agent X participated in across cases?" The CapabilityHealth pattern is the proven approach: eidos-api defines the SPI, eidos-core provides NoOp @DefaultBean, engine provides the real implementation. NeighborRelation lives in engine-api (io.casehub.api.spi.observation) — eidos-api can't depend on engine-api, so eidos defines its own `CollaborationRelation` enum with the same semantics.
+**Trade-offs:** New SPI surface area. Engine must implement it. CollaborationRelation duplicates NeighborRelation semantics (but preserves tier independence).
+**Sources:** engine MetricsSpace.java:37 (detectedTeams()), DetectedTeam.java, NeighborRelation.java (io.casehub.api.spi.observation), TeamDetector.java (internal), CapabilityHealth.java (pattern reference)
 **Exploration:** quick
-**Status:** captured
+**Status:** revised (review: NeighborRelation dependency direction resolved — define own enum)
 
-## D6: Reuse AgentMatch as result type
+## D6: Per-query result types matched to SPI tier
 
-**Choice:** All three query types return List<AgentMatch> — consistent with AgentRegistry.find().
+**Choice:** Result types follow each SPI's tier constraints:
+- **Proximity** → `List<AgentMatch>` (natural — it IS a registry query via AgentRegistry.find())
+- **Activity** → `List<String>` (agentIds) from AgentGraphQuery, consistent with existing `topAgentsByOutcome()` pattern
+- **Collaboration** → `List<Collaborator>` — new record wrapping agentId + `Set<CollaborationRelation>` + affinity score. Callers compose with AgentRegistry for full descriptors.
 **Alternatives:**
-- New lightweight result (List<String> agentIds) — lighter, no registry dependency, but callers must look up descriptors separately
-- Per-query result types — proximity returns AgentMatch, activity returns agentIds, topology returns CollaboratorMatch with relationship metadata
-**Rationale:** Consistent result type across all discovery queries. Callers always get descriptor + capability resolution context. AgentMatch is the established currency for "found agent" results.
-**Trade-offs:** AgentGraphQuery and RuntimeCollaborationQuery need AgentRegistry access to produce AgentMatch. Collaboration query loses relationship metadata (NeighborRelation, affinity) — may need an extended result type.
-**Sources:** AgentMatch.java, AgentRegistry.find() return type
+- All return List<AgentMatch> — forces AgentGraphQuery to depend on AgentRegistry, violating its current tier-1 purity
+- All return List<String> — loses proximity's MatchDegree metadata and collaboration's relationship metadata
+**Rationale:** Each SPI has different metadata to carry. Proximity carries MatchDegree (via ResolvedCapability on AgentMatch). Activity is a set membership question (who's on this ref?). Collaboration carries relationship type and affinity score. Forcing a single type loses information or creates wrong-tier dependencies.
+**Trade-offs:** Three different result types. Consumers composing across all three must handle heterogeneous results.
+**Sources:** AgentMatch.java, AgentGraphQuery.topAgentsByOutcome() (returns List<String>), DetectedTeam.java (carries memberAgents + dominantRelations + avgAffinity)
 **Exploration:** quick
-**Depends on:** D1 (separate SPIs)
-**Status:** captured
+**Depends on:** D1 (separate SPIs), D4 (AgentGraphQuery returns List<String>), D5 (CollaborationRelation enum)
+**Status:** revised (review: D4 interaction — tier boundaries require per-SPI result types)
