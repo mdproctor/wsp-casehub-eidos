@@ -13,3 +13,14 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#178 — Issue #178 ← active
+  - [ ] Batch 1: API Foundation
+    - [ ] Task 1: AgentQuery maxDepth
+    - [ ] Task 2: CapabilityResolver resolveWithinDepth
+    - [ ] Task 3: CollaborationRelation Collaborator RuntimeCollaborationQuery
+    - [ ] Task 4: coActiveAgents and NoOp wiring
+  - [ ] Batch 2: Registry Impls
+    - [ ] Task 5: InMemoryAgentRegistry proximity
+    - [ ] Task 6: JpaAgentRegistry proximity
+  - [ ] Batch 3: Graph and Integration
+    - [ ] Task 7: JpaAgentGraphQuery coActiveAgents
+    - [ ] Task 8: Scenario test and docs
