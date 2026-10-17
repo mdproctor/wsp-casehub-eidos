@@ -1,0 +1,15 @@
+# Work Plan — issue-197-descriptor-preprocessor-defaults-external-sources
+
+## State
+branch: issue-197-descriptor-preprocessor-defaults-external-sources
+state: scaffolded
+project-sha: 
+date: 
+issue-repo: casehubio/eidos
+covers: 197
+design-repo: 
+design-section-hashes: 
+flyway-next-v: 
+
+## Queue
+- [ ] casehubio/eidos#197 — Issue #197 ← active
