@@ -71,17 +71,17 @@
 **Exploration:** deep-analysis
 **Status:** revised (scope characterization corrected from "moderate" to explicit structural change list; hierarchy builder changes detailed)
 
-## D6: No keyword inheritance in registry method
+## D6: No keyword inheritance — composition via DomainKeywords
 
-**Choice:** `keywords(vocabUri, value)` returns the term's declared keywords only. No automatic ancestor keyword inclusion. `DomainKeywords.expanded()` static utility in api provides convenience for scope-inclusive keyword lookup.
+**Choice:** Term keyword lookup returns only declared keywords, with no automatic ancestor keyword inclusion. `DomainKeywords.expanded()` static utility in eidos-api composes `resolve()` + `VocabularyTerm.keywords()` + `ancestors()` for scope-inclusive keyword lookup. There is no dedicated keyword method on VocabularyRegistry (see D2).
 **Alternatives:**
 - Automatic ancestor keyword inheritance — hides what's specific vs inherited
 - Two registry methods — more API surface for a 3-line utility
-**Rationale:** Keeps the registry primitive composable and predictable. Consumers compose with `ancestors()` when they need expanded scope.
-**Trade-offs:** Assertion consumer uses a utility instead of a single registry call. Explicit > implicit.
-**Sources:** VocabularyRegistry.ancestors()
+**Rationale:** Keeps the registry primitives composable and predictable. Consumers compose with `resolve()` + `VocabularyTerm.keywords()` for direct lookup, or use `DomainKeywords.expanded()` when they need ancestor-inclusive scope.
+**Trade-offs:** Assertion consumer uses a utility instead of a single call. Explicit > implicit.
+**Sources:** VocabularyRegistry.ancestors(), D2 (no registry method)
 **Exploration:** deep-analysis
-**Status:** captured
+**Status:** revised (phrasing updated to align with D2 revision removing registry method)
 
 ## D7: No validation of epistemicDomains keys
 
@@ -163,7 +163,7 @@
 - Create synthetic VocabularyMetadata annotation proxy at runtime — hacky; annotation dynamic proxies are fragile and don't play well with CDI
 - Keep annotation return type, add new method for data-driven — dual API, consumers need to know which to call
 **Rationale:** Clean separation: annotation is for declaration (on enum classes), record is for runtime queries (from any vocab type). Migration is mechanical — callers use `meta.name()`, `meta.description()` which have identical signatures on the record.
-**Trade-offs:** Breaking API change on `vocabularyMetadata()` return type. All 8 call sites (6 in EidosRenderPipeline, 2 in tests) update imports and type references. Method references like `VocabularyMetadata::name` become `VocabularyInfo::name`.
+**Trade-offs:** Breaking API change on `vocabularyMetadata()` return type. ~14 sites total: 8 callers (6 in EidosRenderPipeline, 2 in CdiVocabularyRegistryTest) plus ~6 stub/test implementations of VocabularyRegistry that override `vocabularyMetadata()` (TestVocabularyRegistry, StubVocabularyRegistry variants in CapabilityResolverTest, DefaultCapabilityHealthBehavioralViolationTest, etc.). All updates are mechanical — method signatures on the record match the annotation accessor names.
 **Sources:** VocabularyMetadata.java, VocabularyRegistry.vocabularyMetadata(), EidosRenderPipeline usage analysis, R1-13 reviewer analysis
 **Exploration:** implicit → surfaced during review
 **Status:** captured
