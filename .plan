@@ -1,7 +1,7 @@
 # Work Plan — issue-200-yaml-descriptor-qualityhint
 
 ## State
-branch: issue-200-yaml-descriptor-qualityhint
+branch: 
 state: scaffolded
 project-sha: 
 date: 
@@ -12,6 +12,6 @@ design-section-hashes:
 flyway-next-v: 
 
 ## Queue
-- [ ] casehubio/eidos#200 — Issue #200 ← active
-- [ ] casehubio/eidos#201 — Disposition YAML weighted form
-- [ ] casehubio/eidos#202 — DispositionAxis display metadata
+- [x] casehubio/eidos#200 — Issue #200
+- [x] casehubio/eidos#201 — Disposition YAML weighted form
+- [x] casehubio/eidos#202 — DispositionAxis display metadata
