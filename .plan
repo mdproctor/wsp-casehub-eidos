@@ -1,0 +1,15 @@
+# Work Plan — issue-200-yaml-descriptor-qualityhint
+
+## State
+branch: issue-200-yaml-descriptor-qualityhint
+state: scaffolded
+project-sha: 
+date: 
+issue-repo: casehubio/eidos
+covers: 200,201,202
+design-repo: 
+design-section-hashes: 
+flyway-next-v: 
+
+## Queue
+- [ ] casehubio/eidos#200 — Issue #200 ← active
