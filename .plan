@@ -13,3 +13,11 @@ flyway-next-v:
 
 ## Queue
 - [ ] casehubio/eidos#199 — Issue #199 ← active
+  - [ ] Batch 1: API Foundation
+    - [ ] Task 1: VocabularyTerm keywords + VocabularyInfo + Registry contract
+    - [ ] Task 2: DataDrivenTerm + DataDrivenVocabulary + SPI + DomainKeywords
+  - [ ] Batch 2: Registry Refactor
+    - [ ] Task 3: CdiVocabularyRegistry URI-keyed refactor + data-driven registration
+  - [ ] Batch 3: YAML + Domain Vocab
+    - [ ] Task 4: ClasspathYamlVocabularyRegistrar + CDI wiring
+    - [ ] Task 5: JSON Schema + Epistemic Domain Vocabulary + Integration Test
