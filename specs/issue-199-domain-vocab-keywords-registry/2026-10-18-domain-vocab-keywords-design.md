@@ -314,7 +314,10 @@ Each term carries 8-15 keywords — full natural-language concepts, not regex fr
 
 ### Cross-type URI collision
 
-`registerDataDriven(DataDrivenVocabulary)` checks both `byUri` (enum URIs) and `metadataByUri` (all URIs) for conflicts. If an enum vocab and a data-driven vocab register with the same URI, the init sequence (enums first in Phase 1a, data-driven second in Phase 1b) means Phase 1b throws `IllegalArgumentException` at startup.
+Bidirectional collision detection between enum and data-driven vocabularies:
+
+- **Data-driven → enum**: `registerDataDriven(DataDrivenVocabulary)` checks both `byUri` (enum URIs) and `metadataByUri` (all URIs) for conflicts. If an enum vocab already owns the URI, Phase 1b throws `IllegalArgumentException` at startup.
+- **Enum → data-driven**: `registerTerms()` checks both `byUri` (enum URIs) and `metadataByUri` (all URIs) for conflicts. If a data-driven vocab already owns the URI, registration throws `IllegalArgumentException`. This is critical for late `register(Class<T>)` calls — during `@PostConstruct` init, enums always register before data-driven (Phase 1a before 1b), so this direction can't collide at init time. But late registration via `register(Class<T>)` (e.g., from `@Observes StartupEvent`) occurs after Phase 1b, so the data-driven URI may already exist in `metadataByUri`. Without this symmetric check, the late enum registration would silently overwrite the data-driven vocab's data in `termsByUri`, `orderedByUri`, and `metadataByUri`.
 
 ### Alias conflict across data-driven terms
 
@@ -322,7 +325,11 @@ Each term carries 8-15 keywords — full natural-language concepts, not regex fr
 
 ### WARN log for unmatched epistemicDomains keys
 
-**New behavior.** When a descriptor's `epistemicDomains` key has no matching vocabulary registration, a WARN-level log is emitted. This happens during `DescriptorCollector.collectAndValidate()` — after Phase 1a/1b vocabulary registration completes and the epistemic domain vocabulary is available. The log includes the unmatched key and the descriptor's `agentId` for diagnostics. This surfaces typos and missing registrations without breaking the open-string contract.
+**New behavior.** When a descriptor's `epistemicDomains` key is not a registered term in the epistemic domain vocabulary (`urn:casehub:vocab:epistemic-domain`), a WARN-level log is emitted. This happens during `DescriptorCollector.collectAndValidate()` — after Phase 1a/1b vocabulary registration completes and the epistemic domain vocabulary is available. The log includes the unmatched key and the descriptor's `agentId` for diagnostics.
+
+Check logic: `vocabRegistry.resolve("urn:casehub:vocab:epistemic-domain", key)` — if the result is empty, log WARN. If the epistemic domain vocabulary itself is not registered (e.g., `eidos-vocab` not on classpath), the check is skipped entirely — `resolve()` returns empty for unregistered URIs and the WARN would fire for every key, which is useless noise. Guard with `vocabRegistry.isRegistered("urn:casehub:vocab:epistemic-domain")` first.
+
+This surfaces typos and missing registrations without breaking the open-string contract, and avoids false negatives from matching against unrelated vocabularies (e.g., `"analysis"` matching `CasehubCapabilityTerm.ANALYSIS` in the capability vocabulary).
 
 ## Module Placement
 
