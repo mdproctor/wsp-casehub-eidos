@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-203-update-example-descriptors
-state: closing:review
+state: closing:verified
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
@@ -10,7 +10,7 @@ covers: 203
 design-repo: 
 design-section-hashes: 
 flyway-next-v: 
-
 evidence-era: true
+
 ## Queue
-- [ ] casehubio/eidos#203 — Issue #203 ← active
+- [x] casehubio/eidos#203 — Issue #203
