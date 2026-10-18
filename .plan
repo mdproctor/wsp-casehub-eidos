@@ -13,3 +13,5 @@ flyway-next-v:
 
 ## Queue
 - [ ] casehubio/eidos#200 — Issue #200 ← active
+- [ ] casehubio/eidos#201 — Disposition YAML weighted form
+- [ ] casehubio/eidos#202 — DispositionAxis display metadata
