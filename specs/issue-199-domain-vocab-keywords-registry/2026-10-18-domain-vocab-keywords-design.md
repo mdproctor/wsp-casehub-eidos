@@ -51,7 +51,12 @@ public record DataDrivenTerm(
 }
 ```
 
-Compact constructor validates: value required, non-blank. All lists defensively copied to immutable.
+Compact constructor:
+- **value**: required, non-blank
+- **Null coercion**: `label` and `description` coerced to `""` when null; `aliases`, `keywords`, `resolvedParents` coerced to `List.of()` when null. Ensures `VocabularyTerm` contract compliance (`description()` returns `""`, not null).
+- **Character-set validation**: all string fields (`value`, `label`, `description`) and all string list items (`aliases`, `keywords`) validated against the same banned codepoint set as `AgentDescriptorValidator.isBanned()` — rejects BiDi overrides, C0/C1 control characters, zero-width joiners/spaces, line/paragraph separators. Data-driven terms flow through `EidosRenderPipeline` into LLM payloads and A2A cards — same injection surface as descriptor fields.
+- **Keyword validation**: blank/empty keyword strings rejected. Duplicate keywords within the term deduplicated (preserving first occurrence order).
+- **Lists**: defensively copied to immutable via `List.copyOf()` (after null coercion and validation).
 
 ### DataDrivenVocabulary — new record
 
@@ -61,6 +66,13 @@ public record DataDrivenVocabulary(
     List<DataDrivenTerm> terms
 ) {}
 ```
+
+Compact constructor validates:
+- **uri**: required, non-blank
+- **terms**: required, non-empty — a vocabulary with no terms is invalid (consistent with enum vocab `constants.length == 0` check)
+- **Duplicate term values**: rejected — duplicate primary values within the term list throw at construction time (consistent with enum vocab `registerTerms()` validation)
+- **Null coercion**: `name`, `version`, `description` coerced to `""` when null; `terms` must not be null (throws)
+- **Lists**: `terms` defensively copied to immutable
 
 ### DataDrivenVocabularyRegistrar — new SPI
 
@@ -92,6 +104,17 @@ void register(String uri, String name, String version, String description,
 
 No new `keywords()` method on the registry. Consumers compose: `resolve(vocabUri, value).map(VocabularyTerm::keywords).orElse(List.of())`.
 
+Breaking change sites for `register(String, ...)`: 7 `VocabularyRegistry` implementations must add this method:
+1. `CdiVocabularyRegistry` (runtime — production implementation)
+2. `TestVocabularyRegistry` (persistence-memory test)
+3. `StubVocabularyRegistry` in `CapabilityResolverTest` (api test)
+4. `StubVocabularyRegistry` in `DefaultCapabilityHealthBehavioralViolationTest` (runtime test)
+5. `NoOpVocabRegistry` enum in `DescriptorCollectorTest` (runtime test)
+6. Anonymous implementation in `ImpliesSupervisionTest` (vocab test)
+7. Anonymous implementation in `BehavioralExpectationsTest` (api test)
+
+All 6 test implementations are mechanical — add a no-op or throwing stub. No default method — the platform's no-end-user policy means breaking changes force every implementation to be explicit about the new capability.
+
 ### DomainKeywords — new utility
 
 ```java
@@ -102,6 +125,11 @@ public final class DomainKeywords {
 ```
 
 Returns the term's own keywords plus all ancestor keywords. The assertion consumer's primary entry point. Composes `resolve()` + `VocabularyTerm.keywords()` + `ancestors()`.
+
+Behavior:
+- **Ordering**: term's own keywords first, then ancestor keywords in ancestor-depth order (closest ancestor first)
+- **Deduplication**: keywords deduplicated by string identity, preserving first-occurrence order
+- **Empty case**: returns `List.of()` when the term has no keywords and no ancestors with keywords, or when the term/vocabulary is not registered. Never returns null.
 
 ## CdiVocabularyRegistry Refactor
 
@@ -128,11 +156,25 @@ Returns the term's own keywords plus all ancestor keywords. The assertion consum
 
 ### Read-path migration
 
-All string-based methods (`resolve(uri, value)`, `allTerms(uri)`, `vocabularyMetadata(uri)`, `equivalentValues(fromUri, ...)`, `subsumes(...)`, `match(...)`, `ancestors(...)`, `descendants(...)`) switch to URI-keyed maps. Typed methods (`resolve(Class, value)`, `equivalentValues(S, Class)`) continue using class-keyed maps.
+All string-based methods switch to URI-keyed maps:
+- `resolve(uri, value)`, `allTerms(uri)`, `vocabularyMetadata(uri)`, `subsumes(...)`, `match(...)`, `ancestors(...)`, `descendants(...)`
+- `isRegistered(String vocabUri)` — checks `metadataByUri` (covers both enum and data-driven vocabs), replacing `byUri.containsKey()` (enum-only)
+- `registeredUris()` — returns `metadataByUri.keySet()` (covers both), replacing `byUri.keySet()` (enum-only)
+- `equivalentValues(fromUri, value, toUri)` — switches source resolution to URI-keyed maps. **Data-driven vocab behavior**: returns `Optional.empty()` when either the source or target vocabulary is data-driven, because `exactMatch(Class)` is fundamentally class-based and data-driven vocabs have no backing class. This is semantically correct — data-driven terms don't need cross-vocabulary equivalence.
+
+Typed methods (`resolve(Class, value)`, `equivalentValues(S, Class)`) continue using class-keyed maps.
 
 ### Hierarchy builder changes
 
-`buildAllHierarchyIndexes()` parameter type changes from `Map<String, Class<? extends Enum<?>>>` to a representation covering both vocab types. The `((Enum<?>) parent).getDeclaringClass()` cast replaced by a `termToVocabUri` map populated during term collection from both enum constants and data-driven term lists. The `vocab.getEnumConstants()` iteration unified to iterate over `orderedByUri` which contains both types.
+`buildAllHierarchyIndexes()` changes from taking `Map<String, Class<? extends Enum<?>>>` to taking no parameter — it iterates `orderedByUri` directly (which contains both enum and data-driven terms after Phase 1a and 1b).
+
+Key changes:
+- **Term collection**: iterates `orderedByUri.entrySet()` instead of `vocabSnapshot.entrySet()` + `vocab.getEnumConstants()`. Each entry provides `(uri, List<VocabularyTerm>)` — uniform for both types.
+- **Term-to-URI lookup**: `termToVocabUri: Map<VocabularyTerm, String>` populated during term collection from `orderedByUri`. Replaces the `classToUri` reverse lookup + `((Enum<?>) parent).getDeclaringClass()` cast.
+- **Parent vocabulary resolution**: `termToVocabUri.get(parent)` replaces `classToUri.get(parentDeclClass)`. Works for both enum parents (looked up from term collection) and data-driven parents (same).
+- **Cross-vocabulary injection** (step 6b): iterates `orderedByUri` instead of `vocabSnapshot` for native term enumeration. Collision detection unchanged — value-based, not class-based.
+
+Semantics unchanged: same global DAG, same cross-vocabulary injection, same cycle detection (Kahn's algorithm), same BFS ancestor/descendant computation.
 
 ### Init sequence
 
@@ -161,6 +203,17 @@ Enum registrars populate `byUri`, `byClass`, `byClassOrdered`, AND the new `term
 ### ClasspathYamlVocabularyRegistrar
 
 In eidos-core. Reads `META-INF/eidos/vocabularies/*.yaml`. Implements `DataDrivenVocabularyRegistrar`. Scans classpath at construction time (same pattern as `ClasspathYamlDescriptorRegistrar`).
+
+**CDI wiring**: requires a `@Produces @ApplicationScoped` method in `EidosCoreProducer` (runtime module), following the same pattern as `ClasspathYamlDescriptorRegistrar` and `ClasspathYamlTemplateRegistrar`:
+
+```java
+@Produces @ApplicationScoped
+DataDrivenVocabularyRegistrar classpathYamlVocabularyRegistrar() {
+    return new ClasspathYamlVocabularyRegistrar();
+}
+```
+
+Without this producer, CDI won't discover the registrar and YAML vocabularies won't load.
 
 Specializes references resolved within the vocabulary at load time: string value → `DataDrivenTerm` instance. Unresolvable references throw at startup. Cross-vocabulary specialization is not supported for data-driven terms.
 
@@ -208,7 +261,7 @@ terms:
 
 ### JSON Schema (vocabulary.schema.json)
 
-Shipped in `META-INF/eidos/` alongside `descriptor.schema.json`. Validates:
+Shipped in `META-INF/eidos/`. This is the first JSON Schema artifact in the project — no existing `descriptor.schema.json` pattern to follow. Validates:
 
 - **Root:** `uri` (required string), `name` (string), `version` (string), `description` (string), `terms` (required array)
 - **Term:** `value` (required string), `label` (string), `description` (string), `aliases` (string array), `keywords` (string array), `specializes` (string array — references to other term values in same vocabulary)
@@ -252,10 +305,24 @@ Each term carries 8-15 keywords — full natural-language concepts, not regex fr
 - **Existing enum vocabularies** — Belbin, DISC, Conscientiousness, Jungian, MBTI, Sarc7, SVO, CasehubCapability, CasehubSlot, ModelTier, BigFive, Enneagram, SDI, Archetype: untouched. Their registrars continue working via `Instance<VocabularyRegistrar>`.
 - **Enum-based `register(Class<T>)`** — backward compatible, still works.
 - **Typed `resolve(Class, value)`** — unchanged, uses class-keyed secondary index.
-- **`epistemicDomains` keys** — remain freeform strings. No validation against vocabulary. WARN log when a descriptor's domain key has no matching vocabulary registration.
+- **`epistemicDomains` keys** — remain freeform strings. No validation against vocabulary.
 - **Renderer** — no changes. A2A_CARD and MARKDOWN/PROSE output unchanged.
 - **`@VocabularyMetadata` annotation** — unchanged as the declaration mechanism for enum vocab classes. Only the registry query method's return type changes (annotation → `VocabularyInfo` record).
 - **Hierarchy builder semantics** — same global DAG, same cross-vocabulary injection, same cycle detection. Only the iteration and term-to-URI lookup mechanism changes.
+
+## Validation & Diagnostics
+
+### Cross-type URI collision
+
+`registerDataDriven(DataDrivenVocabulary)` checks both `byUri` (enum URIs) and `metadataByUri` (all URIs) for conflicts. If an enum vocab and a data-driven vocab register with the same URI, the init sequence (enums first in Phase 1a, data-driven second in Phase 1b) means Phase 1b throws `IllegalArgumentException` at startup.
+
+### Alias conflict across data-driven terms
+
+`registerDataDriven()` validates alias uniqueness within the vocabulary: if a data-driven term's alias conflicts with another term's primary value or alias, throws at startup. Consistent with enum vocab `registerTerms()` alias validation.
+
+### WARN log for unmatched epistemicDomains keys
+
+**New behavior.** When a descriptor's `epistemicDomains` key has no matching vocabulary registration, a WARN-level log is emitted. This happens during `DescriptorCollector.collectAndValidate()` — after Phase 1a/1b vocabulary registration completes and the epistemic domain vocabulary is available. The log includes the unmatched key and the descriptor's `agentId` for diagnostics. This surfaces typos and missing registrations without breaking the open-string contract.
 
 ## Module Placement
 
@@ -267,7 +334,7 @@ Each term carries 8-15 keywords — full natural-language concepts, not regex fr
 | `DataDrivenVocabularyRegistrar` | eidos-api | SPI interface |
 | `VocabularyInfo` | eidos-api | Tier 1 data record |
 | `DomainKeywords` | eidos-api | Static utility, Tier 1 |
-| `vocabulary.schema.json` | eidos-api | Alongside descriptor.schema.json |
+| `vocabulary.schema.json` | eidos-api | First JSON Schema in the project; `META-INF/eidos/` |
 | `ClasspathYamlVocabularyRegistrar` | eidos-core | Parallels other YAML registrars |
 | CdiVocabularyRegistry refactor | runtime | Internal storage change |
 | `epistemic-domains.yaml` | eidos-vocab | Data file alongside enum vocabs |
@@ -279,7 +346,7 @@ Each term carries 8-15 keywords — full natural-language concepts, not regex fr
 - CdiVocabularyRegistry.java — existing implementation, target for URI-keyed refactor
 - ClasspathYamlDescriptorRegistrar.java — pattern for YAML registrar
 - ClasspathYamlTemplateRegistrar.java — pattern for YAML registrar
-- descriptor.schema.json — pattern for JSON Schema
+- AgentDescriptorValidator.java — character-set validation (banned codepoints) pattern for DataDrivenTerm
 - CasehubCapabilityTerm.java — existing hierarchical vocabulary (pattern for specializes())
 - eval profiles (sw-engineer-bold.yaml, data-engineer-*.yaml, security-analyst-*.yaml, clinical-researcher.yaml, product-manager.yaml) — existing epistemicDomains usage
 - [SKOS Simple Knowledge Organization System Reference](https://www.w3.org/TR/skos-reference/) — broader/narrower hierarchy model
