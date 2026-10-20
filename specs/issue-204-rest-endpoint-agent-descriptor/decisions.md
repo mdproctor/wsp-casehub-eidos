@@ -24,14 +24,15 @@
 **Exploration:** quick
 **Status:** captured
 
-## D3: Operations — list, get, find
+## D3: Operations — find + get (two operations)
 
-**Choice:** Three @PlatformQuery operations: `listAgents`, `getAgent`, `findAgents`
+**Choice:** Two @PlatformQuery operations: `findAgents` (subsumes listing — no params = list all) and `getAgent`. Both use `@RestPath("")` for clean REST paths.
 **Alternatives:**
+- Three operations (list + get + find) — `listAgents` and `findAgents` with no params are redundant
 - List + Get only — matches issue scope exactly but leaves query functionality to a future issue
 - Full CRUD with mutations — register/deregister via API; over-scoped for read-only UI consumption
-**Rationale:** The full AgentQuery surface (slot, capability, goal, domain, maxDepth) is already implemented in AgentRegistry. Exposing it via findAgents with optional query params is low effort and immediately useful for MCP agent consumers.
-**Trade-offs:** More surface area to maintain. Mutations excluded — registration stays programmatic (YAML/CDI).
+**Rationale:** `findAgents` with all optional params naturally subsumes listing. Two operations cover all read use cases without redundancy.
+**Trade-offs:** More surface area than the issue requested (just list + get). Mutations excluded — registration stays programmatic (YAML/CDI).
 **Sources:** api/AgentQuery.java, api/AgentRegistry.java
 **Exploration:** quick
 **Status:** captured

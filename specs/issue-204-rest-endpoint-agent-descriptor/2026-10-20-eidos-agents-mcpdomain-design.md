@@ -83,28 +83,39 @@ public class EidosAgentApi {
 
 ## Operations
 
-### 1. listAgents
+Two operations. `findAgents` subsumes listing (no params = list all).
+Both use `@RestPath("")` for clean REST paths — the generator would
+otherwise kebab-case the method names into path segments.
+
+### 1. findAgents
 
 ```java
-@PlatformQuery("List all registered agent descriptors for the current tenant")
-public List<AgentDescriptor> listAgents()
+@PlatformQuery("Find agents matching optional criteria — no params lists all")
+@RestPath("")
+public List<AgentDescriptor> findAgents(
+    @QueryParam("slot") String slot,
+    @QueryParam("capability") String capabilityName,
+    @QueryParam("goal") String goalName,
+    @QueryParam("domain") String taskDomain,
+    @QueryParam("maxDepth") Integer maxDepth)
 ```
 
-- Builds `AgentQuery.all(tenancyId)` from `currentPrincipal.tenancyId()`
+- Builds `AgentQuery` from provided parameters + `currentPrincipal.tenancyId()`
+- All parameters are optional — no params = list all
 - Calls `registry.find(query)`
-- Maps `AgentMatch::descriptor` to extract descriptors
-- Filters PRIVATE goals and constraints via `publicGoals()` / `publicConstraints()`
-- Returns the filtered list
+- Maps `AgentMatch::descriptor`, filters PRIVATE visibility
+- Returns `List<AgentDescriptor>` (match metadata not exposed — D4)
 
 **Generated endpoints:**
-- REST: `GET /api/eidos/agents`
-- GraphQL: `query { listAgents { agentId name ... } }`
-- MCP: `casehub_action(domain="eidos/agents", operation="listAgents")`
+- REST: `GET /api/eidos/agents?slot=X&capability=Y&goal=Z&domain=D&maxDepth=N`
+- GraphQL: `query { findAgents(slot: "X", capability: "Y") { ... } }`
+- MCP: `casehub_action(domain="eidos/agents", operation="findAgents", params={capability: "code-review"})`
 
 ### 2. getAgent
 
 ```java
 @PlatformQuery("Get a specific agent descriptor by ID")
+@RestPath("")
 public AgentDescriptor getAgent(@PathParam("agentId") String agentId)
 ```
 
@@ -116,29 +127,6 @@ public AgentDescriptor getAgent(@PathParam("agentId") String agentId)
 - REST: `GET /api/eidos/agents/{agentId}`
 - GraphQL: `query { getAgent(agentId: "...") { ... } }`
 - MCP: `casehub_action(domain="eidos/agents", operation="getAgent", params={agentId: "..."})`
-
-### 3. findAgents
-
-```java
-@PlatformQuery("Find agents matching optional criteria: slot, capability, goal, domain")
-public List<AgentDescriptor> findAgents(
-    @QueryParam("slot") String slot,
-    @QueryParam("capability") String capabilityName,
-    @QueryParam("goal") String goalName,
-    @QueryParam("domain") String taskDomain,
-    @QueryParam("maxDepth") Integer maxDepth)
-```
-
-- Builds `AgentQuery` from provided parameters + `currentPrincipal.tenancyId()`
-- All parameters are optional — no params = list all (equivalent to `listAgents`)
-- Calls `registry.find(query)`
-- Maps `AgentMatch::descriptor`, filters PRIVATE visibility
-- Returns `List<AgentDescriptor>` (match metadata not exposed — D4)
-
-**Generated endpoints:**
-- REST: `GET /api/eidos/agents/find?slot=X&capability=Y&goal=Z&domain=D&maxDepth=N`
-- GraphQL: `query { findAgents(slot: "X", capability: "Y") { ... } }`
-- MCP: `casehub_action(domain="eidos/agents", operation="findAgents", params={capability: "code-review"})`
 
 ## Visibility filtering
 
