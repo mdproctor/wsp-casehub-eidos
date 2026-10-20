@@ -1,0 +1,15 @@
+# Work Plan — issue-206-207-descriptor-fields
+
+## State
+branch: issue-206-207-descriptor-fields
+state: scaffolded
+project-sha: 
+date: 
+issue-repo: casehubio/eidos
+covers: 206,207
+design-repo: 
+design-section-hashes: 
+flyway-next-v: 
+
+## Queue
+- [ ] casehubio/eidos#206 — Issue #206 ← active
