@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-204-rest-endpoint-agent-descriptor
-state: active
+state: closing:verified
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
