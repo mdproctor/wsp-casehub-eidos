@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+    .subtitle { font-size: 11px; fill: #64748b; }
+    .box-label { font-size: 12px; font-weight: 600; fill: #1e293b; }
+    .box-detail { font-size: 10px; fill: #475569; }
+    .count { font-size: 22px; font-weight: 700; }
+    .count-label { font-size: 9px; fill: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .axis-label { font-size: 10px; font-weight: 600; fill: #1e293b; }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" class="title">Personality Vocabulary Landscape</text>
+  <text x="400" y="48" text-anchor="middle" class="subtitle">Eight frameworks, two axis vocabularies, one manifest</text>
+
+  <!-- Personality Frameworks row -->
+  <text x="30" y="85" class="axis-label" fill="#6366f1">PERSONALITY FRAMEWORKS</text>
+
+  <!-- MBTI -->
+  <rect x="30" y="95" width="88" height="72" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="74" y="117" text-anchor="middle" class="count" fill="#6366f1">16</text>
+  <text x="74" y="131" text-anchor="middle" class="count-label">TYPES</text>
+  <text x="74" y="155" text-anchor="middle" class="box-label">MBTI</text>
+
+  <!-- Jungian -->
+  <rect x="128" y="95" width="88" height="72" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="172" y="117" text-anchor="middle" class="count" fill="#6366f1">8</text>
+  <text x="172" y="131" text-anchor="middle" class="count-label">FUNCTIONS</text>
+  <text x="172" y="155" text-anchor="middle" class="box-label">Jungian</text>
+
+  <!-- Enneagram -->
+  <rect x="226" y="95" width="88" height="72" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="270" y="117" text-anchor="middle" class="count" fill="#16a34a">9</text>
+  <text x="270" y="131" text-anchor="middle" class="count-label">TYPES</text>
+  <text x="270" y="155" text-anchor="middle" class="box-label">Enneagram</text>
+
+  <!-- DISC -->
+  <rect x="324" y="95" width="88" height="72" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="368" y="117" text-anchor="middle" class="count" fill="#16a34a">4</text>
+  <text x="368" y="131" text-anchor="middle" class="count-label">STYLES</text>
+  <text x="368" y="155" text-anchor="middle" class="box-label">DISC</text>
+
+  <!-- Belbin -->
+  <rect x="422" y="95" width="88" height="72" rx="6" fill="#fff7ed" stroke="#fdba74" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="466" y="117" text-anchor="middle" class="count" fill="#ea580c">9</text>
+  <text x="466" y="131" text-anchor="middle" class="count-label">ROLES</text>
+  <text x="466" y="155" text-anchor="middle" class="box-label">Belbin</text>
+
+  <!-- Big Five -->
+  <rect x="520" y="95" width="88" height="72" rx="6" fill="#fff7ed" stroke="#fdba74" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="564" y="117" text-anchor="middle" class="count" fill="#ea580c">8</text>
+  <text x="564" y="131" text-anchor="middle" class="count-label">POLES</text>
+  <text x="564" y="155" text-anchor="middle" class="box-label">Big Five</text>
+
+  <!-- SDI -->
+  <rect x="618" y="95" width="88" height="72" rx="6" fill="#fdf2f8" stroke="#f9a8d4" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="662" y="117" text-anchor="middle" class="count" fill="#db2777">4</text>
+  <text x="662" y="131" text-anchor="middle" class="count-label">VALUES</text>
+  <text x="662" y="155" text-anchor="middle" class="box-label">SDI</text>
+
+  <!-- Archetype -->
+  <rect x="716" y="95" width="60" height="72" rx="6" fill="#fdf2f8" stroke="#f9a8d4" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="746" y="117" text-anchor="middle" class="count" fill="#db2777">48</text>
+  <text x="746" y="131" text-anchor="middle" class="count-label">TYPES</text>
+  <text x="746" y="155" text-anchor="middle" class="box-label">Archetype</text>
+
+  <!-- MBTI specializes Jungian arrow -->
+  <line x1="118" y1="131" x2="128" y2="131" stroke="#a5b4fc" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="123" y="125" text-anchor="middle" class="box-detail" font-size="8" fill="#6366f1">specializes</text>
+
+  <!-- Arrows down to axis mapping -->
+  <text x="400" y="200" text-anchor="middle" class="axis-label" fill="#64748b">AXIS MAPPING (axisExactMatch)</text>
+
+  <!-- Down arrows from frameworks -->
+  <line x1="74" y1="167" x2="74" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="172" y1="167" x2="172" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="270" y1="167" x2="270" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="368" y1="167" x2="368" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="466" y1="167" x2="466" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="564" y1="167" x2="564" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="662" y1="167" x2="662" y2="215" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+
+  <!-- Axis vocabularies -->
+  <text x="30" y="240" class="axis-label" fill="#0891b2">AXIS VOCABULARIES</text>
+
+  <!-- Conscientiousness -->
+  <rect x="30" y="250" width="360" height="55" rx="6" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="50" y="272" class="box-label">Conscientiousness</text>
+  <text x="50" y="290" class="box-detail">12 terms across 4 axes: socialOrient, ruleFollowing, riskAppetite, autonomy</text>
+
+  <!-- Thomas-Kilmann -->
+  <rect x="410" y="250" width="360" height="55" rx="6" fill="#ecfeff" stroke="#67e8f9" stroke-width="1.2" filter="url(#shadow)"/>
+  <text x="430" y="272" class="box-label">Thomas-Kilmann</text>
+  <text x="430" y="290" class="box-detail">5 conflict modes: competing, collaborating, compromising, avoiding, accommodating</text>
+
+  <!-- Disposition Axes -->
+  <text x="30" y="340" class="axis-label" fill="#7c3aed">DISPOSITION AXES</text>
+
+  <rect x="30" y="350" width="140" height="42" rx="6" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="100" y="370" text-anchor="middle" class="box-label" font-size="10">Social Orientation</text>
+  <text x="100" y="383" text-anchor="middle" class="box-detail" font-size="9">independent ... collaborative</text>
+
+  <rect x="180" y="350" width="120" height="42" rx="6" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="240" y="370" text-anchor="middle" class="box-label" font-size="10">Rule Following</text>
+  <text x="240" y="383" text-anchor="middle" class="box-detail" font-size="9">flexible ... strict</text>
+
+  <rect x="310" y="350" width="120" height="42" rx="6" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="370" y="370" text-anchor="middle" class="box-label" font-size="10">Risk Appetite</text>
+  <text x="370" y="383" text-anchor="middle" class="box-detail" font-size="9">cautious ... bold</text>
+
+  <rect x="440" y="350" width="100" height="42" rx="6" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="490" y="370" text-anchor="middle" class="box-label" font-size="10">Autonomy</text>
+  <text x="490" y="383" text-anchor="middle" class="box-detail" font-size="9">guided ... autonomous</text>
+
+  <rect x="550" y="350" width="120" height="42" rx="6" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="610" y="370" text-anchor="middle" class="box-label" font-size="10">Conflict Mode</text>
+  <text x="610" y="383" text-anchor="middle" class="box-detail" font-size="9">avoiding ... competing</text>
+
+  <!-- Manifest output -->
+  <text x="30" y="430" class="axis-label" fill="#059669">OUTPUT</text>
+
+  <rect x="30" y="440" width="740" height="60" rx="8" fill="#f0fdf4" stroke="#34d399" stroke-width="2" filter="url(#shadow)"/>
+  <text x="400" y="465" text-anchor="middle" class="box-label" font-size="14" fill="#059669">personality-vocab.json</text>
+  <text x="400" y="485" text-anchor="middle" class="box-detail">1,698 lines  ·  13 top-level keys  ·  all cross-references materialised  ·  META-INF/eidos/ in the JAR</text>
+</svg>

@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#7c3aed"/>
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+    .subtitle { font-size: 11px; fill: #64748b; }
+    .mono { font-family: "SF Mono", "Fira Code", monospace; font-size: 11px; fill: #1e293b; }
+    .mono-sm { font-family: "SF Mono", "Fira Code", monospace; font-size: 10px; }
+    .label { font-size: 11px; font-weight: 600; fill: #1e293b; }
+    .note { font-size: 9px; fill: #64748b; font-style: italic; }
+  </style>
+
+  <text x="380" y="30" text-anchor="middle" class="title">How MBTI Gets Its Axis Values</text>
+  <text x="380" y="48" text-anchor="middle" class="subtitle">MBTI types don't define axisExactMatch — they inherit from their dominant Jungian function</text>
+
+  <!-- INTJ box -->
+  <rect x="30" y="75" width="160" height="80" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="110" y="100" text-anchor="middle" class="label" fill="#6366f1">MbtiTypeTerm.INTJ</text>
+  <text x="110" y="120" text-anchor="middle" class="mono-sm" fill="#475569">dominant: NI</text>
+  <text x="110" y="136" text-anchor="middle" class="mono-sm" fill="#475569">auxiliary: TE</text>
+
+  <!-- specializes arrow -->
+  <line x1="190" y1="115" x2="270" y2="115" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="230" y="108" text-anchor="middle" font-size="10" fill="#6366f1" font-weight="600">specializes()</text>
+
+  <!-- NI box -->
+  <rect x="275" y="75" width="195" height="80" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="372" y="100" text-anchor="middle" class="label" fill="#6366f1">JungianFunctionTerm.NI</text>
+  <text x="372" y="120" text-anchor="middle" class="mono-sm" fill="#475569">Introverted Intuition</text>
+  <text x="372" y="136" text-anchor="middle" class="mono-sm" fill="#475569">category: PERCEIVING</text>
+
+  <!-- axisExactMatch arrow -->
+  <line x1="470" y1="115" x2="540" y2="115" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <text x="505" y="108" text-anchor="middle" font-size="10" fill="#7c3aed" font-weight="600">axisExactMatch()</text>
+
+  <!-- Result box -->
+  <rect x="545" y="68" width="195" height="94" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="642" y="92" text-anchor="middle" class="label" fill="#7c3aed">Axis Values for INTJ</text>
+  <text x="570" y="112" class="mono-sm" fill="#475569">socialOrient: independent</text>
+  <text x="570" y="126" class="mono-sm" fill="#475569">ruleFollowing: principled</text>
+  <text x="570" y="140" class="mono-sm" fill="#475569">riskAppetite: bold</text>
+  <text x="570" y="154" class="mono-sm" fill="#475569">conflictMode: avoiding</text>
+
+  <!-- Contrast: direct mapping -->
+  <text x="380" y="210" text-anchor="middle" class="title" font-size="14">Compare: Enneagram Maps Directly</text>
+
+  <!-- Enneagram Type 8 -->
+  <rect x="30" y="230" width="195" height="80" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="127" y="255" text-anchor="middle" class="label" fill="#16a34a">EnneagramTerm.TYPE_8</text>
+  <text x="127" y="275" text-anchor="middle" class="mono-sm" fill="#475569">Challenger</text>
+  <text x="127" y="291" text-anchor="middle" class="mono-sm" fill="#475569">has own axisExactMatch()</text>
+
+  <!-- direct arrow -->
+  <line x1="225" y1="270" x2="380" y2="270" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <text x="302" y="263" text-anchor="middle" font-size="10" fill="#7c3aed" font-weight="600">axisExactMatch()</text>
+
+  <!-- Result box for enneagram -->
+  <rect x="385" y="223" width="195" height="102" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="482" y="247" text-anchor="middle" class="label" fill="#7c3aed">Axis Values for TYPE_8</text>
+  <text x="405" y="267" class="mono-sm" fill="#475569">socialOrient: independent</text>
+  <text x="405" y="281" class="mono-sm" fill="#475569">ruleFollowing: flexible</text>
+  <text x="405" y="295" class="mono-sm" fill="#475569">riskAppetite: bold</text>
+  <text x="405" y="309" class="mono-sm" fill="#475569">autonomy: autonomous</text>
+  <text x="405" y="323" class="mono-sm" fill="#475569">conflictMode: competing</text>
+
+  <!-- Key insight -->
+  <rect x="30" y="350" width="700" height="40" rx="6" fill="#fefce8" stroke="#fbbf24" stroke-width="1.2"/>
+  <text x="50" y="370" class="label" fill="#92400e" font-size="11">The manifest materialises both paths.</text>
+  <text x="325" y="370" class="note" fill="#92400e" font-size="10" font-style="normal">Consumers see identical structure — they never need to know MBTI inherits through Jungian.</text>
+</svg>

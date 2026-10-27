@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 580" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-size: 16px; font-weight: 700; fill: #1e293b; }
+    .subtitle { font-size: 11px; fill: #64748b; }
+    .key { font-size: 12px; font-weight: 600; fill: #1e293b; font-family: "SF Mono", "Fira Code", monospace; }
+    .desc { font-size: 10px; fill: #475569; }
+    .section { font-size: 10px; font-weight: 600; fill: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bracket { font-size: 40px; fill: #cbd5e1; font-weight: 200; }
+  </style>
+
+  <text x="370" y="30" text-anchor="middle" class="title">Manifest Structure</text>
+  <text x="370" y="48" text-anchor="middle" class="subtitle">personality-vocab.json — what lives where</text>
+
+  <!-- Opening brace -->
+  <text x="20" y="95" class="bracket">{</text>
+
+  <!-- Section: Foundation -->
+  <text x="55" y="86" class="section" fill="#0891b2">Foundation</text>
+
+  <rect x="55" y="94" width="660" height="30" rx="4" fill="#ecfeff" stroke="#67e8f9" stroke-width="1"/>
+  <text x="70" y="113" class="key">"dispositionAxes"</text>
+  <text x="230" y="113" class="desc">5 axes with jsonKey, displayName, description, lowPole, highPole</text>
+
+  <rect x="55" y="130" width="660" height="30" rx="4" fill="#ecfeff" stroke="#67e8f9" stroke-width="1"/>
+  <text x="70" y="149" class="key">"axisValues"</text>
+  <text x="230" y="149" class="desc">conscientiousness (12 terms) + thomasKilmann (5 terms) — the axis vocabularies</text>
+
+  <!-- Section: Term Catalogs -->
+  <text x="55" y="186" class="section" fill="#6366f1">Term Catalogs</text>
+
+  <rect x="55" y="194" width="320" height="30" rx="4" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1"/>
+  <text x="70" y="213" class="key">"jungian"</text>
+  <text x="160" y="213" class="desc">8 functions + shadow, category, attitude, guidance</text>
+
+  <rect x="385" y="194" width="330" height="30" rx="4" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1"/>
+  <text x="400" y="213" class="key">"mbti"</text>
+  <text x="470" y="213" class="desc">16 types + dominant, auxiliary, defaultProfile</text>
+
+  <rect x="55" y="230" width="210" height="30" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
+  <text x="70" y="249" class="key">"enneagram"</text>
+  <text x="175" y="249" class="desc">9 types</text>
+
+  <rect x="275" y="230" width="155" height="30" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
+  <text x="290" y="249" class="key">"disc"</text>
+  <text x="345" y="249" class="desc">4 styles</text>
+
+  <rect x="440" y="230" width="160" height="30" rx="4" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="455" y="249" class="key">"belbin"</text>
+  <text x="525" y="249" class="desc">9 roles</text>
+
+  <rect x="610" y="230" width="105" height="30" rx="4" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="625" y="249" class="key">"bigFive"</text>
+
+  <rect x="55" y="266" width="155" height="30" rx="4" fill="#fdf2f8" stroke="#f9a8d4" stroke-width="1"/>
+  <text x="70" y="285" class="key">"sdi"</text>
+  <text x="120" y="285" class="desc">4 values</text>
+
+  <rect x="220" y="266" width="495" height="30" rx="4" fill="#fdf2f8" stroke="#f9a8d4" stroke-width="1"/>
+  <text x="235" y="285" class="key">"archetype"</text>
+  <text x="340" y="285" class="desc">12 families (name, quadrant, drive) + 48 terms (adjectives, family)</text>
+
+  <!-- Section: Cross-References -->
+  <text x="55" y="326" class="section" fill="#7c3aed">Cross-References</text>
+
+  <rect x="55" y="334" width="660" height="56" rx="4" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1"/>
+  <text x="70" y="353" class="key">"axisMappings"</text>
+  <text x="230" y="353" class="desc">Every personality term mapped to its 5 disposition axis values</text>
+  <text x="85" y="376" class="desc" fill="#7c3aed">jungian   mbti   enneagram   disc   belbin   bigFive   sdi</text>
+  <text x="430" y="376" class="desc">MBTI derived from dominant Jungian function</text>
+
+  <!-- Section: Archetype Intelligence -->
+  <text x="55" y="420" class="section" fill="#059669">Archetype Intelligence</text>
+
+  <rect x="55" y="428" width="660" height="44" rx="4" fill="#f0fdf4" stroke="#34d399" stroke-width="1"/>
+  <text x="70" y="447" class="key">"archetypeCompatibility"</text>
+  <text x="280" y="447" class="desc">Which archetype families match each framework term</text>
+  <text x="85" y="463" class="desc" fill="#059669">e.g. INTJ → [SAGE, MAGICIAN, SOVEREIGN]</text>
+
+  <rect x="55" y="478" width="660" height="44" rx="4" fill="#f0fdf4" stroke="#34d399" stroke-width="1"/>
+  <text x="70" y="497" class="key">"archetypeAffinities"</text>
+  <text x="280" y="497" class="desc">Sub-archetype to MBTI/Enneagram type affinities</text>
+  <text x="85" y="513" class="desc" fill="#059669">e.g. angel → { mbti: [infj, isfj], enneagram: [type-2, type-9] }</text>
+
+  <!-- Closing brace -->
+  <text x="20" y="560" class="bracket">}</text>
+
+  <!-- Total -->
+  <rect x="520" y="540" width="195" height="28" rx="14" fill="#1e293b"/>
+  <text x="617" y="559" text-anchor="middle" font-size="12" font-weight="600" fill="#f8fafc">1,698 lines · 13 keys</text>
+</svg>
