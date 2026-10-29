@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-208-agent-resolver-spi
-state: closing:pushed
+state: closing:merged
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
