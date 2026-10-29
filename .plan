@@ -1,12 +1,12 @@
 # Work Plan — issue-209-personality-vocab-manifest
 
 ## State
-branch: main
+branch: issue-208-agent-resolver-spi
 state: active
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
-covers: 209
+covers: 208
 design-repo: 
 design-section-hashes: 
 flyway-next-v: 
