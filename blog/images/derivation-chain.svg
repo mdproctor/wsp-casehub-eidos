@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" font-family="system-ui, -apple-system, sans-serif" font-size="13">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-auto">
+      <path d="M 0 0 L 10 3.5 L 0 7 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Boxes -->
+  <rect x="10" y="70" width="120" height="50" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="70" y="92" text-anchor="middle" font-weight="600" fill="#1e293b">archetype</text>
+  <text x="70" y="108" text-anchor="middle" fill="#64748b" font-size="11">"sage"</text>
+
+  <line x1="130" y1="95" x2="168" y2="95" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="170" y="60" width="130" height="70" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="235" y="82" text-anchor="middle" font-weight="600" fill="#1e293b">Compatibility</text>
+  <text x="235" y="98" text-anchor="middle" fill="#64748b" font-size="11">YAML lookup</text>
+  <text x="235" y="118" text-anchor="middle" fill="#64748b" font-size="11">→ first MBTI</text>
+
+  <line x1="300" y1="95" x2="338" y2="95" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="340" y="70" width="100" height="50" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="390" y="92" text-anchor="middle" font-weight="600" fill="#1e293b">MBTI type</text>
+  <text x="390" y="108" text-anchor="middle" fill="#64748b" font-size="11">"intj"</text>
+
+  <line x1="440" y1="95" x2="478" y2="95" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="480" y="55" width="120" height="80" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="540" y="78" text-anchor="middle" font-weight="600" fill="#1e293b">Personality</text>
+  <text x="540" y="94" text-anchor="middle" font-weight="600" fill="#1e293b">TypeDeriver</text>
+  <text x="540" y="114" text-anchor="middle" fill="#64748b" font-size="11">Jungian profile</text>
+  <text x="540" y="128" text-anchor="middle" fill="#64748b" font-size="11">→ 5 axes</text>
+
+  <line x1="600" y1="95" x2="638" y2="95" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <rect x="640" y="60" width="70" height="70" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="675" y="88" text-anchor="middle" font-weight="600" fill="#0c4a6e" font-size="11">5-axis</text>
+  <text x="675" y="103" text-anchor="middle" fill="#0c4a6e" font-size="11">dispo-</text>
+  <text x="675" y="118" text-anchor="middle" fill="#0c4a6e" font-size="11">sition</text>
+
+  <!-- Labels -->
+  <text x="360" y="30" text-anchor="middle" font-size="15" font-weight="600" fill="#1e293b">Auto-derivation chain</text>
+  <text x="360" y="175" text-anchor="middle" fill="#64748b" font-size="11">Explicit disposition or mbtiType always wins — archetype derivation is the fallback</text>
+</svg>
