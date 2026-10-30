@@ -13,3 +13,4 @@ flyway-next-v:
 
 ## Queue
 - [ ] casehubio/eidos#213 — Issue #213 ← active
+- [ ] casehubio/eidos#214 — feat: Wire RuntimeCollaborationQuery into hive mind consumers
