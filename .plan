@@ -1,17 +1,15 @@
-# Work Plan — issue-209-personality-vocab-manifest
+# Work Plan — issue-194-org-aware-prompt-and-dispatch
 
 ## State
 branch: issue-194-org-aware-prompt-and-dispatch
-state: active
+state: scaffolded
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
 covers: 194,195
 design-repo: 
 design-section-hashes: 
-flyway-next-v: 
-evidence-era: true
+flyway-next-v: none
 
 ## Queue
-- [x] casehubio/eidos#209 — Issue #209
-- [ ] casehubio/eidos#208 — feat: implement AgentResolver SPI for HTTP agent invocation
+- [ ] casehubio/eidos#194 — Issue #194 ← active
