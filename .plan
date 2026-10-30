@@ -13,3 +13,8 @@ flyway-next-v: none
 
 ## Queue
 - [ ] casehubio/eidos#194 — Issue #194 ← active
+  - [ ] Batch 1: OrgPromptContributor
+    - [ ] Task 1: OrgPromptContributor impl and tests
+  - [ ] Batch 2: OrgAwareDispatch
+    - [ ] Task 2: Interface and NoOp and DefaultBean
+    - [ ] Task 3: DefaultOrgAwareDispatch impl and tests
