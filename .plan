@@ -1,0 +1,15 @@
+# Work Plan — issue-192-archetype-identity-auto
+
+## State
+branch: issue-192-archetype-identity-auto
+state: scaffolded
+project-sha: 
+date: 
+issue-repo: casehubio/eidos
+covers: 192,193
+design-repo: 
+design-section-hashes: 
+flyway-next-v: 
+
+## Queue
+- [ ] casehubio/eidos#192 — Issue #192 ← active
