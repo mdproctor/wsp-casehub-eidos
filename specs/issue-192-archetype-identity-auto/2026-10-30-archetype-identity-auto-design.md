@@ -118,7 +118,7 @@ New step in `DescriptorCollector.collectAndValidate()`, before the existing `der
 
 ### Trigger
 
-`archetype` is set AND `disposition` is null (or has no explicit axis values) AND no `mbtiType`/`enneagramType` already provided.
+`archetype` is set AND (`disposition` is null OR `disposition` has no explicit axis values and no `dispositionProfile`) AND no `mbtiType`/`enneagramType` already provided on the disposition.
 
 ### Chain
 
