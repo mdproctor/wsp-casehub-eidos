@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+    </marker>
+    <marker id="arr-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#ef4444"/>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+    </marker>
+    <filter id="sh" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-size: 15px; font-weight: 700; fill: #1e293b; }
+    .subtitle { font-size: 11px; fill: #64748b; }
+    .mono { font-family: "SF Mono", "Fira Code", monospace; font-size: 10px; }
+    .label { font-size: 11px; font-weight: 600; fill: #1e293b; }
+    .small { font-size: 9px; fill: #64748b; }
+    .status { font-size: 10px; font-weight: 600; }
+  </style>
+
+  <text x="360" y="26" text-anchor="middle" class="title">Escalation Path Walking with Health Probing</text>
+  <text x="360" y="44" text-anchor="middle" class="subtitle">OrgAwareDispatch.escalate() — first Ready agent wins</text>
+
+  <!-- Caller -->
+  <rect x="30" y="80" width="120" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="90" y="105" text-anchor="middle" class="label" fill="#475569">L1 Agent</text>
+  <text x="90" y="122" text-anchor="middle" class="small">needs escalation</text>
+
+  <!-- Arrow to L2 -->
+  <line x1="150" y1="110" x2="208" y2="110" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="179" y="102" text-anchor="middle" class="small">escalate()</text>
+
+  <!-- L2 Agent -->
+  <rect x="210" y="80" width="120" height="60" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="270" y="105" text-anchor="middle" class="label" fill="#dc2626">L2 Agent</text>
+  <text x="270" y="122" text-anchor="middle" class="status" fill="#ef4444">Unavailable</text>
+
+  <!-- Probe arrow down from L2 -->
+  <line x1="270" y1="140" x2="270" y2="188" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr-red)"/>
+
+  <!-- L2 probe result -->
+  <rect x="220" y="190" width="100" height="35" rx="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="270" y="205" text-anchor="middle" class="mono" fill="#dc2626" font-size="9">probe() →</text>
+  <text x="270" y="218" text-anchor="middle" class="mono" fill="#dc2626" font-size="9">Unavailable</text>
+
+  <!-- Skip arrow -->
+  <line x1="330" y1="110" x2="388" y2="110" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr-red)"/>
+  <text x="359" y="102" text-anchor="middle" class="small" fill="#ef4444">skip</text>
+
+  <!-- L3 Agent -->
+  <rect x="390" y="80" width="120" height="60" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="450" y="105" text-anchor="middle" class="label" fill="#059669">L3 Agent</text>
+  <text x="450" y="122" text-anchor="middle" class="status" fill="#10b981">Ready</text>
+
+  <!-- Probe arrow down from L3 -->
+  <line x1="450" y1="140" x2="450" y2="188" stroke="#10b981" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr-green)"/>
+
+  <!-- L3 probe result -->
+  <rect x="400" y="190" width="100" height="35" rx="6" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1"/>
+  <text x="450" y="205" text-anchor="middle" class="mono" fill="#059669" font-size="9">probe() →</text>
+  <text x="450" y="218" text-anchor="middle" class="mono" fill="#059669" font-size="9">Ready ✓</text>
+
+  <!-- Return arrow -->
+  <line x1="510" y1="110" x2="568" y2="110" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <!-- Result -->
+  <rect x="570" y="75" width="130" height="70" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="635" y="100" text-anchor="middle" class="label" fill="#059669">AgentMatch</text>
+  <text x="635" y="118" text-anchor="middle" class="mono" fill="#475569">descriptor: L3</text>
+  <text x="635" y="134" text-anchor="middle" class="small">returned to caller</text>
+
+  <!-- Bottom annotation -->
+  <rect x="70" y="260" width="580" height="45" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="360" y="278" text-anchor="middle" class="small" fill="#475569">OrgRegistry.escalationPath() provides the chain • AgentRegistry.findById() resolves descriptors</text>
+  <text x="360" y="293" text-anchor="middle" class="small" fill="#475569">CapabilityHealth.probe() gates each candidate • First Ready agent is returned as the escalation target</text>
+</svg>

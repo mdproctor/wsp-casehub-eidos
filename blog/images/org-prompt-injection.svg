@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+    </marker>
+    <filter id="sh" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-size: 15px; font-weight: 700; fill: #1e293b; }
+    .subtitle { font-size: 11px; fill: #64748b; }
+    .mono { font-family: "SF Mono", "Fira Code", monospace; font-size: 10px; }
+    .label { font-size: 11px; font-weight: 600; fill: #1e293b; }
+    .small { font-size: 9px; fill: #64748b; }
+    .tier { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  </style>
+
+  <text x="360" y="26" text-anchor="middle" class="title">How Org Context Reaches the Agent Prompt</text>
+  <text x="360" y="44" text-anchor="middle" class="subtitle">OrgPromptContributor injects organizational position at COGNITIVE tier</text>
+
+  <!-- OrgRegistry -->
+  <rect x="30" y="70" width="160" height="90" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="110" y="92" text-anchor="middle" class="label" fill="#059669">OrgRegistry</text>
+  <text x="110" y="110" text-anchor="middle" class="mono" fill="#475569">unitsFor()</text>
+  <text x="110" y="124" text-anchor="middle" class="mono" fill="#475569">supervisors()</text>
+  <text x="110" y="138" text-anchor="middle" class="mono" fill="#475569">escalationPath()</text>
+  <text x="110" y="152" text-anchor="middle" class="mono" fill="#475569">membersOf()</text>
+
+  <!-- Arrow: OrgRegistry → OrgPromptContributor -->
+  <line x1="190" y1="115" x2="248" y2="115" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- OrgPromptContributor -->
+  <rect x="250" y="75" width="200" height="80" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="350" y="97" text-anchor="middle" class="label" fill="#4f46e5">OrgPromptContributor</text>
+  <text x="350" y="115" text-anchor="middle" class="mono" fill="#475569">implements PromptContributor</text>
+  <text x="350" y="133" text-anchor="middle" class="small">Instance&lt;OrgRegistry&gt; — opt-in</text>
+  <text x="350" y="148" text-anchor="middle" class="tier" fill="#6366f1">@ApplicationScoped</text>
+
+  <!-- Arrow: OrgPromptContributor → PromptBlock -->
+  <line x1="450" y1="115" x2="508" y2="115" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- PromptBlock -->
+  <rect x="510" y="80" width="180" height="70" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="600" y="100" text-anchor="middle" class="label" fill="#d97706">PromptBlock</text>
+  <text x="600" y="118" text-anchor="middle" class="mono" fill="#475569">tag: "ORG_CONTEXT"</text>
+  <text x="600" y="134" text-anchor="middle" class="tier" fill="#d97706">COGNITIVE TIER</text>
+
+  <!-- CdiPromptAssembler -->
+  <rect x="250" y="200" width="200" height="55" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="350" y="222" text-anchor="middle" class="label" fill="#475569">CdiPromptAssembler</text>
+  <text x="350" y="240" text-anchor="middle" class="small">discovers all PromptContributor beans</text>
+
+  <!-- Arrow: CdiPromptAssembler → OrgPromptContributor (discovers) -->
+  <line x1="350" y1="200" x2="350" y2="160" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <text x="370" y="184" class="small">discovers</text>
+
+  <!-- Rendered prompt output -->
+  <rect x="510" y="200" width="180" height="140" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="600" y="220" text-anchor="middle" class="label" fill="#475569">Agent sees:</text>
+  <text x="525" y="240" class="mono" fill="#334155" font-size="9">[ORG_CONTEXT]</text>
+  <text x="525" y="256" class="mono" fill="#334155" font-size="9">You are a member of</text>
+  <text x="525" y="270" class="mono" fill="#334155" font-size="9">"Engineering" (department).</text>
+  <text x="525" y="286" class="mono" fill="#334155" font-size="9">Your supervisor is alice.</text>
+  <text x="525" y="302" class="mono" fill="#334155" font-size="9">Escalate to: alice → cto.</text>
+  <text x="525" y="318" class="mono" fill="#334155" font-size="9">Team: alice, carol.</text>
+
+  <!-- Arrow: PromptBlock → rendered -->
+  <line x1="600" y1="150" x2="600" y2="195" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- No-org note -->
+  <rect x="30" y="200" width="180" height="45" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="1" filter="url(#sh)"/>
+  <text x="120" y="218" text-anchor="middle" class="small" fill="#dc2626" font-weight="600">No org-runtime on classpath?</text>
+  <text x="120" y="234" text-anchor="middle" class="small" fill="#dc2626">Contributor absent — zero impact</text>
+</svg>
