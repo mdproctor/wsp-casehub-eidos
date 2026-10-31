@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-212-org-proximity-api
-state: active
+state: closing:review
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
@@ -11,5 +11,6 @@ design-repo:
 design-section-hashes: 
 flyway-next-v: 
 
+evidence-era: true
 ## Queue
 - [ ] casehubio/eidos#212 — Issue #212 ← active
