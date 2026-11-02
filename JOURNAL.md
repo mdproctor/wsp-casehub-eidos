@@ -1,1 +1,1 @@
-# Design Journal — issue-212-org-proximity-api
+# Design Journal — issue-183-voice-profile-description
