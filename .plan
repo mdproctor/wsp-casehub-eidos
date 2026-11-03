@@ -1,7 +1,7 @@
 # Work Plan — issue-217-society-epic1-followup
 
 ## State
-branch: issue-217-society-epic1-followup
+branch: 
 state: active
 project-sha: 
 date: 
@@ -12,13 +12,13 @@ design-section-hashes:
 flyway-next-v: 
 
 ## Queue
-- [ ] casehubio/eidos#217 — Issue #217 ← active
-- [ ] casehubio/eidos#218 — YAML-deserializer-new-OrgUnit-fields
-- [ ] casehubio/eidos#219 — OrgUnit-annotation-new-fields
-- [ ] casehubio/eidos#220 — FORMING-ACTIVE-transition
-- [ ] casehubio/eidos#222 — REORGANISING-state
-- [ ] casehubio/eidos#223 — MissionSpec-validation
-- [ ] casehubio/eidos#224 — org-runtime-test-coverage
-- [ ] casehubio/eidos#221 — docs-update-guides
-- [ ] casehubio/eidos#225 — NormSpecificity-wire-or-remove
-- [ ] casehubio/eidos#226 — stale-worktree-cleanup
+- [x] casehubio/eidos#217 — Issue #217
+- [x] casehubio/eidos#218 — YAML-deserializer-new-OrgUnit-fields
+- [x] casehubio/eidos#219 — OrgUnit-annotation-new-fields
+- [x] casehubio/eidos#220 — FORMING-ACTIVE-transition
+- [x] casehubio/eidos#222 — REORGANISING-state
+- [x] casehubio/eidos#223 — MissionSpec-validation
+- [x] casehubio/eidos#224 — org-runtime-test-coverage
+- [x] casehubio/eidos#221 — docs-update-guides
+- [x] casehubio/eidos#225 — NormSpecificity-wire-or-remove
+- [x] casehubio/eidos#226 — stale-worktree-cleanup
