@@ -2,7 +2,7 @@
 
 ## State
 branch: issue-217-society-epic1-followup
-state: scaffolded
+state: active
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
@@ -13,3 +13,12 @@ flyway-next-v:
 
 ## Queue
 - [ ] casehubio/eidos#217 — Issue #217 ← active
+- [ ] casehubio/eidos#218 — YAML-deserializer-new-OrgUnit-fields
+- [ ] casehubio/eidos#219 — OrgUnit-annotation-new-fields
+- [ ] casehubio/eidos#220 — FORMING-ACTIVE-transition
+- [ ] casehubio/eidos#222 — REORGANISING-state
+- [ ] casehubio/eidos#223 — MissionSpec-validation
+- [ ] casehubio/eidos#224 — org-runtime-test-coverage
+- [ ] casehubio/eidos#221 — docs-update-guides
+- [ ] casehubio/eidos#225 — NormSpecificity-wire-or-remove
+- [ ] casehubio/eidos#226 — stale-worktree-cleanup
