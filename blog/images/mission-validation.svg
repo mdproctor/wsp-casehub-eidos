@@ -38,7 +38,7 @@
   <rect x="180" y="180" width="160" height="70" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
   <text x="260" y="204" text-anchor="middle" font-size="12" font-weight="600" fill="#92400e">Min committers?</text>
   <text x="260" y="222" text-anchor="middle" font-size="10" fill="#475569">current committers</text>
-  <text x="260" y="236" text-anchor="middle" font-size="10" fill="#475569">&ge; minCommitters</text>
+  <text x="260" y="236" text-anchor="middle" font-size="10" fill="#475569">≥ minCommitters</text>
 
   <line x1="340" y1="215" x2="390" y2="215" stroke="#64748b" stroke-width="1.5" marker-end="url(#mv-arr)"/>
 
