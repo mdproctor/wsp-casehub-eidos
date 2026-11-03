@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" font-family="system-ui, -apple-system, sans-serif">
+  <!-- Problem boxes arranged in a flow -->
+
+  <!-- P1 -->
+  <rect x="20" y="20" width="130" height="100" rx="10" fill="#e8f0fe" stroke="#4285f4" stroke-width="2"/>
+  <text x="40" y="48" font-size="28" font-weight="bold" fill="#1a73e8">1</text>
+  <text x="36" y="70" font-size="11" font-weight="bold" fill="#1a73e8">Who can do</text>
+  <text x="36" y="84" font-size="11" font-weight="bold" fill="#1a73e8">what here?</text>
+  <text x="36" y="106" font-size="10" fill="#5f6368">Roles, cardinality,</text>
+  <text x="36" y="118" font-size="10" fill="#5f6368">compatibility</text>
+
+  <!-- P2 -->
+  <rect x="165" y="20" width="130" height="100" rx="10" fill="#e6f4ea" stroke="#34a853" stroke-width="2"/>
+  <text x="185" y="48" font-size="28" font-weight="bold" fill="#137333">2</text>
+  <text x="181" y="70" font-size="11" font-weight="bold" fill="#137333">What work</text>
+  <text x="181" y="84" font-size="11" font-weight="bold" fill="#137333">needs doing?</text>
+  <text x="181" y="106" font-size="10" fill="#5f6368">Missions, goals,</text>
+  <text x="181" y="118" font-size="10" fill="#5f6368">achieve vs maintain</text>
+
+  <!-- P3 -->
+  <rect x="310" y="20" width="130" height="100" rx="10" fill="#fef7e0" stroke="#f9ab00" stroke-width="2"/>
+  <text x="330" y="48" font-size="28" font-weight="bold" fill="#e37400">3</text>
+  <text x="326" y="70" font-size="11" font-weight="bold" fill="#e37400">What are</text>
+  <text x="326" y="84" font-size="11" font-weight="bold" fill="#e37400">the rules?</text>
+  <text x="326" y="106" font-size="10" fill="#5f6368">Obligations,</text>
+  <text x="326" y="118" font-size="10" fill="#5f6368">permissions, policies</text>
+
+  <!-- P4 -->
+  <rect x="455" y="20" width="130" height="100" rx="10" fill="#fce8e6" stroke="#ea4335" stroke-width="2"/>
+  <text x="475" y="48" font-size="28" font-weight="bold" fill="#c5221f">4</text>
+  <text x="471" y="70" font-size="11" font-weight="bold" fill="#c5221f">How does it</text>
+  <text x="471" y="84" font-size="11" font-weight="bold" fill="#c5221f">change?</text>
+  <text x="471" y="106" font-size="10" fill="#5f6368">Desired-state</text>
+  <text x="471" y="118" font-size="10" fill="#5f6368">reconciliation</text>
+
+  <!-- P5 -->
+  <rect x="600" y="20" width="100" height="100" rx="10" fill="#f3e8fd" stroke="#8430ce" stroke-width="2"/>
+  <text x="620" y="48" font-size="28" font-weight="bold" fill="#7627bb">5</text>
+  <text x="616" y="70" font-size="11" font-weight="bold" fill="#7627bb">How do</text>
+  <text x="616" y="84" font-size="11" font-weight="bold" fill="#7627bb">groups</text>
+  <text x="616" y="98" font-size="11" font-weight="bold" fill="#7627bb">emerge?</text>
+
+  <!-- Connection line -->
+  <line x1="150" y1="70" x2="165" y2="70" stroke="#bbb" stroke-width="1.5"/>
+  <line x1="295" y1="70" x2="310" y2="70" stroke="#bbb" stroke-width="1.5"/>
+  <line x1="440" y1="70" x2="455" y2="70" stroke="#bbb" stroke-width="1.5"/>
+  <line x1="585" y1="70" x2="600" y2="70" stroke="#bbb" stroke-width="1.5"/>
+
+  <!-- Bottom: what answers each -->
+  <rect x="20" y="150" width="680" height="50" rx="8" fill="#f8f9fa" stroke="#dadce0" stroke-width="1"/>
+  <text x="40" y="180" font-size="12" fill="#3c4043">
+    <tspan font-weight="bold" fill="#1a73e8">RoleSpec</tspan> · <tspan font-weight="bold" fill="#137333">MissionSpec</tspan> · <tspan font-weight="bold" fill="#e37400">RolePolicy</tspan> · <tspan font-weight="bold" fill="#c5221f">GroupPolicy</tspan> · <tspan font-weight="bold" fill="#7627bb">FormationRules</tspan>
+  </text>
+
+  <!-- MOISE+ mapping -->
+  <rect x="20" y="220" width="680" height="85" rx="8" fill="#fafafa" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="40" y="245" font-size="11" font-weight="bold" fill="#3c4043">MOISE+ alignment</text>
+  <text x="40" y="268" font-size="11" fill="#5f6368">
+    <tspan fill="#1a73e8">Structural</tspan> (roles, groups, hierarchy) · <tspan fill="#137333">Functional</tspan> (missions, goal schemes) · <tspan fill="#e37400">Deontic</tspan> (norms binding roles to missions)
+  </text>
+  <text x="40" y="292" font-size="11" fill="#5f6368">
+    What we kept: structural types, mission declarations, role policies. What we dropped: goal decomposition trees (engine), deliberation (agency).
+  </text>
+</svg>
