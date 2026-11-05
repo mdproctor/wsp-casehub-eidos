@@ -1,7 +1,7 @@
 # Work Plan — issue-229-org-model-enrichment
 
 ## State
-branch: issue-229-org-model-enrichment
+branch: 
 status: active
 project-sha: 
 date: 
@@ -16,13 +16,5 @@ title: issue-229-org-model-enrichment
 ## Queue
 - [x] casehubio/eidos#227 — Issue #227
 - [x] casehubio/eidos#228 — OrgGoalCompiler enrichment
-- [ ] casehubio/eidos#229 — OrganizationalUnit model enrichment ← active
-  - [x] Batch 1: Core Model
-    - [x] Task 1: RoleSpec obligations permissions
-    - [x] Task 2: GroupPolicy dissolutionDrainTimeout
-    - [x] Task 3: TopologyFamily enum and SPI
-  - [x] Batch 2: Runtime+Annotations
-    - [x] Task 4: WellKnownTopologyFamilyClassifier
-    - [x] Task 5: Annotation plumbing
-    - [x] Task 6: YAML fixtures and docs
-- [ ] casehubio/eidos#230 — GroupInstance wither pattern
+- [x] casehubio/eidos#229 — OrganizationalUnit model enrichment
+- [ ] casehubio/eidos#230 — GroupInstance wither pattern ← active
