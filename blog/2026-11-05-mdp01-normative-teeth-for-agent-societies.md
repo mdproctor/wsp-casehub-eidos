@@ -61,8 +61,6 @@ roleSpecs:
 
 Capability policies and normative obligations coexist on the same role. The capability policy says the coordinator *must have* the `code-review` capability. The obligation says the coordinator *must perform* output review. One gates assignment; the other governs behaviour after assignment.
 
-An important distinction: obligations are *standing categories of responsibility*, not tasks. `"review-output"` doesn't mean "review this specific output right now." It means "whenever output needs reviewing, that's your responsibility." Think job description, not to-do list. A coordinator has three to five of these — review output, approve plans, report status. They're stable and few. The individual tasks ("review PR #42", "approve the migration plan for case #789") flow through the engine's normal work dispatch. The obligation tells the engine who is responsible for that *category* of work; the task is a specific instantiation of it.
-
 ![Normative and governance model additions](images/normative-topology-model.svg)
 
 ## Dissolution Needs a Clock

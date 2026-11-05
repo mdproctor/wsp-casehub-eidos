@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#475569"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="520" fill="#fafaf9" rx="8"/>
+
+  <!-- Title -->
+  <text x="400" y="32" text-anchor="middle" font-size="16" font-weight="600" fill="#1e293b">OrganizationalUnit — Normative + Governance Model</text>
+
+  <!-- RoleSpec box -->
+  <rect x="40" y="60" width="340" height="200" rx="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="210" y="84" text-anchor="middle" font-size="14" font-weight="600" fill="#1e40af">RoleSpec</text>
+
+  <!-- Existing fields -->
+  <text x="60" y="110" font-size="12" fill="#64748b">roleName, roleVocabulary</text>
+  <text x="60" y="128" font-size="12" fill="#64748b">minCardinality, maxCardinality</text>
+  <text x="60" y="146" font-size="12" fill="#64748b">incompatibleWith, policies</text>
+
+  <!-- Divider -->
+  <line x1="60" y1="158" x2="360" y2="158" stroke="#93c5fd" stroke-dasharray="4"/>
+
+  <!-- New fields -->
+  <text x="60" y="180" font-size="13" font-weight="600" fill="#1e40af">obligations: List&lt;String&gt;</text>
+  <text x="60" y="198" font-size="11" fill="#475569">"review-output", "approve-plan", "report-status"</text>
+
+  <text x="60" y="224" font-size="13" font-weight="600" fill="#1e40af">permissions: List&lt;String&gt;</text>
+  <text x="60" y="242" font-size="11" fill="#475569">"provision-agent", "change-topology"</text>
+
+  <!-- Arrow from obligations to NormDecision -->
+  <line x1="380" y1="190" x2="430" y2="190" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- NormDecision box -->
+  <rect x="440" y="140" width="320" height="120" rx="6" fill="#fef3c7" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="600" y="164" text-anchor="middle" font-size="14" font-weight="600" fill="#92400e">agency-core NormDecision&lt;String&gt;</text>
+  <text x="460" y="188" font-size="11" fill="#78350f">source: "{groupId}:{roleName}"</text>
+  <text x="460" y="206" font-size="11" fill="#78350f">priority: from GroupPolicy.normativePriority</text>
+  <text x="460" y="224" font-size="11" fill="#78350f">specificity: UNIVERSAL → DOMAIN → TENANT → ...</text>
+  <text x="460" y="242" font-size="11" fill="#78350f">establishedAt: RoleAdoption.adoptedAt</text>
+
+  <!-- GroupPolicy box -->
+  <rect x="40" y="290" width="340" height="100" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="210" y="314" text-anchor="middle" font-size="14" font-weight="600" fill="#166534">GroupPolicy</text>
+  <text x="60" y="340" font-size="12" fill="#64748b">formationRules, normativePriority, normSpecificity</text>
+  <line x1="60" y1="350" x2="360" y2="350" stroke="#86efac" stroke-dasharray="4"/>
+  <text x="60" y="372" font-size="13" font-weight="600" fill="#166534">dissolutionDrainTimeoutMinutes: 30</text>
+
+  <!-- Topology governance -->
+  <rect x="440" y="290" width="320" height="200" rx="6" fill="#faf5ff" stroke="#c084fc" stroke-width="1.5"/>
+  <text x="600" y="314" text-anchor="middle" font-size="14" font-weight="600" fill="#6b21a8">Topology Governance</text>
+
+  <!-- Family boxes -->
+  <rect x="460" y="330" width="130" height="32" rx="4" fill="#e9d5ff" stroke="#c084fc"/>
+  <text x="525" y="350" text-anchor="middle" font-size="12" font-weight="500" fill="#6b21a8">DISTRIBUTED</text>
+
+  <rect x="610" y="330" width="130" height="32" rx="4" fill="#e9d5ff" stroke="#c084fc"/>
+  <text x="675" y="350" text-anchor="middle" font-size="12" font-weight="500" fill="#6b21a8">CENTRALISED</text>
+
+  <rect x="460" y="372" width="130" height="32" rx="4" fill="#e9d5ff" stroke="#c084fc"/>
+  <text x="525" y="392" text-anchor="middle" font-size="12" font-weight="500" fill="#6b21a8">INDEPENDENT</text>
+
+  <!-- Topology values -->
+  <text x="470" y="426" font-size="11" fill="#7c3aed">swarm, mesh → DISTRIBUTED</text>
+  <text x="470" y="444" font-size="11" fill="#7c3aed">hive → CENTRALISED</text>
+  <text x="470" y="462" font-size="11" fill="#7c3aed">many → INDEPENDENT</text>
+
+  <!-- selfDetermination scale -->
+  <text x="470" y="484" font-size="10" fill="#475569">selfDetermination governs approval:</text>
+  <rect x="470" y="490" width="270" height="6" rx="3" fill="#e2e8f0"/>
+  <rect x="470" y="490" width="81" height="6" rx="3" fill="#ef4444"/>
+  <rect x="551" y="490" width="108" height="6" rx="3" fill="#f59e0b"/>
+  <rect x="659" y="490" width="81" height="6" rx="3" fill="#22c55e"/>
+  <text x="510" y="508" text-anchor="middle" font-size="9" fill="#ef4444">&lt;0.3 approve</text>
+  <text x="605" y="508" text-anchor="middle" font-size="9" fill="#d97706">0.3–0.7 family</text>
+  <text x="700" y="508" text-anchor="middle" font-size="9" fill="#16a34a">&gt;0.7 self</text>
+</svg>
