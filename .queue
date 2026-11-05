@@ -1,7 +1,7 @@
 # Work Plan — issue-227-move-group-lifecycle-to-desiredstate
 
 ## State
-branch: issue-227-move-group-lifecycle-to-desiredstate
+branch: 
 status: active
 project-sha: 
 date: 
@@ -12,5 +12,5 @@ design-section-hashes:
 flyway-next-v: 
 
 ## Queue
-- [ ] casehubio/eidos#227 — Issue #227 ← active
-- [ ] casehubio/eidos#228 — OrgGoalCompiler enrichment
+- [x] casehubio/eidos#227 — Issue #227
+- [ ] casehubio/eidos#228 — OrgGoalCompiler enrichment ← active
