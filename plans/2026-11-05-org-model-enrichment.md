@@ -398,7 +398,7 @@ class WellKnownTopologyFamilyClassifierTest {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl runtime -Dtest=WellKnownTopologyFamilyClassifierTest`
+Run: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl org-runtime -Dtest=WellKnownTopologyFamilyClassifierTest`
 Expected: compilation failure — class doesn't exist.
 
 - [ ] **Step 3: Create WellKnownTopologyFamilyClassifier**
@@ -437,7 +437,7 @@ public class WellKnownTopologyFamilyClassifier implements TopologyFamilyClassifi
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl runtime -Dtest=WellKnownTopologyFamilyClassifierTest`
+Run: `JAVA_HOME=$(/usr/libexec/java_home -v 26) mvn test -pl org-runtime -Dtest=WellKnownTopologyFamilyClassifierTest`
 Expected: PASS — all 5 tests green.
 
 - [ ] **Step 5: Commit**
@@ -461,6 +461,7 @@ Refs #229"
 - Modify: `org-annotations/deployment/src/main/java/io/casehub/eidos/org/annotations/deployment/EidosOrgAnnotationsProcessor.java`
 - Modify: `org-annotations/runtime/src/main/java/io/casehub/eidos/org/annotations/runtime/EidosOrgAnnotationsRecorder.java`
 - Modify: `org-annotations/deployment/src/test/java/io/casehub/eidos/org/annotations/deployment/test/SocietyOrgUnit.java` (or appropriate test fixture)
+- Modify: `org-annotations/deployment/src/test/java/io/casehub/eidos/org/annotations/deployment/OrgAnnotationParityTest.java` (if parity checks exist for new fields)
 
 **Interfaces:**
 - Consumes: `RoleSpec` with obligations/permissions from Task 1, `GroupPolicy` with dissolutionDrainTimeoutMinutes from Task 2
