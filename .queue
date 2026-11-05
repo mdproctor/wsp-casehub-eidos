@@ -17,10 +17,10 @@ title: issue-229-org-model-enrichment
 - [x] casehubio/eidos#227 — Issue #227
 - [x] casehubio/eidos#228 — OrgGoalCompiler enrichment
 - [ ] casehubio/eidos#229 — OrganizationalUnit model enrichment ← active
-  - [ ] Batch 1: Core Model
-    - [ ] Task 1: RoleSpec obligations permissions
-    - [ ] Task 2: GroupPolicy dissolutionDrainTimeout
-    - [ ] Task 3: TopologyFamily enum and SPI
+  - [x] Batch 1: Core Model
+    - [x] Task 1: RoleSpec obligations permissions
+    - [x] Task 2: GroupPolicy dissolutionDrainTimeout
+    - [x] Task 3: TopologyFamily enum and SPI
   - [ ] Batch 2: Runtime+Annotations
     - [ ] Task 4: WellKnownTopologyFamilyClassifier
     - [ ] Task 5: Annotation plumbing
