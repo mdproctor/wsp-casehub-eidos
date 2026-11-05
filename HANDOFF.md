@@ -2,28 +2,19 @@
 
 ## Last Session
 
-Completed eidos#240 — extended prompt types for unified prompt assembly. Added optional `model` field to `AssembledPrompt` with backward-compatible two-arg constructor and `withModel()` wither. Evaluated PromptTier sufficiency: confirmed 4 tiers (IDENTITY, COGNITIVE, COMMAND, CONVERSATION) + tag + salience are sufficient for cognitive sub-ordering — no new tiers needed. Cognition's 6 sub-tiers map to salience values on `PromptBlock(COGNITIVE, tag, salience, content)`.
-
-Branch `issue-240-extend-prompt-types` landed as `096bc1b` on main. 1 unpublished commit on main. Issue #240 closed. Filed follow-up #243 (model-resolving assembler variant — parked). Blog entry written: "One Model to Assemble Them".
+Completed #229 (OrganizationalUnit model enrichment). Three additive model changes to org-api: obligations/permissions on RoleSpec, dissolutionDrainTimeoutMinutes on GroupPolicy, TopologyFamily enum + TopologyFamilyClassifier SPI. Wired through annotations, YAML, and docs. Full build green, issue closed. Queue advanced to #230.
 
 ## Immediate Next Step
 
-`work start` — queue has #229 active, #230 queued.
+`work continue` — #230 is active (GroupInstance wither pattern, S/Low). Add withState(), withTopology(), withRoleAdoptions() etc. to GroupInstance. Mechanical record convenience methods.
 
-### #229 — OrganizationalUnit model enrichment (M)
+## Decisions Made
 
-Four model additions to org-api (no runtime behaviour):
-
-1. **Role obligations/permissions on RoleSpec** — `List<String>` norm identifiers for agency-core's NormDecision framework. Additive to existing RolePolicy (capability-based matching stays).
-2. **Dissolution policy on GroupPolicy** — `Duration dissolutionDrainTimeout` (default 30min) + optional `DissolutionPolicy` record for stuck-work strategy.
-3. **Topology transition governance** — needs design decision: TopologyFamily enum vs `Set<String> allowedTopologyTransitions` on GroupPolicy. Enum commits to a taxonomy (distributed/centralised/independent). Set is more conservative. Recommend brainstorming this before committing.
-4. **Items 1 and 4 in the issue overlap** — both describe obligations/permissions on roles. The answer is "add to RoleSpec, leave RolePolicy alone" but the issue isn't crisp about it.
-
-Downstream unblocks: OrgGoalCompiler enrichment, OrgPlanApprovalPolicy, OrgDriftPolicy refinement.
-
-### #230 — GroupInstance wither pattern (S/Low)
-
-Add withState(), withTopology(), withRoleAdoptions() etc. to GroupInstance. Reduces 15+ line record reconstructions to 1-2 lines. Mechanical.
+- D1: Obligations/permissions go directly on RoleSpec (not RolePolicy — different concern)
+- D2: `long dissolutionDrainTimeoutMinutes` (not Duration — avoids Jackson JSR310 friction)
+- D3: TopologyFamily classification via SPI, not GroupPolicy field (classification, not policy)
+- Design spec: `specs/issue-229-org-model-enrichment/2026-11-05-org-model-enrichment-design.md`
+- Decisions: `specs/issue-229-org-model-enrichment/decisions.md`
 
 ## Linked Work
 
@@ -33,10 +24,8 @@ Add withState(), withTopology(), withRoleAdoptions() etc. to GroupInstance. Redu
 
 ## References
 
-- Design spec: `wksp/specs/issue-216-self-organising-society/2026-11-02-self-organising-society-design.md`
-- Decisions: `wksp/specs/issue-216-self-organising-society/decisions.md` (D1-D28)
-- org-api source: `org-api/src/main/java/io/casehub/eidos/org/api/`
-- Tier sufficiency evaluation: eidos#240 comment
+- Plan: `plans/2026-11-05-org-model-enrichment.md`
+- Society design spec: `~/claude/public/casehub/engine/specs/2026-11-02-self-organising-agent-society-design.md`
 
 ## Known Issues
 
