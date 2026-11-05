@@ -46,7 +46,7 @@ This follows eidos's existing pattern: `AgentDescriptor` puts goals and constrai
 
 - Both lists are defensively copied and default to `List.of()` when null.
 - No validation against agency-core's normative framework — norm identifiers are opaque strings until enforcement, consistent with eidos's open-string philosophy.
-- Duplicate norm identifiers within a single list are silently deduplicated (same identifier appearing in both obligations and permissions is valid — a norm can be both obligated and permitted in different contexts).
+- Duplicate norm identifiers within a single list are not rejected — they are harmless (enforcement is idempotent). The same identifier appearing in both obligations and permissions is valid — a norm can be both obligated and permitted in different contexts.
 
 ### Existing RolePolicy unchanged
 
@@ -130,11 +130,14 @@ The topology family is derived from the topology string via the classifier SPI. 
 | `org-api/.../TopologyFamily.java` | New enum |
 | `org-api/.../TopologyFamilyClassifier.java` | New SPI interface |
 | `org-runtime/.../WellKnownTopologyFamilyClassifier.java` | New @DefaultBean |
-| Tests | Unit tests for all validation, defaults, and classifier mapping |
-| YAML deserializers | Update for new RoleSpec and GroupPolicy fields |
-| Existing callers | Update `RoleSpec` and `GroupPolicy` construction sites |
+| `org-annotations/.../RoleSpecDef.java` | Add `obligations()`, `permissions()` annotation attributes |
+| `org-annotations/.../GroupPolicyDef.java` | Add `dissolutionDrainTimeoutMinutes()` annotation attribute |
+| `org-annotations/.../EidosOrgAnnotationsProcessor.java` | Extract new fields from Jandex |
+| `org-annotations/.../EidosOrgAnnotationsRecorder.java` | Map new annotation values to model records |
+| YAML deserializer tests | Update for new RoleSpec and GroupPolicy fields |
+| Existing callers | Update `RoleSpec` and `GroupPolicy` construction sites across test fixtures |
 | `OrganizationalUnit.Builder` | No changes needed |
-| `OrgStructure` DSL | Update if role specs are built via DSL methods |
+| `OrgStructure` DSL | No changes needed (takes `List<RoleSpec>` — callers construct RoleSpec directly) |
 
 ## Non-Goals
 
