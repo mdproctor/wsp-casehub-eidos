@@ -1,16 +1,20 @@
-# Work Plan — issue-227-move-group-lifecycle-to-desiredstate
+# Work Plan — issue-229-org-model-enrichment
 
 ## State
-branch: 
+branch: issue-229-org-model-enrichment
 status: active
 project-sha: 
 date: 
 issue-repo: casehubio/eidos
-covers: 227
+covers: 229,230
 design-repo: 
 design-section-hashes: 
 flyway-next-v: 
+issue_n: 229
+title: issue-229-org-model-enrichment
 
 ## Queue
 - [x] casehubio/eidos#227 — Issue #227
-- [ ] casehubio/eidos#228 — OrgGoalCompiler enrichment ← active
+- [x] casehubio/eidos#228 — OrgGoalCompiler enrichment
+- [ ] casehubio/eidos#229 — OrganizationalUnit model enrichment ← active
+- [ ] casehubio/eidos#230 — GroupInstance wither pattern
