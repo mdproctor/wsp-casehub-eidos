@@ -1,0 +1,16 @@
+# Work Plan — issue-227-move-group-lifecycle-to-desiredstate
+
+## State
+branch: issue-227-move-group-lifecycle-to-desiredstate
+status: active
+project-sha: 
+date: 
+issue-repo: casehubio/eidos
+covers: 227
+design-repo: 
+design-section-hashes: 
+flyway-next-v: 
+
+## Queue
+- [ ] casehubio/eidos#227 — Issue #227 ← active
+- [ ] casehubio/eidos#228 — OrgGoalCompiler enrichment
