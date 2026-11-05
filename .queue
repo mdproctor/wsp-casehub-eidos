@@ -17,4 +17,4 @@ title: issue-229-org-model-enrichment
 - [x] casehubio/eidos#227 — Issue #227
 - [x] casehubio/eidos#228 — OrgGoalCompiler enrichment
 - [x] casehubio/eidos#229 — OrganizationalUnit model enrichment
-- [ ] casehubio/eidos#230 — GroupInstance wither pattern ← active
+- [x] casehubio/eidos#230 — GroupInstance wither pattern
