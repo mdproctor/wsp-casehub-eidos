@@ -1,10 +1,10 @@
 # Work Plan —
 
 ## State
-branch: 
+branch: issue-247-disposition-profile-listener
 issue-repo: casehubio/eidos
 status: active
-covers: casehubio/eidos#235
+covers: casehubio/eidos#247
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
