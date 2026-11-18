@@ -1,20 +1,17 @@
-# Work Plan — issue-239-disposition-fixes-batch
+- [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
+- [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
+- [x] casehubio/eidos#241 — SignalStore_concurrent_updates
+- [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
+- [ ] casehubio/eidos#235 — registry-backed_DispositionProfileStore        ← active
+- [ ] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
 
 ## State
 branch: 
+issue-repo: casehubio/eidos
 status: active
+covers: casehubio/eidos#235
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
-issue-repo: casehubio/eidos
-covers: casehubio/eidos#235
 design-repo: project
 design-section-hashes: 
 flyway-next-v: unknown
-
-## Queue
-- [ ] casehubio/eidos#239 — canonicalise_AmpdFacet_names ← done on issue-239-disposition-fixes-batch
-- [ ] casehubio/eidos#237 — SignalStore_int_truncation_on_decay ← done on issue-239-disposition-fixes-batch
-- [ ] casehubio/eidos#241 — SignalStore_concurrent_updates ← done on issue-239-disposition-fixes-batch
-- [ ] casehubio/eidos#242 — DispositionHealth_swap_dead_zone ← done on issue-239-disposition-fixes-batch
-- [ ] casehubio/eidos#235 — registry-backed_DispositionProfileStore ← active
-- [ ] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
