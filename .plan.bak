@@ -1,15 +1,20 @@
-# Work Plan — issue-227-move-group-lifecycle-to-desiredstate
+# Work Plan — issue-239-disposition-fixes-batch
 
 ## State
-branch: issue-227-move-group-lifecycle-to-desiredstate
+branch: issue-239-disposition-fixes-batch
 state: scaffolded
-project-sha: 
-date: 
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
 issue-repo: casehubio/eidos
-covers: 227
-design-repo: 
+covers: 239,237,241,242,235,243
+design-repo: project
 design-section-hashes: 
-flyway-next-v: 
+flyway-next-v: unknown
 
 ## Queue
-- [ ] casehubio/eidos#227 — Issue #227 ← active
+- [ ] casehubio/eidos#239 — canonicalise_AmpdFacet_names
+- [ ] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
+- [ ] casehubio/eidos#241 — SignalStore_concurrent_updates
+- [ ] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
+- [ ] casehubio/eidos#235 — registry-backed_DispositionProfileStore
+- [ ] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
