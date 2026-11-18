@@ -2,46 +2,40 @@
 
 ## Last Session
 
-Closed #244 (signal store polish) — three housekeeping items from the disposition fixes batch (#237–#242) code review:
+Closed #234 and #249 in one session.
+
+**#234 (situational personality profiles)** — found fully implemented on main from a prior session. All contract items present: `AmpdFacetShift`, `SituationalProfile`, closed mode vocabulary (5 modes), `archetype-situational-profiles.yaml` (12 families x 5 modes = 60 profiles), `SituationalProfileDeriver` wired into bootstrap, YAML deserialization, validation, full test coverage. Closed the GitHub issue.
+
+**#249 (dialect-aware upsert)** — designed, implemented, reviewed, landed, published.
 
 | Change | What landed |
 |--------|-------------|
-| `Locale.ROOT` | `AmpdFacets.canonicalise()` now uses `toLowerCase(Locale.ROOT)` on both the lookup map build and the lookup call. Prevents a latent Turkish-İ mismatch on JVMs with non-ROOT default locale. |
-| SQL MERGE upsert | `JpaDispositionSignalStore.recordActivation` replaced the update-then-insert two-statement pattern with SQL standard `MERGE INTO ... WHEN MATCHED / WHEN NOT MATCHED`. Closes the concurrent insert race for existing rows. NOT MATCHED path still races on PostgreSQL — filed #249. |
-| `activationCounts` → `activationWeights` | Renamed across the full SPI chain (interface, 3 implementations, 2 callers, all tests, 4 doc files). Values are fractional after #237's int-to-double migration; name now matches semantics. |
-
-Filed #249 (dialect-aware upsert for PostgreSQL — S/Low) and scheduled it in the queue.
-
-Blog: "The Polish Pass" — `docs/blog/2026-11-18-mdp04-the-polish-pass.md`
+| `JpaDialect` utility | New package-private class in `runtime/.../jpa/`. Detects PostgreSQL vs H2 via JDBC URL from EntityManager properties. |
+| `JpaDispositionSignalStore` | `recordActivation()` now selects PostgreSQL `INSERT ON CONFLICT` or H2 `MERGE` at `@PostConstruct`. Eliminates concurrent-insert race on PostgreSQL's NOT MATCHED path. |
+| `JpaBehavioralSignalStore` | `record()` converted from find-then-persist to native SQL upsert (same dialect selection). Eliminates concurrent-insert race. Added `em.flush(); em.clear();` for persistence context hygiene. |
+| `JpaDispositionSignalStoreTest` | New test class (9 tests) — previously missing. Uses `@BeforeEach` cleanup instead of `@TestTransaction` because `recordActivation()` is `REQUIRES_NEW`. |
 
 Published to origin (2 commits, rebased on 2 the remote had gained).
 
 ## Queue
 
-9 of 12 done. 3 remaining:
+11 of 12 done. 1 remaining:
 
 | # | Title | Scale | Complexity | Notes |
 |---|-------|-------|------------|-------|
-| #234 | situational_personality_profiles | M | Med | Next in queue |
-| #215 | external_identity_service | — | — | |
-| #249 | dialect-aware_upsert_for_JpaDispositionSignalStore | S | Low | Filed this session; PostgreSQL INSERT ON CONFLICT needed for production |
+| #215 | external_identity_service | M | High | Credential-to-identity resolution, ties to qhorus mesh |
 
 ## Decisions Made
 
-- D1: SQL MERGE over INSERT ON CONFLICT — H2 test compatibility. The final mile for PostgreSQL production needs a dialect-aware switch (#249).
-- D2: `activationWeights` not `activationValues` or `functionWeights` — "activation" describes the source (function activations), "weights" describes the type (fractional values after decay).
-- D3: Engine repo's `activationCounts` references left untouched — different concept (agent execution counts in `AbstractExecutionDriver`), not related to eidos's disposition signal store.
-
-## Cross-Repo Impact
-
-IntelliJ rename touched an engine blog post (`docs/blog/2026-08-10-mdp01-crash-recovery-pattern-execution.md`) — reverted immediately. The engine's `activationCounts` is a separate concept. No cross-repo breakage.
+- D1: Runtime dialect detection over `@IfBuildProperty` split — the SQL difference is a single string constant, not behaviour. No new config properties, no class proliferation.
+- D2: Fix both stores (disposition + behavioral) in #249 — different race patterns but same fix approach.
+- D3: Full native SQL upsert for behavioral store (not just PG path) — consistent pattern across both stores.
 
 ## Linked Work
 
-- casehubio/neocortex#1060 — personality evolution design; depends on the disposition signal store being correct
-- #249 — dialect-aware upsert (filed this session, follow-up to #244's MERGE)
+- casehubio/neocortex#1060 — personality evolution design; depends on disposition signal store
+- qhorus#508 — API key identity resolver SPI; #215 implements the production credential resolver
 
 ## Known Issues
 
 - Fork mirror occasionally fails to follow origin/main on publish — catches up on next run
-- Generated API docs (`docs/guides/api/`) still reference `activationCounts` — CI regenerates on merge to main
