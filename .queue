@@ -1,11 +1,4 @@
-- [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
-- [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
-- [x] casehubio/eidos#241 — SignalStore_concurrent_updates
-- [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
-- [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
-- [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
-- [x] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
-- [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
+# Work Plan —
 
 ## State
 branch: issue-247-disposition-profile-listener
@@ -17,3 +10,16 @@ date: 2026-11-18
 design-repo: project
 design-section-hashes: 
 flyway-next-v: unknown
+
+## Queue
+- [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
+- [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
+- [x] casehubio/eidos#241 — SignalStore_concurrent_updates
+- [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
+- [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
+- [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
+- [x] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
+- [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
+- [ ] casehubio/eidos#244 — signal_store_polish
+- [ ] casehubio/eidos#234 — situational_personality_profiles
+- [ ] casehubio/eidos#215 — external_identity_service
