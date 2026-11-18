@@ -12,6 +12,10 @@ design-section-hashes:
 flyway-next-v: unknown
 
 ## Queue
+- [ ] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore ← active
+- [ ] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
+- [ ] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
+- [ ] casehubio/eidos#215 — external_identity_service
 - [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
 - [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
 - [x] casehubio/eidos#241 — SignalStore_concurrent_updates
@@ -22,7 +26,4 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
 - [x] casehubio/eidos#244 — signal_store_polish
 - [x] casehubio/eidos#234 — situational_personality_profiles
-- [ ] casehubio/eidos#215 — external_identity_service ← active
 - [x] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
-- [ ] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
-- [ ] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
