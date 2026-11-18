@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" font-family="system-ui, -apple-system, sans-serif">
+  <style>
+    text { font-size: 13px; fill: #1a1a2e; }
+    .title { font-size: 15px; font-weight: 600; }
+    .label { font-size: 11px; fill: #555; }
+    .code { font-family: 'SF Mono', 'Menlo', monospace; font-size: 11px; }
+    .box-before { fill: #fff3e0; stroke: #e65100; stroke-width: 1.5; rx: 6; }
+    .box-after { fill: #e8f5e9; stroke: #2e7d32; stroke-width: 1.5; rx: 6; }
+    .box-eidos { fill: #e3f2fd; stroke: #1565c0; stroke-width: 2; rx: 6; }
+    .arrow { stroke: #666; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .arrow-dead { stroke: #c62828; stroke-width: 1.5; fill: none; stroke-dasharray: 6 3; }
+    .dead-label { font-size: 10px; fill: #c62828; font-weight: 600; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="360" y="30" text-anchor="middle" class="title">Before: Three Parallel Prompt Abstractions</text>
+
+  <!-- Before: eidos -->
+  <rect x="20" y="50" width="210" height="120" class="box-before"/>
+  <text x="125" y="72" text-anchor="middle" class="title" fill="#e65100">eidos-api</text>
+  <text x="30" y="94" class="code">PromptBlock(tier, tag,</text>
+  <text x="30" y="110" class="code">  salience, content)</text>
+  <text x="30" y="130" class="code">PromptContributor → blocks</text>
+  <text x="30" y="150" class="code">AssembledPrompt(sys, usr)</text>
+
+  <!-- Before: cognition -->
+  <rect x="255" y="50" width="210" height="120" class="box-before"/>
+  <text x="360" y="72" text-anchor="middle" class="title" fill="#e65100">cognition-api</text>
+  <text x="265" y="94" class="code">CognitionPromptRenderer</text>
+  <text x="265" y="110" class="code">  → bare String</text>
+  <text x="265" y="130" class="code">BlockTag (6 numeric tiers)</text>
+  <text x="265" y="150" class="code">CognitionRenderContext</text>
+
+  <!-- Before: speech -->
+  <rect x="490" y="50" width="210" height="120" class="box-before"/>
+  <text x="595" y="72" text-anchor="middle" class="title" fill="#e65100">speech-api</text>
+  <text x="500" y="94" class="code">PromptSection → String</text>
+  <text x="500" y="110" class="code">PromptContext</text>
+  <text x="500" y="130" class="code">AssembledPrompt(sys,</text>
+  <text x="500" y="146" class="code">  usr, model)</text>
+
+  <!-- Dead labels -->
+  <line x1="490" y1="50" x2="700" y2="170" class="arrow-dead"/>
+  <text x="620" y="168" class="dead-label">DEAD IN PROD</text>
+
+  <!-- Divider -->
+  <text x="360" y="210" text-anchor="middle" class="title">After: Unified on eidos-api</text>
+
+  <!-- After: eidos-api (centre, larger) -->
+  <rect x="180" y="230" width="360" height="140" class="box-eidos"/>
+  <text x="360" y="255" text-anchor="middle" class="title" fill="#1565c0">eidos-api (prompt home)</text>
+  <text x="200" y="280" class="code">PromptBlock(tier, tag, salience, content)</text>
+  <text x="200" y="300" class="code">PromptTier: IDENTITY | COGNITIVE | COMMAND | CONVERSATION</text>
+  <text x="200" y="320" class="code">PromptContributor SPI → List&lt;PromptBlock&gt;</text>
+  <text x="200" y="340" class="code">AssembledPrompt(systemPrompt, userMessage, model)</text>
+  <text x="200" y="358" class="code">PromptAssembler: sort by tier → salience → render</text>
+
+  <!-- Arrows from before to after -->
+  <path d="M 125 170 Q 125 200 280 230" class="arrow"/>
+  <path d="M 360 170 Q 360 200 360 230" class="arrow"/>
+  <path d="M 595 170 Q 595 200 440 230" class="arrow"/>
+
+  <!-- Labels on arrows -->
+  <text x="145" y="202" class="label">keeps model</text>
+  <text x="345" y="202" class="label">adapts renderers</text>
+  <text x="490" y="202" class="label">deletes duplicates</text>
+</svg>
