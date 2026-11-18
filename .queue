@@ -23,3 +23,4 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#244 — signal_store_polish
 - [ ] casehubio/eidos#234 — situational_personality_profiles
 - [ ] casehubio/eidos#215 — external_identity_service
+- [ ] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
