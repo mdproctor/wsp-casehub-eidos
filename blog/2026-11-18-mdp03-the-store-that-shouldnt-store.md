@@ -5,7 +5,7 @@ date: 2026-11-18
 entry_type: note
 subtype: diary
 projects: [casehubio/eidos]
-tags: [disposition, spi-design, personality-evolution, composition, neocortex]
+tags: [disposition, spi-design, personality-evolution, composition, neocortex, naming]
 series: issue-235-disposition-profile-store
 ---
 
@@ -59,4 +59,4 @@ The authored disposition goes in as a parameter. No callback to the registry. No
 
 The initial instinct was to build persistence in eidos because that's where the SPI lives. But the SPI's location in the dependency graph doesn't determine where the state belongs. When a downstream module has already solved the hard problem — three-channel facet model, fingerprint-based baseline detection, version-checked cache invalidation — the right SPI is a read-only bridge that surfaces existing computation, not a parallel implementation that fights with it.
 
-`DispositionProfileStore` stays a NoOp in eidos. The store that shouldn't store.
+`DispositionProfileStore` stays a NoOp in eidos. The store that shouldn't store. So I renamed it — `DispositionProfileListener`, with `onProfileEvolved()` instead of `update()`. It's a notification callback, not a persistence boundary. The name now says what the code always did.
