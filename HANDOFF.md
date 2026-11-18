@@ -2,47 +2,45 @@
 
 ## Last Session
 
-Disposition fixes batch — landed 4 of 6 issues on `issue-239-disposition-fixes-batch`, squashed to 4 commits, published.
+Closed #235 — `LivedDispositionSource` SPI and `findEffective()` on `AgentRegistry`. The original issue asked for a registry-backed `DispositionProfileStore` with persistence. Design review revealed that neocortex already has a full composition layer (`LivedComposition`, `PersonalityStateService`, three-channel facet model), so a registry-backed write store would cause double-composition and lose the richer neocortex state. The fix was a read-only query SPI instead.
 
-| # | Issue | What landed |
-|---|-------|-------------|
-| #239 | AmpdFacet canonicalization | `AmpdFacets` utility owns 13 canonical AMPD names; `AmpdFacet` and `AmpdFacetShift` canonicalise on construction; `AgentDisposition` rejects duplicate facets |
-| #237 | SignalStore int→double | `activationCounts()` returns `Map<String, Double>`; all stores updated; schema column `DOUBLE PRECISION`; decay no longer truncates |
-| #241 | SignalStore concurrent safety | JPA atomic upsert with `REQUIRES_NEW`; bulk SQL for decay; in-memory record key + atomic `compute()` for decay; `computeIfPresent` for `clear` |
-| #242 | Swap dead zone | Hysteresis margin (`SwapMarginPreference`, default 0.03) on DOMINANT_AUXILIARY_SWAP; property test proves no oscillation |
+| What | Detail |
+|------|--------|
+| `LivedDispositionSource` | `@FunctionalInterface` in api/ — `resolveEffective(agentId, tenancyId, authored)` returns composed `AgentDisposition`. Authored disposition passed as parameter to avoid callback chain. |
+| `findEffective()` | Default method on `AgentRegistry` delegates to `findById()`. CDI impls (`InMemoryAgentRegistry`, `JpaAgentRegistry`) compose via `Instance<LivedDispositionSource>`. |
+| `findById()` | Unchanged — returns authored descriptor only. `EidosDescriptorViewSource` continues getting clean values. |
+| `NoOpLivedDispositionSource` | `@DefaultBean` via `EidosCoreProducer` — returns authored unchanged. |
+| Tests | 4 new in `AgentRegistrySpiTest`: default delegation, empty result, composition with lived source, no-op identity semantics |
 
-Code review finding: JPA `recordActivation` catch-and-retry removed (broken — persistence context invalidated after `PersistenceException`). Docs synced for the int→double change.
-
-Blog: "Four Cracks in the Personality Layer" — `docs/blog/2026-11-18-mdp02-four-cracks-in-the-personality-layer.md`
+Blog: "The Store That Shouldn't Store" — `docs/blog/2026-11-18-mdp03-the-store-that-shouldnt-store.md`
 
 ## Immediate Next Step
 
-`work start #235` — registry-backed `DispositionProfileStore` (S/Med). A real implementation backed by `AgentRegistry` that persists disposition profile updates and AMPD facet writes. Hard prerequisite for casehubio/neocortex#1060.
+`work start #243` — model-resolving `PromptAssembler` variant. Parked — wait for consumer demand.
 
-Key requirements from the issue:
-- Read-modify-register pattern in one transaction with lost-update guard (pessimistic lock or optimistic version)
-- `updateFacets(agentId, tenancyId, Map<String, Integer> absoluteScores)` on the SPI
-- Replace `NoOpDispositionProfileStore` as default bean
-- `AgentDescriptorUpdated` event fires with previous and current descriptors
-
-After #235: #243 (model-resolving `PromptAssembler` variant, parked — wait for consumer demand).
+Queue after #243:
+- #246 — extend `EidosCognitiveProfileBridge` to compose AMPD facets in `findEffective()` (S/Med)
+- #247 — clarify `DispositionProfileStore` role after `LivedDispositionSource` SPI (XS/Low)
 
 ## Issues Filed This Session
 
-- **#244** — `chore: signal store polish` (XS/Low): `Locale.ROOT` in `AmpdFacets.canonicalise`, native SQL upsert for JPA, `activationCounts` → `activationWeights` rename consideration
+- **#246** — `feat: extend EidosCognitiveProfileBridge to compose AMPD facets in findEffective()` (S/Med): bridge composes disposition terms but not AMPD facets; facet composition only happens inside `LivedComposition.compose()`. Deferred from #235.
+- **#247** — `chore: clarify DispositionProfileStore role after LivedDispositionSource SPI` (XS/Low): with `LivedDispositionSource` as the read path, `DispositionProfileStore`'s write-only SPI is redundant with neocortex's internal persistence. Options: deprecate, rename to listener, or document as-is.
 
 ## Decisions Made
 
-- D1: `AmpdFacets` utility class (not enum) — facet names have spaces; enum constants would diverge from display names
-- D2: `double` throughout signal store (not integer+projection) — simpler, no truncation, `ValenceCounts` rounds in its bridge
-- D3: Hysteresis margin compares effective-to-effective (not effective-to-base) — eliminates oscillation by construction; margin 0.03 is tenant-configurable
-- D4: JPA retry removed (not fixed) — catch after `PersistenceException` runs against an invalidated persistence context; update-first path covers the common case
+- D1: Read-only SPI over registry-backed store — neocortex already handles authored/evolved separation via `LivedComposition.fingerprint()` baseline detection and `PersonalityStateService` persistence. A parallel eidos store would fight the existing composition.
+- D2: Authored disposition as parameter — avoids circular dependency (`LivedDispositionSource` → `AgentRegistry` → `LivedDispositionSource`). Implementation is a pure function.
+- D3: `findById()` stays authored-only — prevents double-composition when neocortex's `EidosDescriptorViewSource` feeds `EffectiveCognitiveDefaults`.
+- D4: No reactive mirror — `PersonalityStateService` is cache-first (ConcurrentHashMap); synchronous lookup is effectively non-blocking.
+- D5: AMPD facet composition deferred (#246) — existing bridge doesn't compose facets; three-channel model (homeOffset/displacement/promoted) needs careful projection.
 
 ## Linked Work
 
-- Master unification issue: casehubio/neocortex#1105 (eidos step done; neocortex and agency steps remain)
-- neocortex#1060 — personality evolution design that prompted these fixes
-- #244 — signal store polish (filed this session)
+- casehubio/neocortex#1060 — personality evolution design; this SPI is the hard prerequisite
+- #246 — AMPD facet composition follow-up
+- #247 — `DispositionProfileStore` role clarification
+- #244 — signal store polish (from prior session)
 
 ## Known Issues
 
