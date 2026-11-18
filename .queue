@@ -1,17 +1,3 @@
-# Work Plan —
-
-## State
-branch: issue-247-disposition-profile-listener
-issue-repo: casehubio/eidos
-status: active
-covers: casehubio/eidos#247
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
-
-## Queue
 - [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
 - [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
 - [x] casehubio/eidos#241 — SignalStore_concurrent_updates
@@ -19,4 +5,15 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
 - [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
 - [x] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
-- [ ] casehubio/eidos#247 — clarify_DispositionProfileStore_role ← active
+- [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
+
+## State
+branch: issue-247-disposition-profile-listener
+issue-repo: casehubio/eidos
+status: drained
+covers: casehubio/eidos#247
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
