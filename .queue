@@ -1,10 +1,10 @@
 # Work Plan —
 
 ## State
-branch: issue-249-dialect-aware-upsert
+branch: main
 issue-repo: casehubio/eidos
-status: active
-covers: casehubio/eidos#249
+status: drained
+covers: casehubio/eidos#215
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
@@ -22,5 +22,5 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
 - [x] casehubio/eidos#244 — signal_store_polish
 - [x] casehubio/eidos#234 — situational_personality_profiles
-- [ ] casehubio/eidos#215 — external_identity_service
-- [ ] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
+- [ ] casehubio/eidos#215 — external_identity_service ← active
+- [x] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
