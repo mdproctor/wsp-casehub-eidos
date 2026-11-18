@@ -2,43 +2,46 @@
 
 ## Last Session
 
-Closed 4 issues across the disposition/personality evolution SPI boundary:
+Closed #244 (signal store polish) — three housekeeping items from the disposition fixes batch (#237–#242) code review:
 
-| # | Issue | What landed |
-|---|-------|-------------|
-| #235 | LivedDispositionSource SPI | Closed as superseded by #245 |
-| #245 | LivedDispositionSource SPI (canonical) | `LivedDispositionSource` `@FunctionalInterface` in api/; `findEffective()` on `AgentRegistry`; `NoOpLivedDispositionSource` `@DefaultBean`. Read-only query SPI — neocortex implements, eidos provides the bridge. `findById()` stays authored-only. |
-| #243 | Model-resolving PromptAssembler | Closed as not planned — parked by design. Model resolution is a dispatch concern; extract if consumers demonstrate boilerplate. |
-| #247 | DispositionProfileStore → DispositionProfileListener | Pure rename: interface, method (`update` → `onProfileEvolved`), NoOp, producer. `@FunctionalInterface` removed. Javadoc clarifies notification-not-persistence semantics with `@see LivedDispositionSource`. |
+| Change | What landed |
+|--------|-------------|
+| `Locale.ROOT` | `AmpdFacets.canonicalise()` now uses `toLowerCase(Locale.ROOT)` on both the lookup map build and the lookup call. Prevents a latent Turkish-İ mismatch on JVMs with non-ROOT default locale. |
+| SQL MERGE upsert | `JpaDispositionSignalStore.recordActivation` replaced the update-then-insert two-statement pattern with SQL standard `MERGE INTO ... WHEN MATCHED / WHEN NOT MATCHED`. Closes the concurrent insert race for existing rows. NOT MATCHED path still races on PostgreSQL — filed #249. |
+| `activationCounts` → `activationWeights` | Renamed across the full SPI chain (interface, 3 implementations, 2 callers, all tests, 4 doc files). Values are fractional after #237's int-to-double migration; name now matches semantics. |
 
-Transferred: #246 (AMPD facet composition) → casehubio/neocortex#1135. The scope was entirely neocortex code.
+Filed #249 (dialect-aware upsert for PostgreSQL — S/Low) and scheduled it in the queue.
 
-Blog: "The Store That Shouldn't Store" — `docs/blog/2026-11-18-mdp03-the-store-that-shouldnt-store.md` (revised to include the rename coda)
+Blog: "The Polish Pass" — `docs/blog/2026-11-18-mdp04-the-polish-pass.md`
+
+Published to origin (2 commits, rebased on 2 the remote had gained).
 
 ## Queue
 
-Drained. No active eidos issues.
+9 of 12 done. 3 remaining:
+
+| # | Title | Scale | Complexity | Notes |
+|---|-------|-------|------------|-------|
+| #234 | situational_personality_profiles | M | Med | Next in queue |
+| #215 | external_identity_service | — | — | |
+| #249 | dialect-aware_upsert_for_JpaDispositionSignalStore | S | Low | Filed this session; PostgreSQL INSERT ON CONFLICT needed for production |
 
 ## Decisions Made
 
-- D1: Read-only SPI over registry-backed store — neocortex already handles authored/evolved separation via `LivedComposition`
-- D2: Authored disposition as parameter to `resolveEffective()` — avoids circular dependency
-- D3: `findById()` stays authored-only — prevents double-composition in neocortex
-- D4: No reactive mirror — `PersonalityStateService` is cache-first
-- D5: AMPD facet composition deferred to neocortex (transferred as #1135)
-- D6: `DispositionProfileStore` renamed to `DispositionProfileListener` — aligns name with actual semantics (notification, not persistence)
-- D7: #243 (model-resolving assembler) closed as not planned — model resolution is dispatch, not assembly
+- D1: SQL MERGE over INSERT ON CONFLICT — H2 test compatibility. The final mile for PostgreSQL production needs a dialect-aware switch (#249).
+- D2: `activationWeights` not `activationValues` or `functionWeights` — "activation" describes the source (function activations), "weights" describes the type (fractional values after decay).
+- D3: Engine repo's `activationCounts` references left untouched — different concept (agent execution counts in `AbstractExecutionDriver`), not related to eidos's disposition signal store.
 
 ## Cross-Repo Impact
 
-The `DispositionProfileStore` → `DispositionProfileListener` rename was verified clean: zero references in neocortex, zero in engine. No cross-repo breakage.
+IntelliJ rename touched an engine blog post (`docs/blog/2026-08-10-mdp01-crash-recovery-pattern-execution.md`) — reverted immediately. The engine's `activationCounts` is a separate concept. No cross-repo breakage.
 
 ## Linked Work
 
-- casehubio/neocortex#1060 — personality evolution design; `LivedDispositionSource` is the hard prerequisite
-- casehubio/neocortex#1135 — AMPD facet composition (transferred from eidos#246)
-- #244 — signal store polish (from earlier session, still open)
+- casehubio/neocortex#1060 — personality evolution design; depends on the disposition signal store being correct
+- #249 — dialect-aware upsert (filed this session, follow-up to #244's MERGE)
 
 ## Known Issues
 
 - Fork mirror occasionally fails to follow origin/main on publish — catches up on next run
+- Generated API docs (`docs/guides/api/`) still reference `activationCounts` — CI regenerates on merge to main
