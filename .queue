@@ -1,19 +1,5 @@
-# Work Plan —
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: active
-covers: casehubio/eidos#251
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
-
-## Queue
-- [ ] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore ← done on issue-250-dialect-aware-upsert-agentstate
-- [ ] casehubio/eidos#251 — postgresql_integration_tests_for_upsert ← active
+- [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
+- [ ] casehubio/eidos#251 — postgresql_integration_tests_for_upsert        ← active
 - [ ] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
 - [ ] casehubio/eidos#215 — external_identity_service
 - [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
@@ -29,3 +15,14 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
 - [ ] casehubio/eidos#252 — concurrent_upsert_integration_test
 - [ ] casehubio/eidos#253 — extract_signal_store_contract_tests
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+covers: casehubio/eidos#251
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
