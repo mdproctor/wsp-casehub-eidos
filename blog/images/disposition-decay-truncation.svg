@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" font-family="system-ui, -apple-system, sans-serif" font-size="13">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="640" height="280" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="320" y="24" text-anchor="middle" font-size="14" font-weight="600" fill="#333">Integer truncation vs fractional decay</text>
+
+  <!-- Axes -->
+  <line x1="60" y1="240" x2="600" y2="240" stroke="#ccc" stroke-width="1"/>
+  <line x1="60" y1="240" x2="60" y2="50" stroke="#ccc" stroke-width="1"/>
+  <text x="320" y="270" text-anchor="middle" fill="#888" font-size="11">Decay passes (retention = 0.99)</text>
+  <text x="20" y="145" text-anchor="middle" fill="#888" font-size="11" transform="rotate(-90, 20, 145)">Weight</text>
+
+  <!-- Y axis labels -->
+  <text x="52" y="244" text-anchor="end" fill="#888" font-size="10">0</text>
+  <text x="52" y="144" text-anchor="end" fill="#888" font-size="10">3</text>
+  <text x="52" y="77" text-anchor="end" fill="#888" font-size="10">5</text>
+
+  <!-- Grid lines -->
+  <line x1="60" y1="140" x2="600" y2="140" stroke="#eee" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="60" y1="77" x2="600" y2="77" stroke="#eee" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Integer path (red) — count=3, decay 0.99: 3→2→2→2→... (truncates immediately) -->
+  <polyline points="60,140 150,173 240,173 330,173 420,173 510,173 600,173"
+            fill="none" stroke="#e74c3c" stroke-width="2.5"/>
+  <circle cx="60" cy="140" r="3.5" fill="#e74c3c"/>
+  <circle cx="150" cy="173" r="3.5" fill="#e74c3c"/>
+  <circle cx="240" cy="173" r="3.5" fill="#e74c3c"/>
+  <circle cx="330" cy="173" r="3.5" fill="#e74c3c"/>
+
+  <!-- Double path (green) — count=3.0, decay 0.99: 3.0→2.97→2.94→2.91→2.88→2.85→2.82 -->
+  <polyline points="60,140 150,141 240,142 330,143 420,144 510,145 600,146"
+            fill="none" stroke="#27ae60" stroke-width="2.5"/>
+  <circle cx="60" cy="140" r="3.5" fill="#27ae60"/>
+  <circle cx="150" cy="141" r="3.5" fill="#27ae60"/>
+  <circle cx="240" cy="142" r="3.5" fill="#27ae60"/>
+  <circle cx="330" cy="143" r="3.5" fill="#27ae60"/>
+  <circle cx="420" cy="144" r="3.5" fill="#27ae60"/>
+  <circle cx="510" cy="145" r="3.5" fill="#27ae60"/>
+  <circle cx="600" cy="146" r="3.5" fill="#27ae60"/>
+
+  <!-- Integer path count=1 (red dashed) — 1→0 immediately -->
+  <polyline points="60,207 150,240"
+            fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="6,4"/>
+  <circle cx="60" cy="207" r="3" fill="#e74c3c"/>
+  <circle cx="150" cy="240" r="3" fill="#e74c3c"/>
+
+  <!-- Double path count=1 (green dashed) — 1.0→0.99→0.98→... slow descent -->
+  <polyline points="60,207 150,207.6 240,208.3 330,209 420,209.6 510,210.3 600,211"
+            fill="none" stroke="#27ae60" stroke-width="2" stroke-dasharray="6,4"/>
+  <circle cx="60" cy="207" r="3" fill="#27ae60"/>
+
+  <!-- Legend -->
+  <line x1="380" y1="44" x2="410" y2="44" stroke="#e74c3c" stroke-width="2.5"/>
+  <text x="416" y="48" fill="#e74c3c" font-size="11">int — truncates on first pass</text>
+  <line x1="380" y1="62" x2="410" y2="62" stroke="#27ae60" stroke-width="2.5"/>
+  <text x="416" y="66" fill="#27ae60" font-size="11">double — decays gradually</text>
+
+  <!-- Annotations -->
+  <text x="170" y="168" fill="#e74c3c" font-size="10">3 → 2 (lost 33%)</text>
+  <text x="170" y="236" fill="#e74c3c" font-size="10">1 → 0 (erased)</text>
+</svg>
