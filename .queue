@@ -3,7 +3,7 @@
 ## State
 branch: issue-244-signal-store-polish
 issue-repo: casehubio/eidos
-status: active
+status: drained
 covers: casehubio/eidos#244
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
@@ -20,6 +20,6 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
 - [x] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
 - [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
-- [ ] casehubio/eidos#244 — signal_store_polish
+- [x] casehubio/eidos#244 — signal_store_polish
 - [ ] casehubio/eidos#234 — situational_personality_profiles
 - [ ] casehubio/eidos#215 — external_identity_service
