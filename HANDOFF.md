@@ -2,46 +2,23 @@
 
 ## Last Session
 
-Closed #234 and #249. Comprehensive code review of #249 surfaced two follow-up issues (#250, #251), both filed and scheduled.
+Completed the dialect-aware upsert trilogy and closed the verification gap.
 
-**#234 (situational personality profiles)** — found fully implemented on main from a prior session. All contract items present: `AmpdFacetShift`, `SituationalProfile`, closed mode vocabulary (5 modes), `archetype-situational-profiles.yaml` (12 families x 5 modes = 60 profiles), `SituationalProfileDeriver` wired into bootstrap, YAML deserialization, validation, full test coverage. Closed the GitHub issue.
+**#250 (JpaAgentStateStore upsert)** — converted `record()` from delete-then-persist to dialect-aware native SQL upsert (PostgreSQL `ON CONFLICT` / H2 `MERGE`), matching the pattern already applied to both signal stores.
 
-**#249 (dialect-aware upsert)** — designed, implemented, reviewed, landed, published.
+**#251 (PostgreSQL integration tests)** — added Testcontainers-based tests for all three JPA stores against real PostgreSQL 17. The tests revealed that `JpaDialect.isPostgres()` was broken under Quarkus 3.x — Agroal doesn't populate EntityManagerFactory URL properties, so the detector always returned false. Rewrote to use `DatabaseMetaData.getDatabaseProductName()` via Hibernate `Session.doReturningWork()`.
 
-| Change | What landed |
-|--------|-------------|
-| `JpaDialect` utility | New package-private class in `runtime/.../jpa/`. Detects PostgreSQL vs H2 via JDBC URL from EntityManager properties. Logs warning when URL property is not found (silent fallback detection). |
-| `JpaDispositionSignalStore` | `recordActivation()` now selects PostgreSQL `INSERT ON CONFLICT` or H2 `MERGE` at `@PostConstruct`. Eliminates concurrent-insert race on PostgreSQL's NOT MATCHED path. |
-| `JpaBehavioralSignalStore` | `record()` converted from find-then-persist to native SQL upsert (same dialect selection). Eliminates concurrent-insert race. Added `em.flush(); em.clear();` for persistence context hygiene. |
-| `JpaDispositionSignalStoreTest` | New test class (9 tests) — previously missing. Uses `@BeforeEach` cleanup instead of `@TestTransaction` because `recordActivation()` is `REQUIRES_NEW`. |
-| Code review polish | FQN `@PostConstruct` → imported annotation; warning log in `JpaDialect` when JDBC URL absent; double blank lines removed. |
+**#215 platform review** — checked the issue design against existing platform identity infrastructure (PrincipalId hierarchy, CurrentPrincipal SPI, DID resolution chain, WorkerCredentialStore). Added integration notes to the issue: must bridge into existing platform SPIs, not create a parallel identity stack.
 
-Published to origin (3 commits total: 2 feat + 1 chore polish).
+Blog revised: "The SQL That Only Races in Production" — extended to cover the complete arc from race discovery through production-grade verification.
 
-Blog: "The SQL That Only Races in Production" — `blog/2026-11-18-mdp05-the-sql-that-only-races-in-production.md`
+Filed: #252 (concurrent upsert test with retry), #253 (extract signal store contract tests). Both scheduled in queue.
 
-## Queue
+## Immediate Next Step
 
-11 of 14 done. 3 remaining:
+#248 — OrgProximityRelevanceFactor and OrgDistanceAttestationEnricher. Different domain (org-layer enrichment) — fresh session recommended.
 
-| # | Title | Scale | Complexity | Blocked by | Notes |
-|---|-------|-------|------------|------------|-------|
-| #215 | external_identity_service | M | High | — | Credential-to-identity resolution, ties to qhorus mesh |
-| #250 | dialect-aware_upsert_for_JpaAgentStateStore | XS | Low | — | Same race pattern as #249; `JpaDialect` already exists |
-| #251 | postgresql_integration_tests_for_upsert | S | Low | — | Testcontainers-based verification for ON CONFLICT SQL |
+## References
 
-## Decisions Made
-
-- D1: Runtime dialect detection over `@IfBuildProperty` split — the SQL difference is a single string constant, not behaviour. No new config properties, no class proliferation.
-- D2: Fix both stores (disposition + behavioral) in #249 — different race patterns but same fix approach.
-- D3: Full native SQL upsert for behavioral store (not just PG path) — consistent pattern across both stores.
-
-## Linked Work
-
-- casehubio/neocortex#1060 — personality evolution design; depends on disposition signal store
-- qhorus#508 — API key identity resolver SPI; #215 implements the production credential resolver
-
-## Known Issues
-
-- Fork mirror occasionally fails to follow origin/main on publish — catches up on next run
-- `javax.persistence.jdbc.url` fallback in `JpaDialect` is dead code (Quarkus 3.x is Jakarta-only) — harmless, left for defensive compatibility
+- Blog: `docs/blog/2026-11-18-mdp05-the-sql-that-only-races-in-production.md`
+- Design: `docs/design/2026-11-18-dialect-aware-upsert-design.md`
