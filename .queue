@@ -1,14 +1,7 @@
-- [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
-- [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
-- [x] casehubio/eidos#241 — SignalStore_concurrent_updates
-- [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
-- [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
-- [ ] casehubio/eidos#243 — model-resolving_PromptAssembler_variant        ← active
-- [ ] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
-- [ ] casehubio/eidos#247 — clarify_DispositionProfileStore_role
+# Work Plan —
 
 ## State
-branch: issue-235-disposition-profile-store
+branch: 
 issue-repo: casehubio/eidos
 status: active
 covers: casehubio/eidos#235
@@ -17,3 +10,13 @@ date: 2026-11-18
 design-repo: project
 design-section-hashes: 
 flyway-next-v: unknown
+
+## Queue
+- [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
+- [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
+- [x] casehubio/eidos#241 — SignalStore_concurrent_updates
+- [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
+- [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
+- [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
+- [ ] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets ← active
+- [ ] casehubio/eidos#247 — clarify_DispositionProfileStore_role
