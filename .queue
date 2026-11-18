@@ -18,5 +18,5 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
 - [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
 - [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
-- [ ] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets ← active
-- [ ] casehubio/eidos#247 — clarify_DispositionProfileStore_role
+- [x] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
+- [ ] casehubio/eidos#247 — clarify_DispositionProfileStore_role ← active
