@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" font-family="system-ui, -apple-system, sans-serif" font-size="13">
+  <!-- Background -->
+  <rect width="760" height="420" rx="8" fill="#fafafa" stroke="#e0e0e0"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="600" fill="#333">Attestation Relevance Pipeline</text>
+
+  <!-- Write-time path -->
+  <text x="30" y="65" font-size="12" fill="#666" font-weight="500">WRITE TIME (attestation creation)</text>
+  <line x1="30" y1="72" x2="730" y2="72" stroke="#ccc" stroke-dasharray="4"/>
+
+  <!-- Attestation box -->
+  <rect x="30" y="85" width="140" height="50" rx="6" fill="#e3f2fd" stroke="#1976d2"/>
+  <text x="100" y="107" text-anchor="middle" font-size="12" fill="#1976d2" font-weight="500">LedgerAttestation</text>
+  <text x="100" y="122" text-anchor="middle" font-size="10" fill="#555">attestorId, entry</text>
+
+  <!-- Arrow -->
+  <line x1="170" y1="110" x2="210" y2="110" stroke="#666" marker-end="url(#arrow)"/>
+
+  <!-- Enricher pipeline -->
+  <rect x="210" y="85" width="200" height="50" rx="6" fill="#fff3e0" stroke="#e65100"/>
+  <text x="310" y="103" text-anchor="middle" font-size="11" fill="#e65100" font-weight="500">LedgerAttestationEnricher</text>
+  <text x="310" y="118" text-anchor="middle" font-size="10" fill="#555">pipeline (Instance&lt;&gt;)</text>
+  <text x="310" y="130" text-anchor="middle" font-size="9" fill="#888">clears snapshot, runs all enrichers</text>
+
+  <!-- Arrow -->
+  <line x1="410" y1="110" x2="450" y2="110" stroke="#666" marker-end="url(#arrow)"/>
+
+  <!-- OrgDistance enricher -->
+  <rect x="450" y="85" width="190" height="50" rx="6" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="545" y="103" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="500">OrgDistanceAttestation</text>
+  <text x="545" y="118" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="500">Enricher (eidos)</text>
+  <text x="545" y="130" text-anchor="middle" font-size="9" fill="#888">orgDistance() → snapshot JSON</text>
+
+  <!-- Arrow down to snapshot -->
+  <line x1="545" y1="135" x2="545" y2="165" stroke="#666" marker-end="url(#arrow)"/>
+
+  <!-- Snapshot -->
+  <rect x="460" y="165" width="170" height="35" rx="4" fill="#f5f5f5" stroke="#999"/>
+  <text x="545" y="187" text-anchor="middle" font-size="11" fill="#555" font-family="monospace">{"org-distance": 2}</text>
+
+  <!-- Compute-time path -->
+  <text x="30" y="235" font-size="12" fill="#666" font-weight="500">COMPUTE TIME (trust score calculation)</text>
+  <line x1="30" y1="242" x2="730" y2="242" stroke="#ccc" stroke-dasharray="4"/>
+
+  <!-- Snapshot read -->
+  <rect x="30" y="258" width="170" height="45" rx="6" fill="#f5f5f5" stroke="#999"/>
+  <text x="115" y="276" text-anchor="middle" font-size="11" fill="#555">relevanceSnapshot</text>
+  <text x="115" y="291" text-anchor="middle" font-size="10" fill="#888">from persisted attestation</text>
+
+  <!-- Arrow -->
+  <line x1="200" y1="280" x2="240" y2="280" stroke="#666" marker-end="url(#arrow)"/>
+
+  <!-- RelevanceComposer -->
+  <rect x="240" y="255" width="180" height="50" rx="6" fill="#fff3e0" stroke="#e65100"/>
+  <text x="330" y="275" text-anchor="middle" font-size="11" fill="#e65100" font-weight="500">RelevanceComposer</text>
+  <text x="330" y="290" text-anchor="middle" font-size="10" fill="#555">product, floor, mean-fill</text>
+  <text x="330" y="300" text-anchor="middle" font-size="9" fill="#888">Instance&lt;AttestationRelevanceFactor&gt;</text>
+
+  <!-- Arrow -->
+  <line x1="420" y1="280" x2="460" y2="280" stroke="#666" marker-end="url(#arrow)"/>
+
+  <!-- OrgProximity factor -->
+  <rect x="460" y="255" width="180" height="50" rx="6" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="550" y="273" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="500">OrgProximityRelevance</text>
+  <text x="550" y="288" text-anchor="middle" font-size="11" fill="#2e7d32" font-weight="500">Factor (eidos)</text>
+  <text x="550" y="300" text-anchor="middle" font-size="9" fill="#888">distance → weight table lookup</text>
+
+  <!-- Arrow down to weight chain -->
+  <line x1="330" y1="305" x2="330" y2="340" stroke="#666" marker-end="url(#arrow)"/>
+
+  <!-- Weight chain -->
+  <rect x="130" y="340" width="400" height="55" rx="6" fill="#ede7f6" stroke="#5e35b1"/>
+  <text x="330" y="360" text-anchor="middle" font-size="12" fill="#5e35b1" font-weight="500">TrustScoreComputer</text>
+  <text x="330" y="378" text-anchor="middle" font-size="11" fill="#555" font-family="monospace">effective = decay × confidence × credibility × norm_relevance</text>
+  <text x="330" y="390" text-anchor="middle" font-size="9" fill="#888">mass-preserving normalisation per pass</text>
+
+  <!-- Legend -->
+  <rect x="570" y="345" width="12" height="12" rx="2" fill="#fff3e0" stroke="#e65100"/>
+  <text x="588" y="356" font-size="10" fill="#666">Ledger (domain-agnostic)</text>
+  <rect x="570" y="365" width="12" height="12" rx="2" fill="#e8f5e9" stroke="#2e7d32"/>
+  <text x="588" y="376" font-size="10" fill="#666">Eidos (org-proximity)</text>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#666"/>
+    </marker>
+  </defs>
+</svg>
