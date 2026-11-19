@@ -14,8 +14,8 @@ flyway-next-v: unknown
 ## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
-- [ ] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher ← active
-- [ ] casehubio/eidos#215 — external_identity_service
+- [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
+- [ ] casehubio/eidos#215 — external_identity_service ← active
 - [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
 - [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
 - [x] casehubio/eidos#241 — SignalStore_concurrent_updates
@@ -29,3 +29,6 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
 - [ ] casehubio/eidos#252 — concurrent_upsert_integration_test
 - [ ] casehubio/eidos#253 — extract_signal_store_contract_tests
+- [ ] casehubio/eidos#256 — CDI_integration_test_for_trust_beans
+- [ ] casehubio/eidos#257 — independence-aware_anti-collusion_factor
+- [ ] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update
