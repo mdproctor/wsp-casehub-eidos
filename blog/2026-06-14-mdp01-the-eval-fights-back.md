@@ -2,6 +2,9 @@
 date: 2026-06-14
 title: "The eval fights back"
 phase: eval-phase2
+entry_type: note
+subtype: diary
+projects: [casehubio/eidos]
 ---
 
 Today was supposed to be a calibration day. Run the eval, read the proximity scores, set `PROXIMITY_FLOOR`, move on. Instead we spent most of it figuring out why the eval wouldn't run at all.

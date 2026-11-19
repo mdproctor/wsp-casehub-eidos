@@ -3,6 +3,9 @@ title: "Death by a Thousand Cuts"
 date: 2026-07-03
 author: mdp
 tags: [eidos, behavioral-contracts, aggregate-threshold, design-review]
+entry_type: note
+subtype: diary
+projects: [casehubio/eidos]
 ---
 
 The per-dimension compliance threshold from yesterday's behavioral contracts work had a known blind spot: an agent with 2 violations in each of 10 dimensions — 20 total, all individually below the threshold of 3 — looked perfectly compliant. The design review caught the gap and filed it as #88.
