@@ -2,32 +2,26 @@
 
 ## Last Session
 
-Implemented the eidos companion to ledger#231 — org-proximity attestation relevance weighting.
+Brainstormed eidos#215 (external identity service — API key and credential-to-identity resolution). The design analysis determined that credential management is a **platform concern**, not an eidos concern. Platform already owns `StaticCredentialRecord`, `StaticCredentialStore`, `CredentialType`, and authentication infrastructure. Eidos's `AgentRegistry.findById(actorId, tenancyId)` already closes the identity resolution loop once authentication produces a `CurrentPrincipal`.
 
-**#248 (OrgProximityRelevanceFactor + OrgDistanceAttestationEnricher)** — two `@ApplicationScoped` CDI beans in `org-runtime/src/main/java/.../trust/` that bridge eidos org-proximity to ledger's attestation relevance pipeline:
+**eidos#215** — closed, superseded by platform#900.
 
-- `OrgProximityRelevanceFactor` implements `AttestationRelevanceFactor`. Reads `"org-distance"` from the attestation snapshot, maps via configurable distance-indexed weight table (default: 1.0, 0.7, 0.65, 0.6). Null/missing/unknown → NEUTRAL. Defensive `instanceof Number` check on snapshot value to prevent ClassCastException on the trust computation hot path.
-- `OrgDistanceAttestationEnricher` implements `LedgerAttestationEnricher`. Calls `OrgAwareDispatch.orgDistance()` with raw pre-tokenised identities at write time, stores LCA hop distance in the attestation's relevance snapshot JSON. Distance -1 (unknown/disconnected) → no-op. Merges into existing snapshot when other enrichers have written.
+**platform#900** (credential resolution + rotation for StaticCredentialStore) — filed, implemented, verified, and closed in the same session. Adds `lookup(credential)`, rotation with grace period, `CredentialState { ACTIVE, GRACE_PERIOD, REVOKED }`, and SHA-256 hashed storage to `StaticCredentialStore`.
 
-**Dependencies:** Added `casehub-ledger-api` to `org-runtime/pom.xml`. Updated `parent/docs/platform/dependency-map.md` with the new dependency edge.
+**platform#901** — filed for deferred dynamic self-registration (blocked on self-organising societies design).
 
-**Tests:** 25 unit tests (17 factor + 8 enricher) covering weight table lookup, edge cases (null snapshot, -1/0 distance, beyond-table bounds, non-Number values, JSON number type variations, existing snapshot merge), startup validation, and enricher-to-factor round-trip contract test.
+**casehubio/qhorus#527** — filed for the thin adapter that wires `ApiKeyIdentityResolver` to platform's `StaticCredentialStore.lookup()`. XS/Low.
 
-**Docs:** Consumer guide updated with Trust Relevance subsection and module table entry. CLAUDE.md project structure updated. Blog: "Whose Evidence Matters" — covers accuracy vs independence tension, write-time snapshot pattern, mass-preserving normalisation, and the factor pipeline SPI design.
-
-**Filed:** #256 (CDI integration test for trust beans, S/Low), #257 (independence-aware anti-collusion factor, M/High), #258 (ARC42STORIES attestation relevance update, S/Low). All scheduled in queue.
-
-**Cross-repo:** parent repo commit `686348ef` — dependency-map update. Published.
+**Blog:** "The Feature That Moved House" — brainstorming session that redirected credential management from eidos to platform.
 
 ## Immediate Next Step
 
-#215 — external identity service (API key and credential-to-identity resolution). Scale M, Complexity High. Needs brainstorming — full SPI design for credential registry, dynamic registration, key rotation, and resolution. Different domain from org-proximity trust — fresh session recommended.
+#252 — concurrent upsert integration test. Scale S, Complexity Low. Testcontainers-based PostgreSQL tests for the signal store dialect-aware upsert. Different domain from this session — fresh session recommended.
 
-## Queue (6 open)
+## Queue (5 open)
 
 | # | Title | Scale | Complexity |
 |---|-------|-------|------------|
-| #215 | external identity service | M | High |
 | #252 | concurrent upsert integration test | S | Low |
 | #253 | extract signal store contract tests | S | Med |
 | #256 | CDI integration test for trust beans | S | Low |
@@ -36,6 +30,7 @@ Implemented the eidos companion to ledger#231 — org-proximity attestation rele
 
 ## References
 
-- Blog: `docs/blog/2026-11-19-mdp01-whose-evidence-matters.md`
-- Ledger spec: `ledger/docs/specs/issue-231-org-scoped-attestation-weighting/2026-11-18-attestation-relevance-design.md`
-- Source: `org-runtime/src/main/java/io/casehub/eidos/org/runtime/trust/`
+- Design artifacts: `docs/specs/issue-215-external-identity-service/decisions.md`
+- Blog: `blog/2026-11-20-mdp01-the-feature-that-moved-house.md`
+- Platform credential store: `StaticCredentialStore` in `io.casehub.platform.api.authn`
+- Qhorus auth: `ApiKeyIdentityResolver` in `io.casehub.qhorus.api.spi`
