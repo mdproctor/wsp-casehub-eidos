@@ -1,3 +1,17 @@
+# Work Plan —
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+covers: casehubio/eidos#257
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
+
+## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -13,19 +27,10 @@
 - [x] casehubio/eidos#244 — signal_store_polish
 - [x] casehubio/eidos#234 — situational_personality_profiles
 - [x] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
-- [ ] casehubio/eidos#252 — concurrent_upsert_integration_test        ← active
-- [ ] casehubio/eidos#253 — extract_signal_store_contract_tests
-- [ ] casehubio/eidos#256 — CDI_integration_test_for_trust_beans
-- [ ] casehubio/eidos#257 — independence-aware_anti-collusion_factor
+- [ ] casehubio/eidos#252 — concurrent_upsert_integration_test ← done on issue-252-concurrent-upsert-integration-test
+- [ ] casehubio/eidos#253 — extract_signal_store_contract_tests ← done on issue-252-concurrent-upsert-integration-test
+- [ ] casehubio/eidos#256 — CDI_integration_test_for_trust_beans ← done on issue-252-concurrent-upsert-integration-test
+- [ ] casehubio/eidos#257 — independence-aware_anti-collusion_factor ← active
 - [ ] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: active
-covers: casehubio/eidos#252
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
+- [ ] casehubio/eidos#259 — standardise_contract_test_cleanup
+- [ ] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
