@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 320">
+  <style>
+    text { font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 13px; fill: #333; }
+    .title { font-size: 11px; font-weight: 600; fill: #666; letter-spacing: 0.5px; }
+    .label { font-size: 12px; fill: #555; }
+    .small { font-size: 10px; fill: #888; }
+    .box { fill: #f8f9fa; stroke: #dee2e6; stroke-width: 1.5; rx: 6; }
+    .api { fill: #e8f4fd; stroke: #90caf9; stroke-width: 1.5; rx: 6; }
+    .h2 { fill: #f3e8fd; stroke: #ce93d8; stroke-width: 1.5; rx: 6; }
+    .pg { fill: #e8fde8; stroke: #81c784; stroke-width: 1.5; rx: 6; }
+    .arrow { stroke: #999; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .dash { stroke: #bbb; stroke-width: 1; stroke-dasharray: 4,3; fill: none; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#999"/>
+    </marker>
+  </defs>
+
+  <!-- api test-jar layer -->
+  <rect x="20" y="10" width="640" height="90" class="box" fill="#fafafa" stroke="#e0e0e0"/>
+  <text x="35" y="30" class="title">API TEST-JAR (casehub-eidos-api)</text>
+
+  <rect x="40" y="42" width="280" height="48" class="api"/>
+  <text x="55" y="63" font-weight="600">BehavioralSignalStoreContractTest</text>
+  <text x="55" y="79" class="small">20 tests: record, accumulate, isolate, clear, learned</text>
+
+  <rect x="360" y="42" width="280" height="48" class="api"/>
+  <text x="375" y="63" font-weight="600">DispositionSignalStoreContractTest</text>
+  <text x="375" y="79" class="small">9 tests: activate, increment, decay, clear, isolate</text>
+
+  <!-- H2 layer -->
+  <rect x="20" y="130" width="640" height="80" class="box" fill="#fafafa" stroke="#e0e0e0"/>
+  <text x="35" y="150" class="title">H2 (runtime module — default test profile)</text>
+
+  <rect x="40" y="160" width="280" height="38" class="h2"/>
+  <text x="55" y="183" class="label">JpaBehavioralSignalStoreTest</text>
+
+  <rect x="360" y="160" width="280" height="38" class="h2"/>
+  <text x="375" y="183" class="label">JpaDispositionSignalStoreTest</text>
+
+  <!-- PostgreSQL layer -->
+  <rect x="20" y="230" width="640" height="80" class="box" fill="#fafafa" stroke="#e0e0e0"/>
+  <text x="35" y="250" class="title">POSTGRESQL (Testcontainers — -Ptestcontainers profile)</text>
+
+  <rect x="40" y="260" width="280" height="38" class="pg"/>
+  <text x="55" y="283" class="label">PostgresJpaBehavioralSignalStoreTest</text>
+
+  <rect x="360" y="260" width="280" height="38" class="pg"/>
+  <text x="375" y="283" class="label">PostgresJpaDispositionSignalStoreTest</text>
+
+  <!-- Inheritance arrows -->
+  <path d="M180,90 L180,160" class="arrow"/>
+  <path d="M500,90 L500,160" class="arrow"/>
+  <path d="M180,90 L180,120 L140,120 L140,260" class="arrow"/>
+  <path d="M500,90 L500,120 L460,120 L460,260" class="arrow"/>
+
+  <!-- Labels on arrows -->
+  <text x="186" y="130" class="small">extends</text>
+  <text x="100" y="225" class="small">extends</text>
+  <text x="506" y="130" class="small">extends</text>
+  <text x="420" y="225" class="small">extends</text>
+</svg>
