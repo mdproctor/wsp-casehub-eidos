@@ -2,35 +2,37 @@
 
 ## Last Session
 
-Brainstormed eidos#215 (external identity service — API key and credential-to-identity resolution). The design analysis determined that credential management is a **platform concern**, not an eidos concern. Platform already owns `StaticCredentialRecord`, `StaticCredentialStore`, `CredentialType`, and authentication infrastructure. Eidos's `AgentRegistry.findById(actorId, tenancyId)` already closes the identity resolution loop once authentication produces a `CurrentPrincipal`.
+Three testing issues completed on branch `issue-252-concurrent-upsert-integration-test`:
 
-**eidos#215** — closed, superseded by platform#900.
+**#252 — Concurrent upsert integration test.** `PostgresConcurrentUpsertTest` with 3 tests: 10 virtual threads × 10 records per thread hitting the same PK, with retry on transient PostgreSQL errors (23505/40P01/40001). Verifies no data loss for all three JPA stores (behavioral, disposition, agent state).
 
-**platform#900** (credential resolution + rotation for StaticCredentialStore) — filed, implemented, verified, and closed in the same session. Adds `lookup(credential)`, rotation with grace period, `CredentialState { ACTIVE, GRACE_PERIOD, REVOKED }`, and SHA-256 hashed storage to `StaticCredentialStore`.
+**#253 — Contract test extraction.** `BehavioralSignalStoreContractTest` (20 tests) and `DispositionSignalStoreContractTest` (9 tests) extracted into the api test-jar. All 4 JPA subclasses (H2 + PostgreSQL) now inherit the full contract. PostgreSQL behavioral coverage went from 5 to 20 tests. Discovery: Quarkus `@TestTransaction` does not wrap inherited `@Test` methods — explicit `@BeforeEach @Transactional` cleanup needed.
 
-**platform#901** — filed for deferred dynamic self-registration (blocked on self-organising societies design).
+**#256 — CDI integration test for trust beans.** `TrustBeansCdiTest` in org-runtime verifies `OrgProximityRelevanceFactor` and `OrgDistanceAttestationEnricher` wire correctly via CDI: config property injection, `OrgAwareDispatch` resolution to `DefaultOrgAwareDispatch`, no ambiguous/unsatisfied dependencies.
 
-**casehubio/qhorus#527** — filed for the thin adapter that wires `ApiKeyIdentityResolver` to platform's `StaticCredentialStore.lookup()`. XS/Low.
+**Code review nits fixed:** import ordering, fully-qualified names replaced with imports, unnecessary `throws InterruptedException` removed.
 
-**Blog:** "The Feature That Moved House" — brainstorming session that redirected credential management from eidos to platform.
+**Blog:** "Three Gaps Past Green" — progressive verification from SQL correctness to concurrent correctness to contract consistency to CDI wiring.
+
+**Issues filed:**
+- #259 — Standardise agent state store test cleanup (replace `@TestTransaction` with explicit cleanup). XS/Low.
+- #260 — Adopt contract tests for in-memory signal stores. XS/Low.
 
 ## Immediate Next Step
 
-#252 — concurrent upsert integration test. Scale S, Complexity Low. Testcontainers-based PostgreSQL tests for the signal store dialect-aware upsert. Different domain from this session — fresh session recommended.
+#257 — independence-aware anti-collusion factor. Scale M, Complexity High. Different domain — fresh session recommended.
 
-## Queue (5 open)
+## Queue (4 open + 2 new)
 
 | # | Title | Scale | Complexity |
 |---|-------|-------|------------|
-| #252 | concurrent upsert integration test | S | Low |
-| #253 | extract signal store contract tests | S | Med |
-| #256 | CDI integration test for trust beans | S | Low |
 | #257 | independence-aware anti-collusion factor | M | High |
 | #258 | ARC42STORIES attestation relevance update | S | Low |
+| #259 | standardise contract test cleanup | XS | Low |
+| #260 | adopt contract tests for in-memory stores | XS | Low |
 
 ## References
 
-- Design artifacts: `docs/specs/issue-215-external-identity-service/decisions.md`
-- Blog: `blog/2026-11-20-mdp01-the-feature-that-moved-house.md`
-- Platform credential store: `StaticCredentialStore` in `io.casehub.platform.api.authn`
-- Qhorus auth: `ApiKeyIdentityResolver` in `io.casehub.qhorus.api.spi`
+- Contract test pattern: `AgentStateStoreContractTest` in `api/src/test/java/`
+- Blog: `blog/2026-11-20-mdp02-three-gaps-past-green.md`
+- Prior SQL blog: `docs/blog/2026-11-18-mdp05-the-sql-that-only-races-in-production.md`
