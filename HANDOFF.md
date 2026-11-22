@@ -2,32 +2,32 @@
 
 ## Last Session
 
-Three testing issues landed on main from branch `issue-252-concurrent-upsert-integration-test`:
+**#257** — Independence-aware anti-collusion factor. Two-repo change:
 
-**#252** — Concurrent upsert integration test. `PostgresConcurrentUpsertTest` with 3 tests: 10 virtual threads × 10 records per thread hitting the same PK, with retry on transient PostgreSQL errors. Verifies no data loss for all three JPA stores.
+1. **Ledger** (`/Users/mdproctor/claude/casehub/ledger`, branch `issue-239-independence-relevance-factor`): Refactored `RelevanceComposer` to call `assessBatch()` per factor instead of `assess()` per attestation. Backward-compatible — the default `assessBatch()` loops `assess()`. 11 tests pass (9 existing + 2 new: batch factor composition, partial batch map).
 
-**#253** — Contract test extraction. `BehavioralSignalStoreContractTest` (20 tests) and `DispositionSignalStoreContractTest` (9 tests) in api test-jar. PostgreSQL behavioral coverage 5→20, disposition 6→9. Discovery: Quarkus `@TestTransaction` does not wrap inherited `@Test` methods.
+2. **Eidos** (branch `issue-257-independence-aware-anti-collusion-factor`): New `IndependenceAwareRelevanceFactor` in `org-runtime/trust/`. Caps same-unit attestation share at a configurable threshold (default 60%) using `assessBatch()` override. Formula: `w = cap × crossCount / ((1-cap) × sameCount)`. 19 tests pass. NaN guard added after code review.
 
-**#256** — CDI integration test for trust beans. `TrustBeansCdiTest` in org-runtime verifying config property injection and OrgAwareDispatch resolution.
-
-**Blog:** "Three Gaps Past Green" — published.
-**Issues filed:** #259 (standardise agent state cleanup), #260 (in-memory contract tests).
-**All repos published.** Branch squashed, rebased, landed, closed.
+**Blog:** "The Unit That Vouches Too Much" — written, promoted to project.
+**Specs:** Design spec + decisions promoted to project.
+**Squash:** eidos branch squashed 3→2 commits, review recorded.
+**Ledger not yet pushed** — 2 commits on `issue-239-independence-relevance-factor` need landing via ledger's work-end.
 
 ## Immediate Next Step
 
-#257 — independence-aware anti-collusion factor. Scale M, Complexity High. Fresh session recommended — different domain (trust/collusion vs testing infrastructure).
+#258 — ARC42STORIES attestation relevance update. Scale S, Complexity Low. Same domain — update ARC42STORIES.MD to reflect the new independence-aware factor.
 
-## Queue (4 open)
+## Queue (3 open)
 
 | # | Title | Scale | Complexity | Blocked by |
 |---|-------|-------|------------|------------|
-| #257 | independence-aware anti-collusion factor | M | High | — |
 | #258 | ARC42STORIES attestation relevance update | S | Low | — |
 | #259 | standardise contract test cleanup | XS | Low | — |
 | #260 | adopt contract tests for in-memory stores | XS | Low | — |
 
 ## References
 
-- Contract test pattern: `AgentStateStoreContractTest` in `api/src/test/java/`
-- Blog: `docs/blog/2026-11-20-mdp02-three-gaps-past-green.md`
+- Design spec: `docs/specs/issue-257-independence-aware-anti-collusion-factor/`
+- Blog: `docs/blog/2026-11-22-mdp01-the-unit-that-vouches-too-much.md`
+- Ledger change: `ledger-core/src/main/java/io/casehub/ledger/core/trust/RelevanceComposer.java`
+- Eidos factor: `org-runtime/src/main/java/io/casehub/eidos/org/runtime/trust/IndependenceAwareRelevanceFactor.java`
