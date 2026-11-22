@@ -1,17 +1,3 @@
-# Work Plan —
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: active
-covers: casehubio/eidos#258
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
-
-## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -30,7 +16,18 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#252 — concurrent_upsert_integration_test
 - [x] casehubio/eidos#253 — extract_signal_store_contract_tests
 - [x] casehubio/eidos#256 — CDI_integration_test_for_trust_beans
-- [ ] casehubio/eidos#257 — independence-aware_anti-collusion_factor ← done on issue-257-independence-aware-anti-collusion-factor
-- [ ] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update ← active
+- [x] casehubio/eidos#257 — independence-aware_anti-collusion_factor
+- [ ] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update        ← active
 - [ ] casehubio/eidos#259 — standardise_contract_test_cleanup
 - [ ] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+covers: casehubio/eidos#258
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
