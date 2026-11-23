@@ -20,6 +20,10 @@
 - [ ] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update        ← active
 - [ ] casehubio/eidos#259 — standardise_contract_test_cleanup
 - [ ] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
+- [ ] casehubio/eidos#266 — minimum_cross-unit_evidence_threshold (S/Med)
+- [ ] casehubio/eidos#268 — max_length_validation_RoleDeclaration_roleName (XS/Low)
+- [ ] casehubio/eidos#269 — max_count_guard_RoleProfile_declaredRoles (XS/Low)
+- [ ] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
 
 ## State
 branch: 
