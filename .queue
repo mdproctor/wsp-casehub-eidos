@@ -19,12 +19,12 @@
 - [x] casehubio/eidos#257 — independence-aware_anti-collusion_factor
 - [x] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update
 - [x] casehubio/eidos#259 — standardise_contract_test_cleanup
-- [ ] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores ← done on issue-260-inmemory-contract-tests
+- [x] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
 
 ## State
 branch: 
 issue-repo: casehubio/eidos
-status: active
+status: drained
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
