@@ -2,32 +2,21 @@
 
 ## Last Session
 
-**#257** — Independence-aware anti-collusion factor. Two-repo change:
+Completed three queue items — all landing via work-end:
 
-1. **Ledger** (`/Users/mdproctor/claude/casehub/ledger`, branch `issue-239-independence-relevance-factor`): Refactored `RelevanceComposer` to call `assessBatch()` per factor instead of `assess()` per attestation. Backward-compatible — the default `assessBatch()` loops `assess()`. 11 tests pass (9 existing + 2 new: batch factor composition, partial batch map).
+1. **#258** (docs, branch `issue-258-arc42stories-attestation-relevance`) — Updated ARC42STORIES.MD: added §4 "Attestation Relevance Pipeline" (fourth weight chain factor, enricher/factor SPI pattern, mass-preserving normalisation), §12 Active Risks row (in-unit amplification trade-off), §13 Glossary entries. Code review caught `scoredActorId` → `actorId` parameter name mismatch; fixed and squashed.
 
-2. **Eidos** (branch `issue-257-independence-aware-anti-collusion-factor`): New `IndependenceAwareRelevanceFactor` in `org-runtime/trust/`. Caps same-unit attestation share at a configurable threshold (default 60%) using `assessBatch()` override. Formula: `w = cap × crossCount / ((1-cap) × sameCount)`. 19 tests pass. NaN guard added after code review.
+2. **#259** (chore, branch `issue-259-contract-test-cleanup`) — Replaced `@TestTransaction` with explicit `@BeforeEach @Transactional` cleanup in `JpaAgentStateStoreTest` and `PostgresJpaAgentStateStoreTest`. Matches pattern already used by behavioral and disposition signal store tests.
 
-**Blog:** "The Unit That Vouches Too Much" — written, promoted to project.
-**Specs:** Design spec + decisions promoted to project.
-**Squash:** eidos branch squashed 3→2 commits, review recorded.
-**Ledger not yet pushed** — 2 commits on `issue-239-independence-relevance-factor` need landing via ledger's work-end.
+3. **#260** (chore, branch `issue-260-inmemory-contract-tests`) — Refactored `InMemoryBehavioralSignalStoreTest` and `InMemoryDispositionSignalStoreTest` to extend contract test base classes. Removed ~254 lines of duplication; kept in-memory-specific tests (TTL, concurrency, decay precision).
+
+**All three branches** squash-reviewed and recorded. Ready to land.
 
 ## Immediate Next Step
 
-#258 — ARC42STORIES attestation relevance update. Scale S, Complexity Low. Same domain — update ARC42STORIES.MD to reflect the new independence-aware factor.
+Queue continues after landing. No items currently queued — check GitHub issues for next work.
 
-## Queue (3 open)
+## Notes for Next Session
 
-| # | Title | Scale | Complexity | Blocked by |
-|---|-------|-------|------------|------------|
-| #258 | ARC42STORIES attestation relevance update | S | Low | — |
-| #259 | standardise contract test cleanup | XS | Low | — |
-| #260 | adopt contract tests for in-memory stores | XS | Low | — |
-
-## References
-
-- Design spec: `docs/specs/issue-257-independence-aware-anti-collusion-factor/`
-- Blog: `docs/blog/2026-11-22-mdp01-the-unit-that-vouches-too-much.md`
-- Ledger change: `ledger-core/src/main/java/io/casehub/ledger/core/trust/RelevanceComposer.java`
-- Eidos factor: `org-runtime/src/main/java/io/casehub/eidos/org/runtime/trust/IndependenceAwareRelevanceFactor.java`
+- Pre-existing gap noted by code review: `InMemoryBehavioralSignalStoreTest` has no COMPLIANT TTL expiry test (DECLINE, SUCCESS, VIOLATED are covered but not COMPLIANT). Minor — not filed as an issue.
+- Quarkus augmentation cache can go stale across branches — `mvn clean install -DskipTests` fixes `NoSuchMethodError` on `BriefingCoherenceValidator` startup failures.
