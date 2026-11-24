@@ -21,7 +21,7 @@ The design separates fitness probing (read-only) from transition advisory (state
 
 **Why separate:** `RoleChangePolicy.minHoldCycles` requires a persistent counter per (agentId, roleName) pair tracking consecutive below-threshold probe cycles. This makes transition advisory inherently stateful. Bundling it with the probe would make a read-only operation have side effects.
 
-**Scope difference from DispositionEvolution:** `DispositionEvolution.evaluate()` takes only a specific status variant (`EvolutionPending`) because it only acts when evolution is pending — the caller pre-filters. `RoleTransitionAdvisor.evaluate()` takes any `RoleStatus` because the hold-cycle counter requires seeing all probe results: it must reset on `Fit`/`DeclaredFit` and increment on `Unfit`. Restricting to a single variant would leave counter management to the caller, breaking encapsulation.
+**Scope difference from DispositionEvolution:** `DispositionEvolution.evaluate()` takes only a specific status variant (`EvolutionPending`) because it only acts when evolution is pending — the caller pre-filters. `RoleTransitionAdvisor.evaluate()` accepts any `RoleStatus` except `Undeclared` because the hold-cycle counter requires seeing all *declared-role* probe results: it must reset on `Fit`/`DeclaredFit` and increment on `Unfit`. `Undeclared` is excluded because an undeclared role has no counter to manage — the consumer should not call the advisor when the probe returns `Undeclared`.
 
 ### Evidence source: knowledge graph
 
@@ -131,27 +131,59 @@ public interface RoleTransitionAdvisor {
 }
 ```
 
+**Precondition:** The caller must not pass `RoleStatus.Undeclared` to `evaluate()`. An undeclared role has no policy, no counter, and nothing to advise on — the consumer should check the probe result and skip the advisor for Undeclared. If Undeclared is passed, the method throws `IllegalArgumentException`. This is a programming error, not a normal control flow case.
+
 **Evaluation logic:**
 
-1. Read RoleChangePolicy from descriptor's roleProfile → `PolicyDisabled` if `policy.mode() == Mode.DISABLED`
-2. If `RoleStatus.Undeclared` → `Hold` (undeclared role, no transition recommendation)
-3. If `RoleStatus.DeclaredFit` → reset hold-cycle counter → `Hold` (no evidence, no basis for transition)
-4. If `RoleStatus.Fit`:
+1. If `RoleStatus.Undeclared` → throw `IllegalArgumentException` (precondition violation)
+2. Read RoleChangePolicy from descriptor's roleProfile → `PolicyDisabled` if `policy.mode() == Mode.DISABLED`
+3. Check hold-cycle staleness: if `lastEvaluatedAt` is older than the configured temporal window (`role-health.window-days`), reset the hold-cycle counter to 0 before proceeding — the previous cycles accumulated against evidence that has since expired
+4. If `RoleStatus.DeclaredFit` → reset hold-cycle counter → `Hold(roleName, 0.0, policyMode)` (no evidence, no basis for transition)
+5. If `RoleStatus.Fit`:
    - Reset hold-cycle counter
    - If policy mode is `AUTOMATIC` or `AUTO_ABOVE_THRESHOLD` → `PromotionWarranted` (evidence supports the role, policy permits automated transitions)
-   - If policy mode is `ADVISORY` or `DISABLED` → `Hold` (advisory-only, no automated transition)
-5. If `RoleStatus.Marginal` → `Hold` (in hysteresis zone, no action)
-6. If `RoleStatus.Unfit` → increment hold-cycle counter:
-   - holdCyclesElapsed < minHoldCycles → `Hold` (waiting)
+   - If policy mode is `ADVISORY` → `Hold` (advisory-only, no automated transition)
+6. If `RoleStatus.Marginal` → `Hold(roleName, confidence, policyMode)` (in hysteresis zone, no action)
+7. If `RoleStatus.Unfit` → increment hold-cycle counter:
+   - holdCyclesElapsed < minHoldCycles → `Hold(roleName, confidence, policyMode)` (waiting)
    - holdCyclesElapsed ≥ minHoldCycles → `DemotionAdvised`
 
 **PromotionWarranted semantics:** `PromotionWarranted` signals that the agent has demonstrated fitness for the role (above `minConfidence`) AND the governance policy permits automated transitions. `ADVISORY` mode never produces `PromotionWarranted` — in advisory mode, fitness is observed and reported but transitions require human action.
 
 **Hold-cycle semantics:** A "cycle" is each invocation of `evaluate()`. The consumer determines the cadence — at dispatch time, the probe is called per-dispatch, so hold cycles accumulate with dispatch frequency. The counter tracks *consecutive* below-threshold evaluations: any `Fit` or `DeclaredFit` result resets the counter to zero. `minHoldCycles` governs how many consecutive `Unfit` evaluations must occur before demotion is advised, providing stability against transient poor performance.
 
-**Prerequisite change — `RoleChangePolicy.Mode.DISABLED`:** The current `Mode` enum has only `ADVISORY`, `AUTO_ABOVE_THRESHOLD`, `AUTOMATIC`. The `DISABLED` constant uses `Mode.ADVISORY` with an unreachable `minConfidence` of 1.1 — a workaround. This spec requires adding `Mode.DISABLED` to the enum as a proper variant, following the platform convention of fixing the design rather than working around it. The `DISABLED` convenience constant then becomes `new RoleChangePolicy(Mode.DISABLED, 0.0, 0.0, 0)`.
+**Staleness decay:** If `lastEvaluatedAt` on the hold-cycle record is older than the configured temporal window (`role-health.window-days`, default 90 days), the counter is reset to 0 before evaluation. This prevents stale counter state from causing immediate demotion after a gap — e.g., an agent that accumulated 4 Unfit cycles three months ago shouldn't face instant demotion on the next dispatch when the evidence window has completely shifted.
 
-**Hold-cycle state:** A `RoleHoldCycleStore` SPI tracks the per-(agentId, roleName) counter. CDI ladder: NoOp in eidos-core/ (plain class, no annotations), `@Produces @DefaultBean` producer in `EidosCoreProducer`; InMemory `@Alternative @Priority(1)` in persistence-memory/; JPA `@IfBuildProperty` in runtime/.
+**Prerequisite change — `RoleChangePolicy.Mode.DISABLED`:** The current `Mode` enum has only `ADVISORY`, `AUTO_ABOVE_THRESHOLD`, `AUTOMATIC`. The `DISABLED` constant uses `Mode.ADVISORY` with an unreachable `minConfidence` of 1.1 — a workaround. This spec requires:
+
+1. Add `Mode.DISABLED` to the enum
+2. Update the compact constructor validation guard from `mode != Mode.ADVISORY` to `mode != Mode.ADVISORY && mode != Mode.DISABLED` — both modes exempt from hysteresis enforcement because ADVISORY allows arbitrary thresholds and DISABLED ignores them entirely
+3. Update the `DISABLED` convenience constant to `new RoleChangePolicy(Mode.DISABLED, 0.0, 0.0, 0)`
+4. Update `RoleChangePolicyTest.disabled_constant_has_unreachable_threshold()` — no longer asserts `minConfidence > 1.0`; instead asserts `mode() == Mode.DISABLED`
+
+### RoleHoldCycleStore SPI (api/)
+
+```java
+public interface RoleHoldCycleStore {
+
+    HoldCycleState get(String agentId, String roleName, String tenancyId);
+
+    void increment(String agentId, String roleName, String tenancyId);
+
+    void reset(String agentId, String roleName, String tenancyId);
+
+    record HoldCycleState(int consecutiveCycles, Instant lastEvaluatedAt) {
+        public static final HoldCycleState EMPTY = new HoldCycleState(0, null);
+    }
+}
+```
+
+**Method contract:**
+- `get()` returns current state; returns `HoldCycleState.EMPTY` if no record exists for this (agentId, roleName, tenancyId) triple
+- `increment()` atomically increments `consecutiveCycles` and sets `lastEvaluatedAt` to now
+- `reset()` sets `consecutiveCycles` to 0 and `lastEvaluatedAt` to now
+
+**`lastEvaluatedAt` semantics:** The advisor checks `lastEvaluatedAt` before each evaluation. If the last evaluation is older than the configured temporal window (`role-health.window-days`), the counter is stale — it accumulated against evidence that has since expired from the probe's temporal window. The advisor calls `reset()` before proceeding, ensuring demotion decisions are based on current evidence cycles, not months-old counter state.
 
 ### AgentTask extension (api/)
 
@@ -205,7 +237,7 @@ NoOp classes are plain Java in eidos-core/ with no CDI annotations. The `@Produc
 | `NoOpRoleHoldCycleStore` | eidos-core/ | Plain class |
 | `NoOpRoleHoldCycleStore` producer | runtime/ `EidosCoreProducer` | `@Produces @DefaultBean` |
 | `InMemoryRoleHoldCycleStore` | persistence-memory/ | `@Alternative @Priority(1)` |
-| `JpaRoleHoldCycleStore` | runtime/ | `@IfBuildProperty` blocking-mode |
+| `JpaRoleHoldCycleStore` | graph/ | `@ApplicationScoped` — activated by classpath presence |
 
 ## Confidence Computation
 
@@ -264,8 +296,8 @@ CREATE TABLE role_hold_cycle (
 |------|------|-----------------|
 | `RoleHealthTest` | Unit | Probe step logic: DeclaredFit for zero evidence, DeclaredFit for insufficient data (< 5 outcomes), Fit/Marginal/Unfit thresholds, Undeclared for missing role, Undeclared for null roleProfile |
 | `WilsonConfidenceTest` | Unit | Wilson computation with known inputs; edge cases (1 outcome, all failures, mixed). Shared utility in api/ |
-| `RoleTransitionAdvisorTest` | Unit | Hold-cycle accumulation, reset on recovery, PolicyDisabled for DISABLED mode, PromotionWarranted for AUTOMATIC/AUTO_ABOVE_THRESHOLD modes, Hold for ADVISORY mode, hysteresis zone |
-| `InMemoryRoleHoldCycleStoreTest` | Unit | Store contract: increment, reset, concurrent access |
+| `RoleTransitionAdvisorTest` | Unit | Hold-cycle accumulation, reset on recovery, staleness decay reset, PolicyDisabled for DISABLED mode, PromotionWarranted for AUTOMATIC/AUTO_ABOVE_THRESHOLD modes, Hold for ADVISORY mode, hysteresis zone, IllegalArgumentException for Undeclared input, DeclaredFit produces Hold with confidence=0.0 |
+| `InMemoryRoleHoldCycleStoreTest` | Unit | Store contract: get/increment/reset, EMPTY for unknown keys, lastEvaluatedAt tracking, concurrent access |
 | `RoleHealthIntegrationTest` | `@QuarkusTest` | End-to-end: record tasks with roles, probe, verify confidence matches Wilson expectation |
 
 ## Known Limitations
