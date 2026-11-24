@@ -2,21 +2,44 @@
 
 ## Last Session
 
-Completed three queue items — all landing via work-end:
+Seven issues completed across two domains:
 
-1. **#258** (docs, branch `issue-258-arc42stories-attestation-relevance`) — Updated ARC42STORIES.MD: added §4 "Attestation Relevance Pipeline" (fourth weight chain factor, enricher/factor SPI pattern, mass-preserving normalisation), §12 Active Risks row (in-unit amplification trade-off), §13 Glossary entries. Code review caught `scoredActorId` → `actorId` parameter name mismatch; fixed and squashed.
+### Docs + Test Hygiene (#258, #259, #260)
+- **#258** — ARC42STORIES.MD updated for attestation relevance pipeline (§4, §12 Active Risks, §13 Glossary)
+- **#259** — Standardised `@TestTransaction` → `@BeforeEach @Transactional` cleanup in agent state store tests
+- **#260** — In-memory signal store tests adopted contract test base classes (−254 lines)
 
-2. **#259** (chore, branch `issue-259-contract-test-cleanup`) — Replaced `@TestTransaction` with explicit `@BeforeEach @Transactional` cleanup in `JpaAgentStateStoreTest` and `PostgresJpaAgentStateStoreTest`. Matches pattern already used by behavioral and disposition signal store tests.
+### Cross-Unit Evidence Threshold (#266)
+- New `CrossUnitEvidenceAssessor` SPI in `eidos-api` with `EvidenceDiversityLevel` enum and `CrossUnitEvidenceAssessment` record
+- `DefaultCrossUnitEvidenceAssessor` in `org-runtime` — reads `org-distance` from attestation snapshots, configurable threshold (default 2)
+- `NoOpCrossUnitEvidenceAssessor` `@DefaultBean` via `EidosCoreProducer`
+- `OrgDistanceUtil` extracted as shared utility — both `OrgProximityRelevanceFactor` and `IndependenceAwareRelevanceFactor` refactored to use it
+- Design spec + decisions promoted to project
 
-3. **#260** (chore, branch `issue-260-inmemory-contract-tests`) — Refactored `InMemoryBehavioralSignalStoreTest` and `InMemoryDispositionSignalStoreTest` to extend contract test base classes. Removed ~254 lines of duplication; kept in-memory-specific tests (TTL, concurrency, decay precision).
+### Role Profile Validation (#268, #269, #270)
+- **#268** — `RoleDeclaration.roleName` max length (100) + `roleVocabulary` max length (500) via `AgentDescriptorValidator`
+- **#269** — `RoleProfile.declaredRoles` max count guard (10) with `AgentValidationException`
+- **#270** — JPA persistence: `role_profile TEXT` column in V1 migration, JSON mapping in `AgentDescriptorMapper`
 
-**All three branches** squash-reviewed and recorded. Ready to land.
+### Code Review Fixes
+- Added `@Produces @DefaultBean` for `CrossUnitEvidenceAssessor` in `EidosCoreProducer`
+- Added `Objects.requireNonNull` for `level` and `warnings` in `CrossUnitEvidenceAssessment`
+- Changed `RoleProfile` max count guard from `IllegalArgumentException` to `AgentValidationException`
 
-## Immediate Next Step
+### Blog
+- "When Confidence Lies" — precision-vs-accuracy distinction, why mass-preserving normalisation makes relevance factors useless for evidence pool quality
 
-Queue continues after landing. No items currently queued — check GitHub issues for next work.
+### Issues Filed
+- **#272** — Missing COMPLIANT TTL expiry test in `InMemoryBehavioralSignalStoreTest` (XS/Low, queued)
+
+## Queue (1 open)
+
+| # | Title | Scale | Complexity |
+|---|-------|-------|------------|
+| #272 | add COMPLIANT TTL expiry test | XS | Low |
 
 ## Notes for Next Session
 
-- Pre-existing gap noted by code review: `InMemoryBehavioralSignalStoreTest` has no COMPLIANT TTL expiry test (DECLINE, SUCCESS, VIOLATED are covered but not COMPLIANT). Minor — not filed as an issue.
-- Quarkus augmentation cache can go stale across branches — `mvn clean install -DskipTests` fixes `NoSuchMethodError` on `BriefingCoherenceValidator` startup failures.
+- Quarkus augmentation cache can go stale across branches — `mvn clean install -DskipTests` fixes `NoSuchMethodError` on `BriefingCoherenceValidator` startup failures
+- `CrossUnitEvidenceAssessor` SPI is ready for engine dispatch integration (engine#1295 or new engine issue)
+- #271 (RoleHealth probe) is the next substantial role-profile issue (M/Med) — not yet queued
