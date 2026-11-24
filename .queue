@@ -28,8 +28,8 @@
     - [x] Task 3: DefaultCrossUnitEvidenceAssessor
 - [x] casehubio/eidos#268 — max_length_validation_RoleDeclaration_roleName (XS/Low)
 - [x] casehubio/eidos#269 — max_count_guard_RoleProfile_declaredRoles (XS/Low)
-- [ ] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med) ← done on issue-270-jpa-role-profile
-- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test (XS/Low)
+- [x] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
+- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test (XS/Low)        ← active
 
 ## State
 branch: 
