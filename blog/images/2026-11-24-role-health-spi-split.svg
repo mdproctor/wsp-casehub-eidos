@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+
+  <rect width="720" height="380" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="360" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#333">RoleHealth — Stateless/Stateful SPI Split</text>
+
+  <!-- Dividing line -->
+  <line x1="360" y1="45" x2="360" y2="340" stroke="#e44" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="360" y="358" text-anchor="middle" font-size="10" font-weight="600" fill="#c33">THE STATEFUL LINE</text>
+
+  <!-- Left: Stateless -->
+  <text x="180" y="58" text-anchor="middle" font-size="11" font-weight="600" fill="#555">STATELESS (read-only)</text>
+
+  <!-- Knowledge Graph -->
+  <rect x="30" y="75" width="140" height="45" rx="5" fill="#f0f0f0" stroke="#999" stroke-width="1"/>
+  <text x="100" y="95" text-anchor="middle" font-size="10" font-weight="500" fill="#444">Knowledge Graph</text>
+  <text x="100" y="109" text-anchor="middle" font-size="9" fill="#777">task outcomes + role</text>
+
+  <!-- Wilson -->
+  <rect x="195" y="75" width="140" height="45" rx="5" fill="#f0f0f0" stroke="#999" stroke-width="1"/>
+  <text x="265" y="95" text-anchor="middle" font-size="10" font-weight="500" fill="#444">WilsonConfidence</text>
+  <text x="265" y="109" text-anchor="middle" font-size="9" fill="#777">z=1.645, 95% lower</text>
+
+  <!-- Arrow: KG → Wilson -->
+  <line x1="170" y1="97" x2="193" y2="97" stroke="#666" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- RoleHealth probe -->
+  <rect x="80" y="150" width="230" height="65" rx="6" fill="#e8f4fd" stroke="#4a9ece" stroke-width="1.5"/>
+  <text x="195" y="172" text-anchor="middle" font-size="11" font-weight="600" fill="#2a6f9e">RoleHealth.probe()</text>
+  <line x1="100" y1="180" x2="290" y2="180" stroke="#4a9ece" stroke-width="0.5"/>
+  <text x="195" y="195" text-anchor="middle" font-size="9" fill="#444">descriptor + roleName → RoleStatus</text>
+  <text x="195" y="207" text-anchor="middle" font-size="9" fill="#777">DeclaredFit | Fit | Marginal | Unfit | Undeclared</text>
+
+  <!-- Arrows to probe -->
+  <line x1="100" y1="120" x2="165" y2="148" stroke="#666" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="265" y1="120" x2="225" y2="148" stroke="#666" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Right: Stateful -->
+  <text x="540" y="58" text-anchor="middle" font-size="11" font-weight="600" fill="#555">STATEFUL (read-write)</text>
+
+  <!-- Hold Cycle Store -->
+  <rect x="410" y="75" width="140" height="45" rx="5" fill="#fff3e8" stroke="#ce8a4a" stroke-width="1"/>
+  <text x="480" y="95" text-anchor="middle" font-size="10" font-weight="500" fill="#444">RoleHoldCycleStore</text>
+  <text x="480" y="109" text-anchor="middle" font-size="9" fill="#777">consecutive cycles</text>
+
+  <!-- RoleChangePolicy -->
+  <rect x="570" y="75" width="120" height="45" rx="5" fill="#f0f0f0" stroke="#999" stroke-width="1"/>
+  <text x="630" y="95" text-anchor="middle" font-size="10" font-weight="500" fill="#444">RoleChangePolicy</text>
+  <text x="630" y="109" text-anchor="middle" font-size="9" fill="#777">thresholds + mode</text>
+
+  <!-- RoleTransitionAdvisor -->
+  <rect x="395" y="150" width="280" height="65" rx="6" fill="#fdf2e8" stroke="#ce8a4a" stroke-width="1.5"/>
+  <text x="535" y="172" text-anchor="middle" font-size="11" font-weight="600" fill="#9e6a2a">RoleTransitionAdvisor.evaluate()</text>
+  <line x1="415" y1="180" x2="655" y2="180" stroke="#ce8a4a" stroke-width="0.5"/>
+  <text x="535" y="195" text-anchor="middle" font-size="9" fill="#444">descriptor + RoleStatus → TransitionAdvice</text>
+  <text x="535" y="207" text-anchor="middle" font-size="9" fill="#777">Hold | PromotionWarranted | DemotionAdvised | PolicyDisabled</text>
+
+  <!-- Arrows to advisor -->
+  <line x1="480" y1="120" x2="505" y2="148" stroke="#666" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="630" y1="120" x2="565" y2="148" stroke="#666" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- Cross-boundary arrow: probe → advisor -->
+  <line x1="310" y1="183" x2="393" y2="183" stroke="#c33" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="352" y="175" text-anchor="middle" font-size="8" fill="#c33">RoleStatus</text>
+
+  <!-- Bottom: parallel -->
+  <rect x="30" y="255" width="300" height="70" rx="5" fill="#f8f8f8" stroke="#ccc" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="180" y="275" text-anchor="middle" font-size="10" font-weight="500" fill="#666">Established parallel</text>
+  <text x="180" y="292" text-anchor="middle" font-size="9" fill="#888">DispositionHealth (probe, stateless)</text>
+  <text x="180" y="306" text-anchor="middle" font-size="9" fill="#888">DispositionEvolution (evaluate, stateful)</text>
+
+  <rect x="390" y="255" width="300" height="70" rx="5" fill="#f8f8f8" stroke="#ccc" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="540" y="275" text-anchor="middle" font-size="10" font-weight="500" fill="#666">New</text>
+  <text x="540" y="292" text-anchor="middle" font-size="9" fill="#888">RoleHealth (probe, stateless)</text>
+  <text x="540" y="306" text-anchor="middle" font-size="9" fill="#888">RoleTransitionAdvisor (evaluate, stateful)</text>
+</svg>
