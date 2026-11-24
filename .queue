@@ -1,3 +1,16 @@
+# Work Plan —
+
+## State
+branch: issue-272-compliant-ttl-test
+issue-repo: casehubio/eidos
+status: complete
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
+
+## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -21,22 +34,7 @@
 - [x] casehubio/eidos#259 — standardise_contract_test_cleanup
 - [x] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
 - [x] casehubio/eidos#266 — minimum_cross-unit_evidence_threshold (S/Med)
-  - [x] Batch 1: SPI+Utility
-    - [x] Task 1: Extract OrgDistanceUtil
-    - [x] Task 2: SPI types + NoOp default
-  - [x] Batch 2: Implementation
-    - [x] Task 3: DefaultCrossUnitEvidenceAssessor
 - [x] casehubio/eidos#268 — max_length_validation_RoleDeclaration_roleName (XS/Low)
 - [x] casehubio/eidos#269 — max_count_guard_RoleProfile_declaredRoles (XS/Low)
 - [x] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
-- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test (XS/Low)        ← active
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: active
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
+- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
