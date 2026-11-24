@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="720" height="320" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="360" y="30" text-anchor="middle" font-size="14" font-weight="600" fill="#333">Anti-Gaming Pipeline — Three Layers</text>
+
+  <!-- Layer 1: Proximity -->
+  <rect x="30" y="55" width="200" height="110" rx="6" fill="#e8f4fd" stroke="#4a9ece" stroke-width="1.5"/>
+  <text x="130" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#2a6f9e">OrgProximityRelevance</text>
+  <text x="130" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#2a6f9e">Factor</text>
+  <line x1="50" y1="86" x2="210" y2="86" stroke="#4a9ece" stroke-width="0.5"/>
+  <text x="130" y="103" text-anchor="middle" font-size="10" fill="#444">Per-attestation weight</text>
+  <text x="130" y="118" text-anchor="middle" font-size="10" fill="#444">by org distance</text>
+  <text x="130" y="140" text-anchor="middle" font-size="9" fill="#777" font-style="italic">Accuracy-biased:</text>
+  <text x="130" y="153" text-anchor="middle" font-size="9" fill="#777" font-style="italic">same-unit = 1.0</text>
+
+  <!-- Layer 2: Independence -->
+  <rect x="260" y="55" width="200" height="110" rx="6" fill="#fdf2e8" stroke="#ce8a4a" stroke-width="1.5"/>
+  <text x="360" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#9e6a2a">IndependenceAware</text>
+  <text x="360" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#9e6a2a">RelevanceFactor</text>
+  <line x1="280" y1="86" x2="440" y2="86" stroke="#ce8a4a" stroke-width="0.5"/>
+  <text x="360" y="103" text-anchor="middle" font-size="10" fill="#444">Batch-level share cap</text>
+  <text x="360" y="118" text-anchor="middle" font-size="10" fill="#444">(default 60%)</text>
+  <text x="360" y="140" text-anchor="middle" font-size="9" fill="#777" font-style="italic">Independence-biased:</text>
+  <text x="360" y="153" text-anchor="middle" font-size="9" fill="#777" font-style="italic">caps over-representation</text>
+
+  <!-- Layer 3: Evidence Assessor -->
+  <rect x="490" y="55" width="200" height="110" rx="6" fill="#e8fde8" stroke="#4ace4a" stroke-width="1.5"/>
+  <text x="590" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#2a9e2a">CrossUnitEvidence</text>
+  <text x="590" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#2a9e2a">Assessor</text>
+  <line x1="510" y1="86" x2="670" y2="86" stroke="#4ace4a" stroke-width="0.5"/>
+  <text x="590" y="103" text-anchor="middle" font-size="10" fill="#444">Evidence pool quality</text>
+  <text x="590" y="118" text-anchor="middle" font-size="10" fill="#444">signal (not a weight)</text>
+  <text x="590" y="140" text-anchor="middle" font-size="9" fill="#777" font-style="italic">Metadata companion:</text>
+  <text x="590" y="153" text-anchor="middle" font-size="9" fill="#777" font-style="italic">DIVERSE / HOMOGENEOUS</text>
+
+  <!-- Arrows between layers -->
+  <line x1="230" y1="110" x2="258" y2="110" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <line x1="460" y1="110" x2="488" y2="110" stroke="#666" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+  <!-- Bottom: shared data source -->
+  <rect x="180" y="200" width="360" height="50" rx="6" fill="#f0f0f0" stroke="#999" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="360" y="222" text-anchor="middle" font-size="11" fill="#555">Shared data: attestation relevanceSnapshot</text>
+  <text x="360" y="238" text-anchor="middle" font-size="10" fill="#888">org-distance key written by OrgDistanceAttestationEnricher</text>
+
+  <!-- Dashed lines from shared data to each layer -->
+  <line x1="270" y1="200" x2="130" y2="167" stroke="#999" stroke-width="0.8" stroke-dasharray="3,3"/>
+  <line x1="360" y1="200" x2="360" y2="167" stroke="#999" stroke-width="0.8" stroke-dasharray="3,3"/>
+  <line x1="450" y1="200" x2="590" y2="167" stroke="#999" stroke-width="0.8" stroke-dasharray="3,3"/>
+
+  <!-- Bottom labels -->
+  <text x="130" y="290" text-anchor="middle" font-size="9" fill="#666">Modifies weight chain</text>
+  <text x="360" y="290" text-anchor="middle" font-size="9" fill="#666">Modifies weight chain</text>
+  <text x="590" y="290" text-anchor="middle" font-size="9" fill="#666">Companion signal only</text>
+</svg>
