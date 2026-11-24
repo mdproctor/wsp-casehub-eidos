@@ -41,7 +41,7 @@ flyway-next-v: unknown
 - [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
 - [ ] casehubio/eidos#271 — issue 271 ← active
   - [ ] Batch 1: API Foundation
-    - [ ] Task 1: WilsonConfidence + Mode.DISABLED
+    - [x] Task 1: WilsonConfidence + Mode.DISABLED
     - [ ] Task 2: AgentTask role + historyByRole + schema
     - [ ] Task 3: RoleHealth + RoleHoldCycleStore + RoleTransitionAdvisor SPIs
   - [ ] Batch 2: Implementation + Wiring
