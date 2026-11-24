@@ -20,11 +20,21 @@
 - [x] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update
 - [x] casehubio/eidos#259 — standardise_contract_test_cleanup
 - [x] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
+- [ ] casehubio/eidos#266 — minimum_cross-unit_evidence_threshold (S/Med) ← done on issue-266-cross-unit-evidence-threshold
+  - [x] Batch 1: SPI+Utility
+    - [x] Task 1: Extract OrgDistanceUtil
+    - [x] Task 2: SPI types + NoOp default
+  - [x] Batch 2: Implementation
+    - [x] Task 3: DefaultCrossUnitEvidenceAssessor
+- [ ] casehubio/eidos#268 — max_length_validation_RoleDeclaration_roleName (XS/Low) ← done on issue-268-role-name-max-length
+- [ ] casehubio/eidos#269 — max_count_guard_RoleProfile_declaredRoles (XS/Low) ← done on issue-269-role-profile-max-count
+- [ ] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med) ← done on issue-270-jpa-role-profile
+- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test (XS/Low)
 
 ## State
 branch: 
 issue-repo: casehubio/eidos
-status: drained
+status: active
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
