@@ -34,7 +34,7 @@
 - [ ] casehubio/eidos#277 — stigmergy_role_health_integration (M/High)
 
 ## State
-branch: 
+branch: issue-274-domain-scoped-role-fitness
 issue-repo: casehubio/eidos
 status: active
 covers: casehubio/eidos#273
