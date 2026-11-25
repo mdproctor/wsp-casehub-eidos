@@ -1,17 +1,3 @@
-# Work Plan —
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: active
-covers: 
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
-
-## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -40,6 +26,16 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
 - [x] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
 - [x] casehubio/eidos#271 — issue 271
-- [ ] casehubio/eidos#276 — backport_temporal_filtering_since_parameter ← done on issue-276-temporal-filtering
-- [ ] casehubio/eidos#275 — gradual_temporal_decay_for_role_health ← done on issue-275-temporal-decay
+- [x] casehubio/eidos#276 — backport_temporal_filtering_since_parameter
+- [x] casehubio/eidos#275 — gradual_temporal_decay_for_role_health
 - [ ] casehubio/eidos#262 — capability_overlap_attestation_relevance ← done on issue-262-capability-overlap
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
