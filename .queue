@@ -39,3 +39,4 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
 - [x] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
 - [x] casehubio/eidos#271 — issue 271
+- [ ] casehubio/eidos#276 — backport_temporal_filtering_since_parameter
