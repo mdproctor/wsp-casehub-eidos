@@ -30,8 +30,8 @@
 - [x] casehubio/eidos#275 — gradual_temporal_decay_for_role_health
 - [x] casehubio/eidos#262 — capability_overlap_attestation_relevance
 - [x] casehubio/eidos#274 — domain_scoped_role_fitness (S/Med)
-- [ ] casehubio/eidos#273 — role_specific_performance_evidence (M/High)        ← active
-- [ ] casehubio/eidos#277 — stigmergy_role_health_integration (M/High)
+- [x] casehubio/eidos#273 — role_specific_performance_evidence (M/High)
+- [ ] casehubio/eidos#277 — stigmergy_role_health_integration (M/High)        ← active
 
 ## State
 branch: issue-274-domain-scoped-role-fitness
