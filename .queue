@@ -28,12 +28,12 @@
 - [x] casehubio/eidos#271 — issue 271
 - [x] casehubio/eidos#276 — backport_temporal_filtering_since_parameter
 - [x] casehubio/eidos#275 — gradual_temporal_decay_for_role_health
-- [ ] casehubio/eidos#262 — capability_overlap_attestation_relevance ← done on issue-262-capability-overlap
+- [x] casehubio/eidos#262 — capability_overlap_attestation_relevance
 
 ## State
 branch: 
 issue-repo: casehubio/eidos
-status: active
+status: drained
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
