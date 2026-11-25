@@ -3,12 +3,13 @@
 ## State
 branch: 
 issue-repo: casehubio/eidos
-status: drained
+status: active
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
 design-section-hashes: 
 flyway-next-v: unknown
+covers: casehubio/eidos#273
 
 ## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
@@ -42,8 +43,8 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#276 — backport_temporal_filtering_since_parameter
 - [x] casehubio/eidos#275 — gradual_temporal_decay_for_role_health
 - [x] casehubio/eidos#262 — capability_overlap_attestation_relevance
-- [ ] casehubio/eidos#274 — domain_scoped_role_fitness (S/Med)
-- [ ] casehubio/eidos#273 — role_specific_performance_evidence (M/High)
+- [ ] casehubio/eidos#274 — domain_scoped_role_fitness (S/Med) ← done on issue-274-domain-scoped-role-fitness
+- [ ] casehubio/eidos#273 — role_specific_performance_evidence (M/High) ← active
 - [ ] casehubio/eidos#277 — stigmergy_role_health_integration (M/High)
 
 ## Deferred
