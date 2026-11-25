@@ -1,3 +1,16 @@
+# Work Plan —
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: drained
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
+
+## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -33,12 +46,5 @@
 - [ ] casehubio/eidos#273 — role_specific_performance_evidence (M/High)
 - [ ] casehubio/eidos#277 — stigmergy_role_health_integration (M/High)
 
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: drained
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
+## Deferred
+- [ ] stigmergy_role_health_integration (M / High) []
