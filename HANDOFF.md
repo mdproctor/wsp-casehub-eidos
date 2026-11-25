@@ -2,15 +2,13 @@
 
 ## Last Session
 
-Four issues landed: #271 (RoleHealth probe — full implementation, 7 commits), #276 (temporal filtering backport to agentHistory/historyByCapability), #275 (exponential temporal decay for role evidence), #262 (capability-overlap attestation relevance factor). Filed #278 (DetectedRole/stigmergy model) as the blocker for #277.
+Landed #274 (domain-scoped role fitness in RoleHealth probe, S/Med). Threaded `ProbeContext.taskDomain` through `AgentGraphQuery.historyByRole()` so the probe computes role fitness scoped to a specific task domain. When taskDomain is null, aggregates across all domains (backward-compatible). When non-null, filters via `TaskSemanticEnricher` semantic equivalence — same pattern as `topAgentsByOutcome`. Added default method on the SPI for backward compatibility with all existing implementations.
 
 ## Immediate Next Step
 
-Pick up #274 (domain-scoped role fitness, S/Med) — first item in the queue.
+#273 (role-specific performance evidence, M/High) is next in the queue.
 
 ## References
 
-- `plans/2026-11-24-role-health-probe.md` — implementation plan for #271
-- `specs/issue-271-role-health-probe/` — design spec and decisions
-- `blog/2026-11-25-mdp01-when-the-design-meets-reality.md` — implementation diary
-- `blog/2026-11-24-mdp02-the-stateful-line.md` — design diary
+- `blog/2026-11-25-mdp02-domain-scoped-role-fitness.md` — implementation diary
+- `plans/2026-11-24-role-health-probe.md` — parent implementation plan for #271 series
