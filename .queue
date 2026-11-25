@@ -1,17 +1,3 @@
-# Work Plan —
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: complete
-covers: 
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
-
-## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -38,8 +24,8 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#268 — max_length_validation_RoleDeclaration_roleName (XS/Low)
 - [x] casehubio/eidos#269 — max_count_guard_RoleProfile_declaredRoles (XS/Low)
 - [x] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
-- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
-- [ ] casehubio/eidos#271 — issue 271 ← done on issue-271-role-health-probe
+- [ ] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test        ← active
+- [x] casehubio/eidos#271 — issue 271
   - [ ] Batch 1: API Foundation
     - [x] Task 1: WilsonConfidence + Mode.DISABLED
     - [ ] Task 2: AgentTask role + historyByRole + schema
@@ -48,3 +34,13 @@ flyway-next-v: unknown
     - [ ] Task 4: DefaultRoleHealth + NoOps + CDI
     - [ ] Task 5: InMemoryRoleHoldCycleStore + DefaultRoleTransitionAdvisor
     - [ ] Task 6: Integration test
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
