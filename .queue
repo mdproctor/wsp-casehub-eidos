@@ -41,4 +41,5 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
 - [x] casehubio/eidos#271 — issue 271
 - [ ] casehubio/eidos#276 — backport_temporal_filtering_since_parameter ← done on issue-276-temporal-filtering
-- [ ] casehubio/eidos#275 — gradual_temporal_decay_for_role_health
+- [ ] casehubio/eidos#275 — gradual_temporal_decay_for_role_health ← done on issue-275-temporal-decay
+- [ ] casehubio/eidos#262 — capability_overlap_attestation_relevance
