@@ -63,3 +63,4 @@
 | [2026-11-22-mdp01-the-unit-that-vouches-too-much.md](2026-11-22-mdp01-the-unit-that-vouches-too-much.md) | 2026-11-22 | Independence-aware attestation relevance factor caps same-unit share to prevent correlated evidence from inflating trust scores |
 | [2026-11-24-mdp01-when-confidence-lies.md](2026-11-24-mdp01-when-confidence-lies.md) | 2026-11-24 | Why mass-preserving normalisation makes relevance factors useless for evidence pool quality — the precision-vs-accuracy distinction and the CrossUnitEvidenceAssessor SPI |
 | [2026-11-24-mdp02-the-stateful-line.md](2026-11-24-mdp02-the-stateful-line.md) | 2026-11-24 | Where fitness probing ends and policy evaluation begins — the stateful line in RoleHealth design |
+| [2026-11-25-mdp01-when-the-design-meets-reality.md](2026-11-25-mdp01-when-the-design-meets-reality.md) | 2026-11-25 | Implementation story: AgentTask.role field, Wilson score edge cases, data sufficiency gating, CDI ladder, and what the spec missed |
