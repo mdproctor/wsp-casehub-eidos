@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" font-family="system-ui, -apple-system, sans-serif" font-size="13">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#475569"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#3b82f6"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="720" height="420" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="360" y="28" text-anchor="middle" font-size="15" font-weight="600" fill="#1e293b">Two Evidence Paths into RoleHealth</text>
+
+  <!-- Left column: Task Outcomes (existing) -->
+  <rect x="40" y="55" width="280" height="45" rx="6" fill="#e0f2fe" stroke="#7dd3fc" stroke-width="1.5"/>
+  <text x="180" y="82" text-anchor="middle" font-weight="600" fill="#0369a1">Knowledge Graph</text>
+
+  <line x1="180" y1="100" x2="180" y2="140" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="195" y="125" fill="#64748b" font-size="11">historyByRole()</text>
+
+  <rect x="60" y="145" width="240" height="45" rx="6" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="180" y="172" text-anchor="middle" font-weight="600" fill="#1d4ed8">TaskOutcomeEvidenceSource</text>
+
+  <text x="180" y="208" text-anchor="middle" fill="#64748b" font-size="11">weight: 1.0 · sourceId: "task-outcome"</text>
+
+  <!-- Right column: Stigmergy (new) -->
+  <rect x="400" y="55" width="280" height="45" rx="6" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1.5"/>
+  <text x="540" y="82" text-anchor="middle" font-weight="600" fill="#be185d">DetectedRoleSignalStore</text>
+
+  <line x1="540" y1="100" x2="540" y2="140" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="555" y="125" fill="#64748b" font-size="11">signals()</text>
+
+  <rect x="420" y="145" width="240" height="45" rx="6" fill="#fce7f3" stroke="#f9a8d4" stroke-width="1.5"/>
+  <text x="540" y="172" text-anchor="middle" font-weight="600" fill="#be185d">StigmergyEvidenceSource</text>
+
+  <text x="540" y="208" text-anchor="middle" fill="#64748b" font-size="11">weight: 0.5 · sourceId: "stigmergy"</text>
+
+  <!-- Merge point -->
+  <line x1="180" y1="220" x2="180" y2="250" stroke="#475569" stroke-width="1.5"/>
+  <line x1="540" y1="220" x2="540" y2="250" stroke="#475569" stroke-width="1.5"/>
+  <line x1="180" y1="250" x2="540" y2="250" stroke="#475569" stroke-width="1.5"/>
+  <line x1="360" y1="250" x2="360" y2="275" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- RoleEvidence label -->
+  <text x="360" y="245" text-anchor="middle" fill="#475569" font-size="11" font-weight="500">RoleEvidence(qualitySum, effectiveCount, weight)</text>
+
+  <!-- DefaultRoleHealth -->
+  <rect x="230" y="280" width="260" height="45" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="360" y="307" text-anchor="middle" font-weight="600" fill="#166534">DefaultRoleHealth.probe()</text>
+
+  <line x1="360" y1="325" x2="360" y2="355" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="375" y="345" fill="#64748b" font-size="11">Wilson lower-bound</text>
+
+  <!-- Output -->
+  <rect x="250" y="360" width="220" height="40" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="360" y="385" text-anchor="middle" font-weight="500" fill="#334155">Fit | Marginal | Unfit</text>
+
+  <!-- Labels -->
+  <text x="180" y="50" text-anchor="middle" fill="#64748b" font-size="11" font-style="italic">task-scoped (existing)</text>
+  <text x="540" y="50" text-anchor="middle" fill="#64748b" font-size="11" font-style="italic">behavior-scoped (new)</text>
+</svg>
