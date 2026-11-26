@@ -1,15 +1,16 @@
 # Work Plan —
 
 ## State
-branch: main
+branch: 
 issue-repo: casehubio/eidos
 status: active
+covers: 
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
 design-section-hashes: 
 flyway-next-v: unknown
-covers: casehubio/eidos#277
+
 
 ## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
@@ -46,7 +47,7 @@ covers: casehubio/eidos#277
 - [x] casehubio/eidos#274 — domain_scoped_role_fitness (S/Med)
 - [x] casehubio/eidos#273 — role_specific_performance_evidence (M/High)
 - [x] casehubio/eidos#278 — issue 278
-- [ ] casehubio/eidos#277 — issue 277 ← active
+- [ ] casehubio/eidos#277 — issue 277 ← done on issue-277-detected-role-stigmergy
 
 ## Deferred
 - [ ] stigmergy_role_health_integration (M / High) []
