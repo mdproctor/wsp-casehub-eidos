@@ -65,3 +65,4 @@
 | [2026-11-24-mdp02-the-stateful-line.md](2026-11-24-mdp02-the-stateful-line.md) | 2026-11-24 | Where fitness probing ends and policy evaluation begins — the stateful line in RoleHealth design |
 | [2026-11-25-mdp01-when-the-design-meets-reality.md](2026-11-25-mdp01-when-the-design-meets-reality.md) | 2026-11-25 | Implementation story: AgentTask.role field, Wilson score edge cases, data sufficiency gating, CDI ladder, and what the spec missed |
 | [2026-11-25-mdp02-domain-scoped-role-fitness.md](2026-11-25-mdp02-domain-scoped-role-fitness.md) | 2026-11-25 | Domain-scoped role fitness: threads ProbeContext.taskDomain through the RoleHealth probe for domain-specific confidence scores |
+| [2026-11-26-mdp01-multi-source-role-evidence.md](2026-11-26-mdp01-multi-source-role-evidence.md) | 2026-11-26 | Multi-source evidence model for RoleHealth: pluggable sources, weighted aggregation, literature-grounded design |

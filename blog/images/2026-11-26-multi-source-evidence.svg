@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 320" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <text x="350" y="28" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e293b">Multi-Source Evidence Model</text>
+
+  <!-- Sources -->
+  <rect x="20" y="55" width="180" height="55" rx="8" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="110" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#0284c7">TaskOutcomeEvidenceSource</text>
+  <text x="110" y="96" text-anchor="middle" font-size="10" fill="#334155">AgentOutcome + RoleOutcome</text>
+
+  <rect x="20" y="125" width="180" height="55" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="110" y="148" text-anchor="middle" font-size="11" font-weight="600" fill="#7c3aed">PeerFeedbackSource</text>
+  <text x="110" y="166" text-anchor="middle" font-size="10" fill="#94a3b8">future — #277/#278</text>
+
+  <rect x="20" y="195" width="180" height="55" rx="8" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="110" y="218" text-anchor="middle" font-size="11" font-weight="600" fill="#db2777">BehavioralObserver</text>
+  <text x="110" y="236" text-anchor="middle" font-size="10" fill="#94a3b8">future — DetectedRole</text>
+
+  <!-- Arrows to aggregation -->
+  <line x1="200" y1="82" x2="270" y2="145" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="200" y1="152" x2="270" y2="152" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="200" y1="222" x2="270" y2="160" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- RoleEvidence boxes -->
+  <text x="110" y="278" text-anchor="middle" font-size="10" fill="#64748b">Each returns RoleEvidence</text>
+  <text x="110" y="295" text-anchor="middle" font-size="10" fill="#64748b">(qualitySum, effectiveCount, weight)</text>
+
+  <!-- Aggregation -->
+  <rect x="275" y="120" width="170" height="65" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="360" y="142" text-anchor="middle" font-size="11" font-weight="600" fill="#ca8a04">Weighted Aggregation</text>
+  <text x="360" y="160" text-anchor="middle" font-size="10" fill="#334155">q = Σ(w_i × qualitySum_i)</text>
+  <text x="360" y="175" text-anchor="middle" font-size="10" fill="#334155">n = Σ(w_i × effectiveCount_i)</text>
+
+  <!-- Arrow to Wilson -->
+  <line x1="445" y1="152" x2="490" y2="152" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Wilson -->
+  <rect x="495" y="125" width="180" height="55" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="585" y="148" text-anchor="middle" font-size="11" font-weight="600" fill="#16a34a">Wilson Lower-Bound</text>
+  <text x="585" y="166" text-anchor="middle" font-size="10" fill="#334155">confidence = W(q, n)</text>
+
+  <!-- Arrow to status -->
+  <line x1="585" y1="180" x2="585" y2="210" stroke="#475569" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Status variants -->
+  <rect x="495" y="215" width="55" height="30" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+  <text x="522" y="235" text-anchor="middle" font-size="10" font-weight="600" fill="#16a34a">Fit</text>
+
+  <rect x="556" y="215" width="70" height="30" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1"/>
+  <text x="591" y="235" text-anchor="middle" font-size="10" font-weight="600" fill="#ca8a04">Marginal</text>
+
+  <rect x="632" y="215" width="55" height="30" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/>
+  <text x="659" y="235" text-anchor="middle" font-size="10" font-weight="600" fill="#dc2626">Unfit</text>
+
+  <!-- External contract note -->
+  <text x="585" y="275" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">External contract unchanged —</text>
+  <text x="585" y="290" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">consumers still get RoleStatus</text>
+</svg>
