@@ -1,0 +1,48 @@
+- [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
+- [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
+- [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
+- [x] casehubio/eidos#215 — external_identity_service
+- [x] casehubio/eidos#239 — canonicalise_AmpdFacet_names
+- [x] casehubio/eidos#237 — SignalStore_int_truncation_on_decay
+- [x] casehubio/eidos#241 — SignalStore_concurrent_updates
+- [x] casehubio/eidos#242 — DispositionHealth_swap_dead_zone
+- [x] casehubio/eidos#235 — registry-backed_DispositionProfileStore
+- [x] casehubio/eidos#243 — model-resolving_PromptAssembler_variant
+- [x] casehubio/eidos#246 — extend_EidosCognitiveProfileBridge_AMPD_facets
+- [x] casehubio/eidos#247 — clarify_DispositionProfileStore_role
+- [x] casehubio/eidos#244 — signal_store_polish
+- [x] casehubio/eidos#234 — situational_personality_profiles
+- [x] casehubio/eidos#249 — dialect-aware_upsert_for_JpaDispositionSignalStore
+- [x] casehubio/eidos#252 — concurrent_upsert_integration_test
+- [x] casehubio/eidos#253 — extract_signal_store_contract_tests
+- [x] casehubio/eidos#256 — CDI_integration_test_for_trust_beans
+- [x] casehubio/eidos#257 — independence-aware_anti-collusion_factor
+- [x] casehubio/eidos#258 — ARC42STORIES_attestation_relevance_update
+- [x] casehubio/eidos#259 — standardise_contract_test_cleanup
+- [x] casehubio/eidos#260 — adopt_contract_tests_for_in-memory_stores
+- [x] casehubio/eidos#266 — minimum_cross-unit_evidence_threshold (S/Med)
+- [x] casehubio/eidos#268 — max_length_validation_RoleDeclaration_roleName (XS/Low)
+- [x] casehubio/eidos#269 — max_count_guard_RoleProfile_declaredRoles (XS/Low)
+- [x] casehubio/eidos#270 — JPA_persistence_AgentDescriptor_roleProfile (S/Med)
+- [x] casehubio/eidos#272 — add_COMPLIANT_TTL_expiry_test
+- [x] casehubio/eidos#271 — issue 271
+- [x] casehubio/eidos#276 — backport_temporal_filtering_since_parameter
+- [x] casehubio/eidos#275 — gradual_temporal_decay_for_role_health
+- [x] casehubio/eidos#262 — capability_overlap_attestation_relevance
+- [x] casehubio/eidos#274 — domain_scoped_role_fitness (S/Med)
+- [x] casehubio/eidos#273 — role_specific_performance_evidence (M/High)
+- [ ] casehubio/eidos#277 — stigmergy_role_health_integration (M/High)        ← active
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+covers: casehubio/eidos#277
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
+
+## Deferred
+- [ ] stigmergy_role_health_integration (M / High) []
