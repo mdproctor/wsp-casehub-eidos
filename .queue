@@ -1,17 +1,3 @@
-# Work Plan —
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: active
-covers: casehubio/eidos#265
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
-
-## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -48,7 +34,7 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#278 — issue 278
 - [x] casehubio/eidos#277 — issue 277
 - [x] casehubio/eidos#263 — collaboration-recency attestation relevance factor
-- [ ] casehubio/eidos#267 — anti-gaming observability dashboard signals (M/Low) ← done on issue-267-anti-gaming-observability
+- [x] casehubio/eidos#267 — anti-gaming observability dashboard signals (M/Low)
   - [x] Batch 1: API types and SPI
     - [x] Task 1: TrustObservabilitySignal sealed interface
     - [x] Task 2: Snapshot types and collector SPI
@@ -59,9 +45,20 @@ flyway-next-v: unknown
   - [x] Batch 3: Factor instrumentation
     - [x] Task 6: Instrument IndependenceAwareRelevanceFactor
     - [x] Task 7: Instrument DefaultCrossUnitEvidenceAssessor
-- [ ] casehubio/eidos#265 — diversity bonus for trust scores (M/High) ← active
+- [ ] casehubio/eidos#265 — diversity bonus for trust scores (M/High)        ← active
 - [ ] casehubio/eidos#264 — coordination detection for attestor collusion (L/High)
 - [ ] casehubio/eidos#281 — credibility flag distribution query
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: active
+covers: casehubio/eidos#265
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
 
 ## Deferred
 - [ ] stigmergy_role_health_integration (M / High) []
