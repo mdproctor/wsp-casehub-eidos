@@ -1,9 +1,10 @@
 # Work Plan —
 
 ## State
-branch: 
+branch: issue-267-anti-gaming-observability
 issue-repo: casehubio/eidos
-status: drained
+status: active
+covers: casehubio/eidos#267
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
 date: 2026-11-18
 design-repo: project
@@ -47,7 +48,17 @@ flyway-next-v: unknown
 - [x] casehubio/eidos#278 — issue 278
 - [x] casehubio/eidos#277 — issue 277
 - [x] casehubio/eidos#263 — collaboration-recency attestation relevance factor
-- [ ] casehubio/eidos#267 — anti-gaming observability dashboard signals (M/Low)
+- [ ] casehubio/eidos#267 — anti-gaming observability dashboard signals (M/Low) ← active
+  - [ ] Batch 1: API types and SPI
+    - [ ] Task 1: TrustObservabilitySignal sealed interface
+    - [ ] Task 2: Snapshot types and collector SPI
+    - [ ] Task 3: Change CrossUnitEvidenceAssessor SPI
+  - [ ] Batch 2: NoOp and in-memory
+    - [ ] Task 4: NoOp collector and EidosCoreProducer wiring
+    - [ ] Task 5: InMemoryTrustObservabilityCollector
+  - [ ] Batch 3: Factor instrumentation
+    - [ ] Task 6: Instrument IndependenceAwareRelevanceFactor
+    - [ ] Task 7: Instrument DefaultCrossUnitEvidenceAssessor
 - [ ] casehubio/eidos#265 — diversity bonus for trust scores (M/High)
 - [ ] casehubio/eidos#264 — coordination detection for attestor collusion (L/High)
 
