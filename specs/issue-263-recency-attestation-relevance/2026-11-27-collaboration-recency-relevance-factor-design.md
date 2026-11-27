@@ -28,8 +28,9 @@ factor reads it at trust computation time.
 
 **Algorithm:**
 
-1. Check `Instance<AgentGraphQuery>` — if unsatisfied or the resolved bean
-   is `NoOpAgentGraphQuery`, return without enrichment (fail-open)
+1. Check `Instance<AgentGraphQuery>` — if unsatisfied, return without
+   enrichment (fail-open). No type check against `NoOpAgentGraphQuery` —
+   empty histories from any implementation naturally produce no shared refs
 2. Compute lookback boundary: `Instant since = attestation.occurredAt.minus(lookbackDays, ChronoUnit.DAYS)`
 3. Retrieve task histories for both agents:
    - `agentHistory(attestation.attestorId, entry.tenancyId, since)`
@@ -118,7 +119,7 @@ With halfLifeDays=7, baseline=0.5:
 | Condition | Behaviour |
 |-----------|-----------|
 | `AgentGraphQuery` not on classpath | Enricher skips → no snapshot key → NEUTRAL |
-| `NoOpAgentGraphQuery` active | Empty history → no shared refs → NEUTRAL |
+| Any implementation returns empty history | No shared refs → NEUTRAL |
 | No shared `externalRef` between agents | No snapshot key written → NEUTRAL |
 | Snapshot key absent at factor read time | NEUTRAL |
 
