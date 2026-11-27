@@ -1,3 +1,16 @@
+# Work Plan —
+
+## State
+branch: 
+issue-repo: casehubio/eidos
+status: drained
+project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
+date: 2026-11-18
+design-repo: project
+design-section-hashes: 
+flyway-next-v: unknown
+
+## Queue
 - [x] casehubio/eidos#250 — dialect-aware_upsert_for_JpaAgentStateStore
 - [x] casehubio/eidos#251 — postgresql_integration_tests_for_upsert
 - [x] casehubio/eidos#248 — OrgProximityRelevanceFactor_and_OrgDistanceAttestationEnricher
@@ -34,16 +47,9 @@
 - [x] casehubio/eidos#278 — issue 278
 - [x] casehubio/eidos#277 — issue 277
 - [x] casehubio/eidos#263 — collaboration-recency attestation relevance factor
-
-## State
-branch: 
-issue-repo: casehubio/eidos
-status: drained
-project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
-date: 2026-11-18
-design-repo: project
-design-section-hashes: 
-flyway-next-v: unknown
+- [ ] casehubio/eidos#267 — anti-gaming observability dashboard signals (M/Low)
+- [ ] casehubio/eidos#265 — diversity bonus for trust scores (M/High)
+- [ ] casehubio/eidos#264 — coordination detection for attestor collusion (L/High)
 
 ## Deferred
 - [ ] stigmergy_role_health_integration (M / High) []
