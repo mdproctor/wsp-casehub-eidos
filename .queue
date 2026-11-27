@@ -61,6 +61,7 @@ flyway-next-v: unknown
     - [x] Task 7: Instrument DefaultCrossUnitEvidenceAssessor
 - [ ] casehubio/eidos#265 — diversity bonus for trust scores (M/High)
 - [ ] casehubio/eidos#264 — coordination detection for attestor collusion (L/High)
+- [ ] casehubio/eidos#281 — credibility flag distribution query
 
 ## Deferred
 - [ ] stigmergy_role_health_integration (M / High) []
