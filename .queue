@@ -35,7 +35,7 @@
 - [x] casehubio/eidos#277 — issue 277
 
 ## State
-branch: 
+branch: issue-263-recency-attestation-relevance
 issue-repo: casehubio/eidos
 status: drained
 project-sha: d929839bc445cca1f0007ddfbb91707c65646bd6
