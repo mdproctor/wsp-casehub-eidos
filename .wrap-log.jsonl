@@ -1,8 +1,0 @@
-{"ts": "2026-11-27T15:10:01.454476+00:00", "mode": "wrap", "action": "epic_hygiene", "step": "", "steps_executed": ["loose_ends"], "error": ""}
-{"ts": "2026-11-27T15:10:06.307434+00:00", "mode": "wrap", "action": "wrap_sweep_config", "step": "", "steps_executed": [], "error": ""}
-{"ts": "2026-11-27T18:03:39.614101+00:00", "mode": "wrap", "action": "journal_entry", "step": "", "steps_executed": [], "error": ""}
-{"ts": "2026-11-27T18:03:47.821718+00:00", "mode": "wrap", "action": "arc42_scan_wrap", "step": "", "steps_executed": [], "error": ""}
-{"ts": "2026-11-27T18:03:52.814935+00:00", "mode": "wrap", "action": "garden_feedback", "step": "", "steps_executed": [], "error": ""}
-{"ts": "2026-11-27T18:03:57.659129+00:00", "mode": "wrap", "action": "notes", "step": "", "steps_executed": [], "error": ""}
-{"ts": "2026-11-27T18:04:02.820257+00:00", "mode": "wrap", "action": "handoff_write", "step": "", "steps_executed": [], "error": ""}
-{"ts": "2026-11-27T18:04:43.600616+00:00", "mode": "wrap", "action": "complete", "step": "", "steps_executed": ["wip_commit"], "error": ""}
